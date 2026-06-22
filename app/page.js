@@ -24,14 +24,64 @@ export default function Home() {
   const [loadingTrending, setLoadingTrending] = useState(true)
 
   useEffect(() => {
-    // Fetch latest 8 products for trending
-    fetch(`https://${STORE_DOMAIN}/products.json?limit=8`)
-      .then(r => r.json())
-      .then(data => {
-        setTrending(data.products || [])
+    async function fetchTrending() {
+      try {
+        // Fetch all products
+        const res = await fetch(`https://${STORE_DOMAIN}/products.json?limit=250`)
+        const data = await res.json()
+        const all = data.products || []
+
+        // Categorize
+        const bags     = all.filter(p => {
+          const t = (p.product_type || '').toLowerCase()
+          const h = (p.title || '').toLowerCase()
+          return t.includes('bag') || t.includes('backpack') || h.includes('bag') || h.includes('backpack')
+        })
+
+        const bedding  = all.filter(p => {
+          const t = (p.product_type || '').toLowerCase()
+          const h = (p.title || '').toLowerCase()
+          return t.includes('bed') || t.includes('sheet') || t.includes('pillow') || h.includes('bed') || h.includes('sheet')
+        })
+
+        const girls    = all.filter(p => {
+          const t = (p.tags || []).join(' ').toLowerCase()
+          const h = (p.title || '').toLowerCase()
+          return t.includes('girl') || h.includes('girl') || h.includes('frock') || h.includes('dress')
+        })
+
+        const boys     = all.filter(p => {
+          const t = (p.tags || []).join(' ').toLowerCase()
+          const h = (p.title || '').toLowerCase()
+          return t.includes('boy') || h.includes('boy') || h.includes('shirt') || h.includes('trouser')
+        })
+
+        const newArrivals = all.filter(p => {
+          const t = (p.tags || []).join(' ').toLowerCase()
+          const h = (p.title || '').toLowerCase()
+          return t.includes('new') || h.includes('new arrival') || h.includes('summer')
+        })
+
+        // Pick 1-2 from each category
+        const pick = (arr, n) => arr.sort(() => 0.5 - Math.random()).slice(0, n)
+
+        const trending = [
+          ...pick(girls, 2),
+          ...pick(boys, 2),
+          ...pick(bags, 2),
+          ...pick(bedding, 2),
+        ]
+
+        // Fallback — if any category empty fill with new arrivals
+        const final = trending.length >= 6
+          ? trending
+          : [...trending, ...pick(newArrivals, 8 - trending.length)]
+
+        setTrending(final.slice(0, 8))
         setLoadingTrending(false)
-      })
-      .catch(() => setLoadingTrending(false))
+      } catch { setLoadingTrending(false) }
+    }
+    fetchTrending()
   }, [])
 
   return (
