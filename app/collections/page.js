@@ -110,9 +110,13 @@ export default function Collections() {
     ? products
     : products.filter(p => productMatchesFilter(p, activeCat, activeSub, subFilters))
 
-  if (sort === 'low')  filtered = [...filtered].sort((a,b) => parseFloat(a.variants[0]?.price) - parseFloat(b.variants[0]?.price))
-  if (sort === 'high') filtered = [...filtered].sort((a,b) => parseFloat(b.variants[0]?.price) - parseFloat(a.variants[0]?.price))
-
+  if (sort === 'low')     filtered = [...filtered].sort((a,b) => parseFloat(a.variants[0]?.price) - parseFloat(b.variants[0]?.price))
+if (sort === 'high')    filtered = [...filtered].sort((a,b) => parseFloat(b.variants[0]?.price) - parseFloat(a.variants[0]?.price))
+if (sort === 'az')      filtered = [...filtered].sort((a,b) => a.title.localeCompare(b.title))
+if (sort === 'za')      filtered = [...filtered].sort((a,b) => b.title.localeCompare(a.title))
+if (sort === 'old')     filtered = [...filtered].sort((a,b) => new Date(a.created_at) - new Date(b.created_at))
+if (sort === 'new')     filtered = [...filtered].sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
+if (sort === 'best_selling') filtered = [...filtered].sort((a,b) => (b.variants?.[0]?.inventory_quantity || 0) - (a.variants?.[0]?.inventory_quantity || 0))
   function handleCatClick(catId) {
     setActiveCat(catId)
     setActiveSub(null)
@@ -170,11 +174,17 @@ export default function Collections() {
           {activeSub && <span className="ml-2 text-coral">· {subFilters.find(s => s.id === activeSub)?.label}</span>}
         </p>
         <select value={sort} onChange={e => setSort(e.target.value)}
-          className="px-4 py-2 rounded-full border-2 border-gray-100 text-sm font-semibold focus:outline-none focus:border-coral bg-cream">
-          <option value="default">Sort: Default</option>
-          <option value="low">Price: Low to High</option>
-          <option value="high">Price: High to Low</option>
-        </select>
+  className="px-4 py-2 rounded-full border-2 border-gray-100 text-sm font-semibold focus:outline-none focus:border-coral bg-cream">
+  <option value="default">Featured</option>
+  <option value="relevant">Most Relevant</option>
+  <option value="best_selling">Best Selling</option>
+  <option value="az">Alphabetically, A–Z</option>
+  <option value="za">Alphabetically, Z–A</option>
+  <option value="low">Price: Low to High</option>
+  <option value="high">Price: High to Low</option>
+  <option value="old">Date: Old to New</option>
+  <option value="new">Date: New to Old</option>
+</select>
       </div>
 
       {/* Loading skeleton */}
