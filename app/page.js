@@ -19,10 +19,23 @@ export default function Collections() {
   const [sort, setSort]           = useState('default')
 
   useEffect(() => {
-    fetch(`https://${STORE_DOMAIN}/products.json?limit=100`)
-      .then(r => r.json())
-      .then(data => { setProducts(data.products || []); setLoading(false) })
-      .catch(() => setLoading(false))
+    async function fetchAllProducts() {
+      try {
+        const [page1, page2] = await Promise.all([
+          fetch(`https://${STORE_DOMAIN}/products.json?limit=250&page=1`).then(r => r.json()),
+          fetch(`https://${STORE_DOMAIN}/products.json?limit=250&page=2`).then(r => r.json()),
+        ])
+        const all = [
+          ...(page1.products || []),
+          ...(page2.products || []),
+        ]
+        setProducts(all)
+        setLoading(false)
+      } catch {
+        setLoading(false)
+      }
+    }
+    fetchAllProducts()
   }, [])
 
   let filtered = products.filter(p => {
