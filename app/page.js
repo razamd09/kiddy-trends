@@ -47,7 +47,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="relative flex justify-center">
+         <div className="relative flex justify-center px-12">
             <div className="w-72 h-72 md:w-96 md:h-96 bg-skyblue/30 rounded-[60%_40%_55%_45%/50%_60%_40%_50%] flex items-center justify-center animate-float">
               <Image
                 src="/logo.jpg"
@@ -57,23 +57,23 @@ export default function Home() {
                 className="rounded-3xl shadow-2xl object-cover"
               />
             </div>
-            <div className="absolute top-2 right-0 bg-white rounded-2xl px-3 py-1.5 shadow-lg animate-bounce2 font-display text-coral text-xs">
+            <div className="absolute -top-4 right-0 bg-white rounded-2xl px-3 py-1.5 shadow-lg animate-bounce2 font-display text-coral text-xs whitespace-nowrap" style={{animationDelay:'0s'}}>
   😍 Super Soft!
 </div>
-<div className="absolute bottom-24 left-0 bg-sunny rounded-2xl px-3 py-1.5 shadow-lg font-display text-charcoal text-xs animate-float" style={{animationDelay:'0.5s'}}>
-  ✨ 100% Safe
-</div>
-<div className="absolute top-24 left-0 bg-mint rounded-2xl px-3 py-1.5 shadow-lg font-display text-charcoal text-xs animate-bounce2" style={{animationDelay:'1s'}}>
+<div className="absolute top-6 -left-8 bg-mint rounded-2xl px-3 py-1.5 shadow-lg font-display text-charcoal text-xs animate-float whitespace-nowrap" style={{animationDelay:'0.7s'}}>
   👩 Mom's First Choice
 </div>
-<div className="absolute bottom-8 right-0 bg-coral rounded-2xl px-3 py-1.5 shadow-lg font-display text-white text-xs animate-float" style={{animationDelay:'1.5s'}}>
+<div className="absolute top-1/3 -right-6 bg-coral rounded-2xl px-3 py-1.5 shadow-lg font-display text-white text-xs animate-bounce2 whitespace-nowrap" style={{animationDelay:'1.2s'}}>
   💰 Dad's Pocket Friendly
 </div>
-<div className="absolute top-1/2 left-0 bg-skyblue rounded-2xl px-3 py-1.5 shadow-lg font-display text-charcoal text-xs animate-bounce2" style={{animationDelay:'2s'}}>
+<div className="absolute top-1/2 -left-4 bg-skyblue rounded-2xl px-3 py-1.5 shadow-lg font-display text-charcoal text-xs animate-float whitespace-nowrap" style={{animationDelay:'1.8s'}}>
   🏆 Premium
 </div>
-<div className="absolute bottom-2 left-1/4 bg-lavender rounded-2xl px-3 py-1.5 shadow-lg font-display text-charcoal text-xs animate-float" style={{animationDelay:'2.5s'}}>
+<div className="absolute -bottom-2 right-8 bg-lavender rounded-2xl px-3 py-1.5 shadow-lg font-display text-white text-xs animate-bounce2 whitespace-nowrap" style={{animationDelay:'2.2s'}}>
   ⭐ Branded
+</div>
+<div className="absolute bottom-10 -left-6 bg-sunny rounded-2xl px-3 py-1.5 shadow-lg font-display text-charcoal text-xs animate-float whitespace-nowrap" style={{animationDelay:'0.4s'}}>
+  ✨ 100% Safe
 </div>
           </div>
         </div>
