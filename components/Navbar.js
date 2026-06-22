@@ -2,6 +2,25 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useCart } from '../context/CartContext'
+
+function CartButton() {
+  const { totalItems, setCartOpen } = useCart()
+  return (
+    <button onClick={() => setCartOpen(true)}
+      className="relative p-2 rounded-full hover:bg-coral/10 transition-colors">
+      <svg className="w-6 h-6 text-charcoal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 9H4L5 9z" />
+      </svg>
+      {totalItems > 0 && (
+        <span className="absolute -top-1 -right-1 bg-coral text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+          {totalItems}
+        </span>
+      )}
+    </button>
+  )
+}
 
 const links = [
   { href: '/',               label: 'Home' },
@@ -49,14 +68,7 @@ export default function Navbar() {
 
           {/* Cart + mobile toggle */}
           <div className="flex items-center gap-3">
-            <button className="relative p-2 rounded-full hover:bg-coral/10 transition-colors">
-              <svg className="w-6 h-6 text-charcoal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 9H4L5 9z" />
-              </svg>
-              <span className="absolute -top-1 -right-1 bg-coral text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">0</span>
-            </button>
-
+            <CartButton />
             <button
               onClick={() => setOpen(!open)}
               className="md:hidden p-2 rounded-full hover:bg-coral/10 transition-colors"

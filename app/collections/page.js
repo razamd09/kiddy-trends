@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
+import ProductCard from '../../components/ProductCard'
 
 const STORE_DOMAIN = 'the-kiddy-trends.myshopify.com'
 
@@ -218,51 +219,9 @@ if (sort === 'best_selling') filtered = [...filtered].sort((a,b) => (b.variants?
       {/* Product grid */}
       {!loading && filtered.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-          {filtered.map(product => {
-            const price        = product.variants?.[0]?.price
-            const comparePrice = product.variants?.[0]?.compare_at_price
-            const image        = product.images?.[0]?.src
-            const isOnSale     = comparePrice && parseFloat(comparePrice) > parseFloat(price)
-            const isSoldOut    = !product.variants?.some(v => v.available)
-            return (
-              <div key={product.id} className="bg-white rounded-3xl overflow-hidden card-hover shadow-sm border border-gray-100">
-               <div className="relative bg-white" style={{paddingBottom: '100%'}}>
-  {image ? (
-    <div className="absolute inset-0 bg-white flex items-center justify-center p-3">
-      <img
-        src={image}
-        alt={product.title}
-        className="w-full h-full object-contain mix-blend-multiply"
-        loading="lazy"
-      />
-    </div>
-  ) : (
-    <div className="absolute inset-0 flex items-center justify-center text-5xl bg-white">👕</div>
-  )}
-                  {isOnSale && !isSoldOut && (
-                    <span className="absolute top-2 left-2 bg-coral text-white text-xs px-2 py-1 rounded-full font-bold">SALE</span>
-                  )}
-                  {isSoldOut && (
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                      <span className="bg-white text-charcoal font-display text-sm px-3 py-1 rounded-full">Sold Out</span>
-                    </div>
-                  )}
-                </div>
-                <div className="p-4">
-                  <h4 className="font-display text-sm text-charcoal leading-tight line-clamp-2">{product.title}</h4>
-                  <div className="flex items-center gap-2 mt-2">
-                    <p className="text-coral font-bold text-sm">PKR {parseFloat(price).toLocaleString()}</p>
-                    {isOnSale && <p className="text-gray-400 text-xs line-through">PKR {parseFloat(comparePrice).toLocaleString()}</p>}
-                  </div>
-                  <a href={`https://the-kiddy-trends.myshopify.com/products/${product.handle}`}
-                    target="_blank" rel="noopener noreferrer"
-                    className="mt-3 w-full bg-charcoal text-white text-sm font-semibold py-2 rounded-xl hover:bg-coral transition-colors block text-center">
-                    {isSoldOut ? 'View Product' : 'Buy Now'}
-                  </a>
-                </div>
-              </div>
-            )
-          })}
+          {filtered.map(product => (
+  <ProductCard key={product.id} product={product} />
+))}
         </div>
       )}
     </div>
