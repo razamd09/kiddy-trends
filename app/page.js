@@ -10,10 +10,10 @@ const categories = [
 ]
 
 const featured = [
-  { name:'Monster Hoodie',       price:'PKR 2,499', badge:'New',    color:'bg-skyblue/30', emoji:'👕' },
-  { name:'Unicorn Bedsheet Set', price:'PKR 3,499', badge:'Hot 🔥', color:'bg-sunny/40',   emoji:'🦄' },
-  { name:'Monster School Bag',   price:'PKR 2,999', badge:'New',    color:'bg-mint/30',    emoji:'🎒' },
-  { name:'Butterfly Hair Pins',  price:'PKR 599',   badge:'Cute',   color:'bg-coral/20',   emoji:'🦋' },
+  { name:'Girls Floral Frock Set',    price:'PKR 1,899', badge:'Girls 👧', color:'bg-coral/20',   emoji:'👗', href:'https://the-kiddy-trends.myshopify.com/collections/all?filter=girls' },
+  { name:'Boys Dino Tracksuit',       price:'PKR 2,199', badge:'Boys 👦',  color:'bg-skyblue/30', emoji:'👕', href:'https://the-kiddy-trends.myshopify.com/collections/all?filter=boys' },
+  { name:'Monster School Bag',        price:'PKR 2,999', badge:'Bag 🎒',   color:'bg-sunny/40',   emoji:'🎒', href:'https://the-kiddy-trends.myshopify.com/collections/all?filter=bags' },
+  { name:'Unicorn Single Bedsheet',   price:'PKR 3,499', badge:'Bedding 🛏️', color:'bg-mint/30', emoji:'🦄', href:'https://the-kiddy-trends.myshopify.com/collections/all?filter=bedding' },
 ]
 
 const features = [
@@ -117,10 +117,10 @@ export default function Home() {
                 </span>
                 <h4 className="font-display text-lg mt-2 text-charcoal">{item.name}</h4>
                 <p className="text-coral font-bold mt-1">{item.price}</p>
-                <Link href="/collections"
-                  className="mt-3 w-full bg-charcoal text-white text-sm font-semibold py-2 rounded-xl hover:bg-coral transition-colors block text-center">
-                  Shop Now
-                </Link>
+                <a href={item.href} target="_blank" rel="noopener noreferrer"
+  className="mt-3 w-full bg-charcoal text-white text-sm font-semibold py-2 rounded-xl hover:bg-coral transition-colors block text-center">
+  Shop Now
+</a>
               </div>
             </div>
           ))}
