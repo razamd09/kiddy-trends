@@ -1,9 +1,11 @@
 'use client'
+import { useState } from 'react'
 import { useCart } from '../context/CartContext'
+import CheckoutModal from './CheckoutModal'
 
 export default function CartDrawer() {
-  const { cart, cartOpen, setCartOpen, removeFromCart, updateQuantity, totalItems, totalPrice, getCheckoutUrl } = useCart()
-
+  const { cart, cartOpen, setCartOpen, removeFromCart, updateQuantity, totalItems, totalPrice } = useCart()
+  const [showCheckout, setShowCheckout] = useState(false)
   return (
     <>
       {cartOpen && (
@@ -92,10 +94,10 @@ export default function CartDrawer() {
                 <span className="font-display text-lg text-charcoal">Total</span>
                 <span className="font-display text-2xl text-coral">PKR {totalPrice.toLocaleString()}</span>
               </div>
-              <a href={getCheckoutUrl()}
-                className="w-full bg-coral text-white font-display text-lg py-4 rounded-2xl hover:bg-opacity-90 transition-all hover:scale-[1.02] active:scale-95 shadow-md block text-center">
-                Checkout 🛍️
-              </a>
+              <button onClick={() => setShowCheckout(true)}
+  className="w-full bg-coral text-white font-display text-lg py-4 rounded-2xl hover:bg-opacity-90 transition-all hover:scale-[1.02] active:scale-95 shadow-md block text-center">
+  Checkout 🛍️
+</button>
               <button onClick={() => setCartOpen(false)}
                 className="w-full border-2 border-gray-200 text-charcoal font-display text-base py-3 rounded-2xl hover:border-coral hover:text-coral transition-colors">
                 Continue Shopping
@@ -104,6 +106,14 @@ export default function CartDrawer() {
           </>
         )}
       </div>
+{showCheckout && (
+        <CheckoutModal
+          isCart={true}
+          cartItems={cart}
+          totalPrice={totalPrice}
+          onClose={() => setShowCheckout(false)}
+        />
+      )}
     </>
   )
 }

@@ -9,17 +9,16 @@ const cities = [
   'Hyderabad','Bahawalpur','Sargodha','Sukkur','Larkana','Other'
 ]
 
-export default function CheckoutModal({ product, variant, onClose }) {
-  const [step, setStep]       = useState(1)
+export default function CheckoutModal({ product, variant, onClose, isCart, cartItems, totalPrice: cartTotal }) {  const [step, setStep]       = useState(1)
   const [loading, setLoading] = useState(false)
   const [form, setForm]       = useState({
     name:'', phone:'', address:'', city:'', payment:'cod', notes:''
   })
   const [errors, setErrors] = useState({})
 
-  const price        = parseFloat(variant?.price || 0)
+ const price        = isCart ? cartTotal : parseFloat(variant?.price || 0)
   const comparePrice = parseFloat(variant?.compare_at_price || 0)
-  const isOnSale     = comparePrice > price
+  const isOnSale     = !isCart && comparePrice > price
   const image        = product?.images?.[0]?.src
   const shipping     = 200
   const total        = price + shipping
@@ -37,11 +36,15 @@ export default function CheckoutModal({ product, variant, onClose }) {
 
   function buildWhatsAppMessage() {
     const variantText = variant?.title !== 'Default Title' ? `\nVariant: ${variant?.title}` : ''
+    const productText = isCart
+      ? cartItems?.map(item => `- ${item.title}${item.variantTitle ? ` (${item.variantTitle})` : ''} x${item.quantity} = PKR ${(item.price * item.quantity).toLocaleString()}`).join('\n')
+      : `${product?.title}${variantText}`
+
     return encodeURIComponent(
 `NEW ORDER - Kiddy Trends
 
-Product: ${product?.title}${variantText}
-Price: PKR ${price.toLocaleString()}
+${isCart ? `Products:\n${productText}` : `Product: ${productText}`}
+Subtotal: PKR ${price.toLocaleString()}
 Shipping: PKR ${shipping.toLocaleString()}
 Total: PKR ${total.toLocaleString()}
 
@@ -54,7 +57,6 @@ ${form.notes ? `Notes: ${form.notes}` : ''}
 
 Order placed via kiddytrends.com`)
   }
-
   async function handleSubmit(e) {
     e.preventDefault()
     if (!validate()) return
@@ -85,7 +87,49 @@ Order placed via kiddytrends.com`)
         {/* Step 1 - Form */}
         {step === 1 && (
           <div className="px-6 py-5">
-            <div className="flex gap-4 bg-cream rounded-2xl p-4 mb-6">
+            {/* Order summary */}
+<div className="bg-cream rounded-2xl p-4 mb-6">
+  {isCart ? (
+    <div className="space-y-2">
+      <p className="font-display text-base text-charcoal mb-3">Order Summary ({cartItems?.length} items)</p>
+      {cartItems?.map(item => (
+        <div key={item.variantId} className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
+            {item.image
+              ? <img src={item.image} alt={item.title} className="w-full h-full object-contain mix-blend-multiply p-0.5" />
+              : <span className="text-lg">👕</span>
+            }
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-charcoal truncate">{item.title}</p>
+            {item.variantTitle && <p className="text-xs text-gray-400">{item.variantTitle}</p>}
+          </div>
+          <p className="text-xs font-bold text-coral whitespace-nowrap">
+            x{item.quantity} — PKR {(item.price * item.quantity).toLocaleString()}
+          </p>
+        </div>
+      ))}
+    </div>
+  ) : (
+    <div className="flex gap-4">
+      <div className="w-20 h-20 bg-white rounded-xl flex items-center justify-center flex-shrink-0">
+        {image
+          ? <img src={image} alt={product.title} className="w-full h-full object-contain mix-blend-multiply p-1 rounded-xl" />
+          : <span className="text-3xl">👕</span>
+        }
+      </div>
+      <div className="flex-1">
+        <h4 className="font-display text-sm text-charcoal leading-tight">{product?.title}</h4>
+        {variant?.title !== 'Default Title' && <p className="text-xs text-gray-400 mt-0.5">{variant?.title}</p>}
+        <div className="flex items-center gap-2 mt-1">
+          <p className="text-coral font-bold">PKR {price.toLocaleString()}</p>
+          {isOnSale && <p className="text-gray-400 text-xs line-through">PKR {comparePrice.toLocaleString()}</p>}
+        </div>
+        <p className="text-xs text-gray-400 mt-1">+ PKR {shipping} shipping</p>
+      </div>
+    </div>
+  )}
+</div>
               <div className="w-20 h-20 bg-white rounded-xl flex items-center justify-center flex-shrink-0">
                 {image
                   ? <img src={image} alt={product.title} className="w-full h-full object-contain mix-blend-multiply p-1 rounded-xl" />
