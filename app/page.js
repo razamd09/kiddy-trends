@@ -57,12 +57,24 @@ export default function Home() {
                 className="rounded-3xl shadow-2xl object-cover"
               />
             </div>
-            <div className="absolute top-4 right-4 bg-white rounded-2xl px-4 py-2 shadow-lg animate-bounce2 font-display text-coral text-sm">
-              😍 Super Soft!
-            </div>
-            <div className="absolute bottom-8 left-2 bg-sunny rounded-2xl px-4 py-2 shadow-lg font-display text-charcoal text-sm animate-float" style={{animationDelay:'1s'}}>
-              ✨ 100% Safe
-            </div>
+            <div className="absolute top-2 right-0 bg-white rounded-2xl px-3 py-1.5 shadow-lg animate-bounce2 font-display text-coral text-xs">
+  😍 Super Soft!
+</div>
+<div className="absolute bottom-24 left-0 bg-sunny rounded-2xl px-3 py-1.5 shadow-lg font-display text-charcoal text-xs animate-float" style={{animationDelay:'0.5s'}}>
+  ✨ 100% Safe
+</div>
+<div className="absolute top-24 left-0 bg-mint rounded-2xl px-3 py-1.5 shadow-lg font-display text-charcoal text-xs animate-bounce2" style={{animationDelay:'1s'}}>
+  👩 Mom's First Choice
+</div>
+<div className="absolute bottom-8 right-0 bg-coral rounded-2xl px-3 py-1.5 shadow-lg font-display text-white text-xs animate-float" style={{animationDelay:'1.5s'}}>
+  💰 Dad's Pocket Friendly
+</div>
+<div className="absolute top-1/2 left-0 bg-skyblue rounded-2xl px-3 py-1.5 shadow-lg font-display text-charcoal text-xs animate-bounce2" style={{animationDelay:'2s'}}>
+  🏆 Premium
+</div>
+<div className="absolute bottom-2 left-1/4 bg-lavender rounded-2xl px-3 py-1.5 shadow-lg font-display text-charcoal text-xs animate-float" style={{animationDelay:'2.5s'}}>
+  ⭐ Branded
+</div>
           </div>
         </div>
       </section>
