@@ -8,11 +8,7 @@ const values = [
   { emoji:'🇵🇰', title:'Made with Love',  desc:'Proudly based in Lahore, crafting tiny outfits that bring big smiles across Pakistan.' },
 ]
 
-const team = [
-  { name:'Sara Ahmed',    role:'Founder & Creative Director', emoji:'👩‍🎨' },
-  { name:'Usman Raza',    role:'Head of Operations',          emoji:'👨‍💼' },
-  { name:'Maryam Khan',   role:'Lead Designer',               emoji:'👩‍💻' },
-]
+
 
 export default function About() {
   return (
@@ -81,19 +77,7 @@ export default function About() {
         </div>
       </section>
 
-      {/* Team */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <h2 className="section-title text-center mb-12">Meet the team</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
-          {team.map(m => (
-            <div key={m.name} className="bg-white rounded-3xl p-8 text-center shadow-sm hover:shadow-md transition-shadow">
-              <div className="text-6xl mb-4">{m.emoji}</div>
-              <h3 className="font-display text-xl text-charcoal">{m.name}</h3>
-              <p className="text-sm text-gray-500 mt-1">{m.role}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      
 
       {/* CTA */}
       <section className="bg-coral py-14 text-center">
