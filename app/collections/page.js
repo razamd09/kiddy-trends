@@ -228,15 +228,16 @@ if (sort === 'best_selling') filtered = [...filtered].sort((a,b) => (b.variants?
               <div key={product.id} className="bg-white rounded-3xl overflow-hidden card-hover shadow-sm border border-gray-100">
                <div className="relative bg-white" style={{paddingBottom: '100%'}}>
   {image ? (
-    <Image
-      src={image}
-      alt={product.title}
-      fill
-      className="object-contain p-3"
-      sizes="(max-width: 768px) 50vw, 25vw"
-    />
+    <div className="absolute inset-0 bg-white flex items-center justify-center p-3">
+      <img
+        src={image}
+        alt={product.title}
+        className="w-full h-full object-contain mix-blend-multiply"
+        loading="lazy"
+      />
+    </div>
   ) : (
-    <div className="absolute inset-0 flex items-center justify-center text-5xl">👕</div>
+    <div className="absolute inset-0 flex items-center justify-center text-5xl bg-white">👕</div>
   )}
                   {isOnSale && !isSoldOut && (
                     <span className="absolute top-2 left-2 bg-coral text-white text-xs px-2 py-1 rounded-full font-bold">SALE</span>
