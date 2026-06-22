@@ -4,47 +4,81 @@ import Image from 'next/image'
 
 const STORE_DOMAIN = 'the-kiddy-trends.myshopify.com'
 
-const allCategories = [
-  { id: 'all',         label: 'All Products',       emoji: '🛍️', color: 'bg-white',      desc: '' },
-  { id: 'newborn',     label: 'Newborn',             emoji: '👶', color: 'bg-skyblue/30', desc: '0–12 months' },
-  { id: 'toddler',     label: 'Toddler',             emoji: '🧸', color: 'bg-sunny/40',   desc: '1–3 years' },
-  { id: 'kids',        label: 'Kids',                emoji: '🎒', color: 'bg-mint/30',    desc: '4–8 years' },
-  { id: 'tweens',      label: 'Tweens',              emoji: '⭐', color: 'bg-coral/20',   desc: '9–12 years' },
-  { id: 'bedding',     label: 'Kids Bedding',        emoji: '🛏️', color: 'bg-skyblue/20', desc: 'Bed sets & covers' },
-  { id: 'bags',        label: 'Bags',                emoji: '🎒', color: 'bg-sunny/30',   desc: 'School & baby bags' },
-  { id: 'accessories', label: 'Accessories',         emoji: '🎀', color: 'bg-mint/20',    desc: 'Pins, ponytails & more' },
+const categories = [
+  {
+    id: 'newborn', label: 'Newborn', emoji: '👶', color: 'bg-skyblue/30',
+    subFilters: [
+      { id: '0-3m',  label: '0–3 Months',  keywords: ['0-3','0 to 3','0/3'] },
+      { id: '3-6m',  label: '3–6 Months',  keywords: ['3-6','3 to 6','3/6'] },
+      { id: '6-9m',  label: '6–9 Months',  keywords: ['6-9','6 to 9','6/9'] },
+      { id: '9-12m', label: '9–12 Months', keywords: ['9-12','9 to 12','9/12'] },
+    ]
+  },
+  {
+    id: 'toddler', label: 'Toddler', emoji: '🧸', color: 'bg-sunny/40',
+    subFilters: [
+      { id: '12-18m', label: '12–18 Months', keywords: ['12-18','12 to 18','12/18'] },
+      { id: '18-24m', label: '18–24 Months', keywords: ['18-24','18 to 24','18/24'] },
+      { id: '2-3y',   label: '2–3 Year',     keywords: ['2-3 year','2 to 3','2/3 year','2yr','3yr'] },
+    ]
+  },
+  {
+    id: 'kids', label: 'Kids', emoji: '🎒', color: 'bg-mint/30',
+    subFilters: [
+      { id: '3-4y', label: '3–4 Year', keywords: ['3-4 year','3 to 4','3/4 year','3yr','4yr'] },
+      { id: '4-5y', label: '4–5 Year', keywords: ['4-5 year','4 to 5','4/5 year','4yr','5yr'] },
+      { id: '5-6y', label: '5–6 Year', keywords: ['5-6 year','5 to 6','5/6 year','5yr','6yr'] },
+      { id: '6-7y', label: '6–7 Year', keywords: ['6-7 year','6 to 7','6/7 year','6yr','7yr'] },
+      { id: '7-8y', label: '7–8 Year', keywords: ['7-8 year','7 to 8','7/8 year','7yr','8yr'] },
+    ]
+  },
+  {
+    id: 'tweens', label: 'Tweens', emoji: '⭐', color: 'bg-coral/20',
+    subFilters: [
+      { id: '9-10y',  label: '9–10 Year',  keywords: ['9-10 year','9 to 10','9yr','10yr'] },
+      { id: '11-12y', label: '11–12 Year', keywords: ['11-12 year','11 to 12','11yr','12yr'] },
+    ]
+  },
+  { id: 'bedding',     label: 'Bedding',      emoji: '🛏️', color: 'bg-skyblue/20', subFilters: [] },
+  { id: 'bags',        label: 'Bags',         emoji: '🎒', color: 'bg-sunny/30',   subFilters: [] },
+  { id: 'accessories', label: 'Accessories',  emoji: '🎀', color: 'bg-mint/20',    subFilters: [] },
 ]
 
-// Age keyword maps
-const newbornKeywords  = ['0-3','0-6','3-6','6-9','9-12','newborn','infant','baby','0 month','1 month','2 month','3 month','4 month','5 month','6 month','7 month','8 month','9 month','10 month','11 month','12 month']
-const toddlerKeywords  = ['1 year','2 year','3 year','1-2','2-3','1yr','2yr','3yr','12-18','18-24','toddler','1y','2y','3y']
-const kidsKeywords     = ['4 year','5 year','6 year','7 year','8 year','4-5','5-6','6-7','7-8','4yr','5yr','6yr','7yr','8yr','4y','5y','6y','7y','8y']
-const tweensKeywords   = ['9 year','10 year','11 year','12 year','9-10','10-11','11-12','9yr','10yr','11yr','12yr','9y','10y','11y','12y','tween']
-
-function matchesAge(product, keywords) {
-  const searchText = [
+function productMatchesFilter(product, catId, subId, subFilters) {
+  const text = [
     product.title,
     product.product_type,
     ...(product.tags || []),
-    ...(product.variants || []).map(v => v.title + ' ' + (v.option1 || '') + ' ' + (v.option2 || '') + ' ' + (v.option3 || '')),
+    ...(product.variants || []).map(v =>
+      [v.title, v.option1, v.option2, v.option3].filter(Boolean).join(' ')
+    ),
     ...(product.options || []).flatMap(o => o.values || [])
   ].join(' ').toLowerCase()
 
-  return keywords.some(k => searchText.includes(k.toLowerCase()))
-}
-
-function matchesCategory(product, cat) {
   const type  = (product.product_type || '').toLowerCase()
-  const tags  = (product.tags || []).map(t => t.toLowerCase()).join(' ')
   const title = (product.title || '').toLowerCase()
 
-  if (cat === 'newborn')     return matchesAge(product, newbornKeywords)
-  if (cat === 'toddler')     return matchesAge(product, toddlerKeywords)
-  if (cat === 'kids')        return matchesAge(product, kidsKeywords)
-  if (cat === 'tweens')      return matchesAge(product, tweensKeywords)
-  if (cat === 'bedding')     return type.includes('bed') || type.includes('sheet') || type.includes('pillow') || type.includes('duvet') || tags.includes('bed') || title.includes('bed') || title.includes('sheet') || title.includes('pillow')
-  if (cat === 'bags')        return type.includes('bag') || type.includes('backpack') || tags.includes('bag') || title.includes('bag') || title.includes('backpack')
-  if (cat === 'accessories') return type.includes('access') || type.includes('hair') || type.includes('pin') || tags.includes('hair') || tags.includes('pin') || title.includes('pin') || title.includes('hair') || title.includes('ponytail') || title.includes('scrunchie') || title.includes('clip') || title.includes('headband')
+  // Sub-filter selected
+  if (subId) {
+    const sub = subFilters.find(s => s.id === subId)
+    if (!sub) return false
+    return sub.keywords.some(k => text.includes(k.toLowerCase()))
+  }
+
+  // Main category
+  const ageText = text
+  const newbornKw  = ['0-3','3-6','6-9','9-12','newborn','infant','0 month','1 month','2 month','3 month','4 month','5 month','6 month','7 month','8 month','9 month','10 month','11 month','12 month']
+  const toddlerKw  = ['12-18','18-24','1 year','2 year','3 year','toddler','1yr','2yr','3yr']
+  const kidsKw     = ['4 year','5 year','6 year','7 year','8 year','4yr','5yr','6yr','7yr','8yr','4-5','5-6','6-7','7-8','3-4']
+  const tweensKw   = ['9 year','10 year','11 year','12 year','9yr','10yr','11yr','12yr','tween','9-10','11-12']
+
+  if (catId === 'newborn')     return newbornKw.some(k => ageText.includes(k))
+  if (catId === 'toddler')     return toddlerKw.some(k => ageText.includes(k))
+  if (catId === 'kids')        return kidsKw.some(k => ageText.includes(k))
+  if (catId === 'tweens')      return tweensKw.some(k => ageText.includes(k))
+  if (catId === 'bedding')     return type.includes('bed') || type.includes('sheet') || type.includes('pillow') || title.includes('bed') || title.includes('sheet')
+  if (catId === 'bags')        return type.includes('bag') || type.includes('backpack') || title.includes('bag') || title.includes('backpack')
+  if (catId === 'accessories') return type.includes('access') || type.includes('hair') || title.includes('pin') || title.includes('hair') || title.includes('ponytail') || title.includes('scrunchie') || title.includes('clip') || title.includes('headband')
   return true
 }
 
@@ -52,6 +86,7 @@ export default function Collections() {
   const [products, setProducts]   = useState([])
   const [loading, setLoading]     = useState(true)
   const [activeCat, setActiveCat] = useState('all')
+  const [activeSub, setActiveSub] = useState(null)
   const [sort, setSort]           = useState('default')
 
   useEffect(() => {
@@ -68,12 +103,20 @@ export default function Collections() {
     fetchAll()
   }, [])
 
+  const activeCatObj  = categories.find(c => c.id === activeCat)
+  const subFilters    = activeCatObj?.subFilters || []
+
   let filtered = activeCat === 'all'
     ? products
-    : products.filter(p => matchesCategory(p, activeCat))
+    : products.filter(p => productMatchesFilter(p, activeCat, activeSub, subFilters))
 
   if (sort === 'low')  filtered = [...filtered].sort((a,b) => parseFloat(a.variants[0]?.price) - parseFloat(b.variants[0]?.price))
   if (sort === 'high') filtered = [...filtered].sort((a,b) => parseFloat(b.variants[0]?.price) - parseFloat(a.variants[0]?.price))
+
+  function handleCatClick(catId) {
+    setActiveCat(catId)
+    setActiveSub(null)
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -81,27 +124,50 @@ export default function Collections() {
       {/* Header */}
       <div className="text-center mb-10">
         <h1 className="section-title mb-3">Our Collections 🛍️</h1>
-        <p className="text-gray-500 text-lg">Everything your little one needs — all in one place</p>
+        <p className="text-gray-500 text-lg">Everything your little one needs</p>
       </div>
 
-      {/* Category tabs */}
-      <div className="flex flex-wrap gap-3 mb-10 justify-center">
-        {allCategories.map(cat => (
-          <button key={cat.id} onClick={() => setActiveCat(cat.id)}
-            className={`${cat.color} rounded-full px-5 py-2.5 text-center transition-all hover:scale-105 border-2 flex items-center gap-2 ${activeCat === cat.id ? 'border-coral shadow-md scale-105' : 'border-transparent'}`}>
-            <span>{cat.emoji}</span>
-            <div className="text-left">
-              <p className="font-display text-sm text-charcoal leading-tight">{cat.label}</p>
-              {cat.desc && <p className="text-xs text-gray-400 leading-tight">{cat.desc}</p>}
-            </div>
+      {/* Main category pills */}
+      <div className="flex flex-wrap gap-2 justify-center mb-4">
+        <button onClick={() => handleCatClick('all')}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-display text-sm transition-all border-2 ${activeCat === 'all' ? 'bg-coral text-white border-coral shadow-md' : 'bg-white text-charcoal border-gray-100 hover:border-coral/40'}`}>
+          🛍️ All Products
+        </button>
+        {categories.map(cat => (
+          <button key={cat.id} onClick={() => handleCatClick(cat.id)}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-display text-sm transition-all border-2 ${activeCat === cat.id ? 'bg-coral text-white border-coral shadow-md' : 'bg-white text-charcoal border-gray-100 hover:border-coral/40'}`}>
+            {cat.emoji} {cat.label}
           </button>
         ))}
       </div>
 
+      {/* Sub-filters — age chips */}
+      {subFilters.length > 0 && (
+        <div className="flex flex-wrap gap-2 justify-center mb-8 animate-fade-up">
+          <div className={`w-full flex flex-wrap gap-2 justify-center p-4 rounded-2xl ${activeCatObj?.color}`}>
+            <p className="w-full text-center font-display text-charcoal text-sm mb-1">
+              Select age group:
+            </p>
+            <button
+              onClick={() => setActiveSub(null)}
+              className={`px-4 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ${!activeSub ? 'bg-charcoal text-white border-charcoal' : 'bg-white text-charcoal border-gray-200 hover:border-charcoal'}`}>
+              All Ages
+            </button>
+            {subFilters.map(sub => (
+              <button key={sub.id} onClick={() => setActiveSub(sub.id)}
+                className={`px-4 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ${activeSub === sub.id ? 'bg-charcoal text-white border-charcoal' : 'bg-white text-charcoal border-gray-200 hover:border-charcoal'}`}>
+                {sub.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Sort + count */}
       <div className="flex items-center justify-between mb-6">
         <p className="text-sm text-gray-400 font-semibold">
-          {loading ? 'Loading products...' : `${filtered.length} product${filtered.length !== 1 ? 's' : ''}`}
+          {loading ? 'Loading...' : `${filtered.length} product${filtered.length !== 1 ? 's' : ''}`}
+          {activeSub && <span className="ml-2 text-coral">· {subFilters.find(s => s.id === activeSub)?.label}</span>}
         </p>
         <select value={sort} onChange={e => setSort(e.target.value)}
           className="px-4 py-2 rounded-full border-2 border-gray-100 text-sm font-semibold focus:outline-none focus:border-coral bg-cream">
@@ -127,13 +193,15 @@ export default function Collections() {
         </div>
       )}
 
-      {/* Empty state */}
+      {/* Empty */}
       {!loading && filtered.length === 0 && (
         <div className="text-center py-20">
           <div className="text-6xl mb-4">🔍</div>
-          <h3 className="font-display text-2xl text-gray-400">No products found in this category</h3>
-          <p className="text-gray-400 mt-2 mb-6">Try a different category or view all products</p>
-          <button onClick={() => setActiveCat('all')} className="btn-primary">View All Products</button>
+          <h3 className="font-display text-2xl text-gray-400">No products found</h3>
+          <p className="text-gray-400 mt-2 mb-6">Try a different age group or category</p>
+          <button onClick={() => { setActiveCat('all'); setActiveSub(null) }} className="btn-primary">
+            View All Products
+          </button>
         </div>
       )}
 
