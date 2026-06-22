@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #F0EDE4;
+    color: #2D2D2D;
+    font-family: 'Nunito', sans-serif;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-coral text-white font-display px-8 py-3 rounded-full text-lg hover:bg-opacity-90 transition-all hover:scale-105 active:scale-95 shadow-md;
+  }
+  .btn-outline {
+    @apply border-2 border-coral text-coral font-display px-8 py-3 rounded-full text-lg hover:bg-coral hover:text-white transition-all hover:scale-105;
+  }
+  .section-title {
+    @apply font-display text-4xl md:text-5xl text-charcoal;
+  }
+  .card-hover {
+    @apply transition-all duration-300 hover:scale-105 hover:shadow-xl;
+  }
+}
