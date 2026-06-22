@@ -9,14 +9,15 @@ const cities = [
   'Hyderabad','Bahawalpur','Sargodha','Sukkur','Larkana','Other'
 ]
 
-export default function CheckoutModal({ product, variant, onClose, isCart, cartItems, totalPrice: cartTotal }) {  const [step, setStep]       = useState(1)
+export default function CheckoutModal({ product, variant, onClose, isCart, cartItems, totalPrice: cartTotal }) {
+  const [step, setStep]       = useState(1)
   const [loading, setLoading] = useState(false)
   const [form, setForm]       = useState({
     name:'', phone:'', address:'', city:'', payment:'cod', notes:''
   })
   const [errors, setErrors] = useState({})
 
- const price        = isCart ? cartTotal : parseFloat(variant?.price || 0)
+  const price        = isCart ? cartTotal : parseFloat(variant?.price || 0)
   const comparePrice = parseFloat(variant?.compare_at_price || 0)
   const isOnSale     = !isCart && comparePrice > price
   const image        = product?.images?.[0]?.src
@@ -25,38 +26,43 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
 
   function validate() {
     const e = {}
-    if (!form.name.trim())                 e.name    = 'Name is required'
-    if (!form.phone.trim())                e.phone   = 'Phone is required'
-    if (form.phone.trim().length < 10)     e.phone   = 'Enter valid phone number'
-    if (!form.address.trim())              e.address = 'Address is required'
-    if (!form.city)                        e.city    = 'Please select your city'
+    if (!form.name.trim())             e.name    = 'Name is required'
+    if (!form.phone.trim())            e.phone   = 'Phone is required'
+    if (form.phone.trim().length < 10) e.phone   = 'Enter valid phone number'
+    if (!form.address.trim())          e.address = 'Address is required'
+    if (!form.city)                    e.city    = 'Please select your city'
     setErrors(e)
     return Object.keys(e).length === 0
   }
 
   function buildWhatsAppMessage() {
-    const variantText = variant?.title !== 'Default Title' ? `\nVariant: ${variant?.title}` : ''
+    const variantText = variant?.title !== 'Default Title' ? '\nVariant: ' + variant?.title : ''
     const productText = isCart
-      ? cartItems?.map(item => `- ${item.title}${item.variantTitle ? ` (${item.variantTitle})` : ''} x${item.quantity} = PKR ${(item.price * item.quantity).toLocaleString()}`).join('\n')
-      : `${product?.title}${variantText}`
+      ? cartItems?.map(item =>
+          '- ' + item.title +
+          (item.variantTitle ? ' (' + item.variantTitle + ')' : '') +
+          ' x' + item.quantity +
+          ' = PKR ' + (item.price * item.quantity).toLocaleString()
+        ).join('\n')
+      : product?.title + variantText
 
-    return encodeURIComponent(
-`NEW ORDER - Kiddy Trends
+    const msg =
+      'NEW ORDER - Kiddy Trends\n\n' +
+      (isCart ? 'Products:\n' + productText : 'Product: ' + productText) + '\n' +
+      'Subtotal: PKR ' + price.toLocaleString() + '\n' +
+      'Shipping: PKR ' + shipping.toLocaleString() + '\n' +
+      'Total: PKR ' + total.toLocaleString() + '\n\n' +
+      'Customer Details\n' +
+      'Name: ' + form.name + '\n' +
+      'Phone: ' + form.phone + '\n' +
+      'Address: ' + form.address + ', ' + form.city + '\n' +
+      'Payment: ' + (form.payment === 'cod' ? 'Cash on Delivery' : 'Online Payment') +
+      (form.notes ? '\nNotes: ' + form.notes : '') + '\n\n' +
+      'Order placed via kiddytrends.com'
 
-${isCart ? `Products:\n${productText}` : `Product: ${productText}`}
-Subtotal: PKR ${price.toLocaleString()}
-Shipping: PKR ${shipping.toLocaleString()}
-Total: PKR ${total.toLocaleString()}
-
-Customer Details
-Name: ${form.name}
-Phone: ${form.phone}
-Address: ${form.address}, ${form.city}
-Payment: ${form.payment === 'cod' ? 'Cash on Delivery' : 'Online Payment'}
-${form.notes ? `Notes: ${form.notes}` : ''}
-
-Order placed via kiddytrends.com`)
+    return encodeURIComponent(msg)
   }
+
   async function handleSubmit(e) {
     e.preventDefault()
     if (!validate()) return
@@ -64,7 +70,7 @@ Order placed via kiddytrends.com`)
     await new Promise(r => setTimeout(r, 1000))
     setLoading(false)
     setStep(2)
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${buildWhatsAppMessage()}`, '_blank')
+    window.open('https://wa.me/' + WHATSAPP_NUMBER + '?text=' + buildWhatsAppMessage(), '_blank')
   }
 
   return (
@@ -87,67 +93,57 @@ Order placed via kiddytrends.com`)
         {/* Step 1 - Form */}
         {step === 1 && (
           <div className="px-6 py-5">
-            {/* Order summary */}
-<div className="bg-cream rounded-2xl p-4 mb-6">
-  {isCart ? (
-    <div className="space-y-2">
-      <p className="font-display text-base text-charcoal mb-3">Order Summary ({cartItems?.length} items)</p>
-      {cartItems?.map(item => (
-        <div key={item.variantId} className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
-            {item.image
-              ? <img src={item.image} alt={item.title} className="w-full h-full object-contain mix-blend-multiply p-0.5" />
-              : <span className="text-lg">👕</span>
-            }
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-charcoal truncate">{item.title}</p>
-            {item.variantTitle && <p className="text-xs text-gray-400">{item.variantTitle}</p>}
-          </div>
-          <p className="text-xs font-bold text-coral whitespace-nowrap">
-            x{item.quantity} — PKR {(item.price * item.quantity).toLocaleString()}
-          </p>
-        </div>
-      ))}
-    </div>
-  ) : (
-    <div className="flex gap-4">
-      <div className="w-20 h-20 bg-white rounded-xl flex items-center justify-center flex-shrink-0">
-        {image
-          ? <img src={image} alt={product.title} className="w-full h-full object-contain mix-blend-multiply p-1 rounded-xl" />
-          : <span className="text-3xl">👕</span>
-        }
-      </div>
-      <div className="flex-1">
-        <h4 className="font-display text-sm text-charcoal leading-tight">{product?.title}</h4>
-        {variant?.title !== 'Default Title' && <p className="text-xs text-gray-400 mt-0.5">{variant?.title}</p>}
-        <div className="flex items-center gap-2 mt-1">
-          <p className="text-coral font-bold">PKR {price.toLocaleString()}</p>
-          {isOnSale && <p className="text-gray-400 text-xs line-through">PKR {comparePrice.toLocaleString()}</p>}
-        </div>
-        <p className="text-xs text-gray-400 mt-1">+ PKR {shipping} shipping</p>
-      </div>
-    </div>
-  )}
-</div>
-              <div className="w-20 h-20 bg-white rounded-xl flex items-center justify-center flex-shrink-0">
-                {image
-                  ? <img src={image} alt={product.title} className="w-full h-full object-contain mix-blend-multiply p-1 rounded-xl" />
-                  : <span className="text-3xl">👕</span>
-                }
-              </div>
-              <div className="flex-1">
-                <h4 className="font-display text-sm text-charcoal leading-tight">{product?.title}</h4>
-                {variant?.title !== 'Default Title' && <p className="text-xs text-gray-400 mt-0.5">{variant?.title}</p>}
-                <div className="flex items-center gap-2 mt-1">
-                  <p className="text-coral font-bold">PKR {price.toLocaleString()}</p>
-                  {isOnSale && <p className="text-gray-400 text-xs line-through">PKR {comparePrice.toLocaleString()}</p>}
+
+            {/* Order Summary */}
+            <div className="bg-cream rounded-2xl p-4 mb-6">
+              {isCart ? (
+                <div className="space-y-2">
+                  <p className="font-display text-base text-charcoal mb-3">
+                    Order Summary ({cartItems?.length} items)
+                  </p>
+                  {cartItems?.map(item => (
+                    <div key={item.variantId} className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
+                        {item.image
+                          ? <img src={item.image} alt={item.title} className="w-full h-full object-contain mix-blend-multiply p-0.5" />
+                          : <span className="text-lg">👕</span>
+                        }
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-charcoal truncate">{item.title}</p>
+                        {item.variantTitle && <p className="text-xs text-gray-400">{item.variantTitle}</p>}
+                      </div>
+                      <p className="text-xs font-bold text-coral whitespace-nowrap">
+                        x{item.quantity} — PKR {(item.price * item.quantity).toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-                <p className="text-xs text-gray-400 mt-1">+ PKR {shipping} shipping</p>
-              </div>
+              ) : (
+                <div className="flex gap-4">
+                  <div className="w-20 h-20 bg-white rounded-xl flex items-center justify-center flex-shrink-0">
+                    {image
+                      ? <img src={image} alt={product.title} className="w-full h-full object-contain mix-blend-multiply p-1 rounded-xl" />
+                      : <span className="text-3xl">👕</span>
+                    }
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="font-display text-sm text-charcoal leading-tight">{product?.title}</h4>
+                    {variant?.title !== 'Default Title' && (
+                      <p className="text-xs text-gray-400 mt-0.5">{variant?.title}</p>
+                    )}
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-coral font-bold">PKR {price.toLocaleString()}</p>
+                      {isOnSale && <p className="text-gray-400 text-xs line-through">PKR {comparePrice.toLocaleString()}</p>}
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">+ PKR {shipping} shipping</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+
               <div>
                 <label className="block font-semibold text-sm text-charcoal mb-1">Full Name *</label>
                 <input type="text" placeholder="e.g. Sara Ahmed" value={form.name}
@@ -209,7 +205,7 @@ Order placed via kiddytrends.com`)
 
               <div className="bg-cream rounded-2xl p-4 space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Product</span>
+                  <span className="text-gray-500">Subtotal</span>
                   <span className="font-semibold">PKR {price.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
@@ -238,8 +234,12 @@ Order placed via kiddytrends.com`)
           <div className="px-6 py-10 text-center">
             <div className="text-7xl mb-4">🎉</div>
             <h3 className="font-display text-3xl text-charcoal mb-3">Order Placed!</h3>
-            <p className="text-gray-500 mb-2">Your order for <strong>{product?.title}</strong> has been received!</p>
-            <p className="text-gray-500 mb-6">We have opened WhatsApp with your order details. Our team will confirm shortly.</p>
+            <p className="text-gray-500 mb-2">
+              {isCart ? 'Your cart order has been received!' : 'Your order for ' + product?.title + ' has been received!'}
+            </p>
+            <p className="text-gray-500 mb-6">
+              We have opened WhatsApp with your order details. Our team will confirm shortly.
+            </p>
             <div className="bg-cream rounded-2xl p-4 text-left mb-6 space-y-2">
               <p className="text-sm"><span className="font-semibold">Name:</span> {form.name}</p>
               <p className="text-sm"><span className="font-semibold">Phone:</span> {form.phone}</p>
@@ -247,7 +247,7 @@ Order placed via kiddytrends.com`)
               <p className="text-sm"><span className="font-semibold">Payment:</span> {form.payment === 'cod' ? 'Cash on Delivery' : 'Online Payment'}</p>
               <p className="text-sm"><span className="font-semibold">Total:</span> <span className="text-coral font-bold">PKR {total.toLocaleString()}</span></p>
             </div>
-            <a href={`https://wa.me/${WHATSAPP_NUMBER}?text=${buildWhatsAppMessage()}`}
+            <a href={'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + buildWhatsAppMessage()}
               target="_blank" rel="noopener noreferrer"
               className="w-full bg-green-500 text-white font-display text-base py-3 rounded-2xl hover:bg-green-600 transition-colors block text-center mb-3">
               Open WhatsApp Again
