@@ -11,7 +11,6 @@ export function CartProvider({ children }) {
     const saved = localStorage.getItem('kt_cart')
     if (saved) {
       const parsed = JSON.parse(saved)
-      // Enforce max 2 on load
       const fixed = parsed.map(item => ({ ...item, quantity: Math.min(item.quantity, 2) }))
       setCart(fixed)
     }
@@ -21,20 +20,18 @@ export function CartProvider({ children }) {
     localStorage.setItem('kt_cart', JSON.stringify(cart))
   }, [cart])
 
- function addToCart(product, variant, stock = 999, trackStock = false) {
+  function addToCart(product, variant, stock, trackStock) {
     setCart(prev => {
       const existing = prev.find(item => item.variantId === variant.id)
       if (existing) {
-        // Don't exceed stock
-        const maxQty = trackStock ? stock : 999
-        if (existing.quantity >= maxQty) return prev
+        if (existing.quantity >= 2) return prev
         return prev.map(item =>
           item.variantId === variant.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         )
       }
-    return [...prev, {
+      return [...prev, {
         variantId:    variant.id,
         productId:    product.id,
         title:        product.title,
@@ -43,7 +40,7 @@ export function CartProvider({ children }) {
         image:        product.images?.[0]?.src || null,
         handle:       product.handle,
         quantity:     1,
-        stock:        trackStock ? stock : 999,
+        stock:        2,
       }]
     })
     setCartOpen(true)
@@ -60,7 +57,6 @@ export function CartProvider({ children }) {
       return { ...item, quantity: Math.min(quantity, 2) }
     }))
   }
-  }
 
   function clearCart() { setCart([]) }
 
@@ -69,8 +65,8 @@ export function CartProvider({ children }) {
 
   function getCheckoutUrl() {
     if (cart.length === 0) return '#'
-    const items = cart.map(item => `${item.variantId}:${item.quantity}`).join(',')
-    return `https://thekiddytrends.com/cart/${items}`
+    const items = cart.map(item => item.variantId + ':' + item.quantity).join(',')
+    return 'https://thekiddytrends.com/cart/' + items
   }
 
   return (
