@@ -52,9 +52,9 @@ export function CartProvider({ children }) {
     if (quantity < 1) { removeFromCart(variantId); return }
     setCart(prev => prev.map(item => {
       if (item.variantId !== variantId) return item
-      const maxQty = item.stock || 999
-      return { ...item, quantity: Math.min(quantity, maxQty) }
+      return { ...item, quantity: Math.min(quantity, 2) }
     }))
+  }
   }
 
   function clearCart() { setCart([]) }
