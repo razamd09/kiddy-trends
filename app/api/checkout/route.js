@@ -39,14 +39,14 @@ export async function POST(request) {
       lineItems,
       shippingAddress: {
         firstName: customer.name.split(' ')[0],
-        lastName:  customer.name.split(' ').slice(1).join(' ') || customer.name,
-        address1:  customer.address,
-        city:      customer.city,
-        country:   'PK',
-        phone:     customer.phone,
+        lastName: customer.name.split(' ').slice(1).join(' ') || customer.name,
+        address1: customer.address,
+        city: customer.city,
+        country: 'PK',
+        phone: customer.phone,
       },
       email: customer.phone + '@kiddytrends.com',
-      note:  customer.notes || '',
+      note: customer.notes || '',
     }
 
     const { data } = await shopifyFetch(createCheckout, { input: checkoutInput })
@@ -54,21 +54,30 @@ export async function POST(request) {
     if (data?.checkoutCreate?.checkoutUserErrors?.length > 0) {
       return Response.json({
         success: false,
-        error: data.checkoutCreate.checkoutUserErrors[0].message
+        error: data.checkoutCreate.checkoutUserErrors[0].message,
       }, { status: 400 })
     }
 
     const checkout = data?.checkoutCreate?.checkout
+
     if (!checkout) {
-      return Response.json({ success: false, error: 'Failed to create checkout' }, { status: 500 })
+      return Response.json({
+        success: false,
+        error: 'Failed to create checkout',
+      }, { status: 500 })
     }
 
     return Response.json({
       success: true,
-      checkoutId:  checkout.id,
+      checkoutId: checkout.id,
       checkoutUrl: checkout.webUrl,
-      total:       checkout.totalPriceV2?.amount,
+      total: checkout.totalPriceV2?.amount,
     })
 
   } catch (error) {
-    return Response.json({ success: false,
+    return Response.json({
+      success: false,
+      error: error.message,
+    }, { status: 500 })
+  }
+}
