@@ -2,6 +2,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
+import ProductCard from '../components/ProductCard'
 
 const STORE_DOMAIN = 'the-kiddy-trends.myshopify.com'
 
@@ -26,53 +27,43 @@ export default function Home() {
   useEffect(() => {
     async function fetchTrending() {
       try {
-        // Fetch all products
-        const res = await fetch(`https://${STORE_DOMAIN}/products.json?limit=250`)
+        const res  = await fetch('https://' + STORE_DOMAIN + '/products.json?limit=250')
         const data = await res.json()
-        const all = data.products || []
+        const all  = data.products || []
 
-        // Categorize
         const bags     = all.filter(p => {
           const t = (p.product_type || '').toLowerCase()
           const h = (p.title || '').toLowerCase()
           return t.includes('bag') || t.includes('backpack') || h.includes('bag') || h.includes('backpack')
         })
-
         const bedding  = all.filter(p => {
           const t = (p.product_type || '').toLowerCase()
           const h = (p.title || '').toLowerCase()
           return t.includes('bed') || t.includes('sheet') || t.includes('pillow') || h.includes('bed') || h.includes('sheet')
         })
-
         const girls    = all.filter(p => {
           const t = (p.tags || []).join(' ').toLowerCase()
           const h = (p.title || '').toLowerCase()
           return t.includes('girl') || h.includes('girl') || h.includes('frock') || h.includes('dress')
         })
-
         const boys     = all.filter(p => {
           const t = (p.tags || []).join(' ').toLowerCase()
           const h = (p.title || '').toLowerCase()
           return t.includes('boy') || h.includes('boy') || h.includes('shirt') || h.includes('trouser')
         })
-
         const newArrivals = all.filter(p => {
           const t = (p.tags || []).join(' ').toLowerCase()
           const h = (p.title || '').toLowerCase()
           return t.includes('new') || h.includes('new arrival') || h.includes('summer')
         })
 
-        // Pick 1-2 from each category
         const pick = (arr, n) => arr.sort(() => 0.5 - Math.random()).slice(0, n)
-
         const trending = [
           ...pick(girls, 2),
           ...pick(boys, 2),
           ...pick(bags, 2),
           ...pick(bedding, 2),
         ]
-
-        // Fallback — if any category empty fill with new arrivals
         const final = trending.length >= 6
           ? trending
           : [...trending, ...pick(newArrivals, 8 - trending.length)]
@@ -109,32 +100,14 @@ export default function Home() {
 
           <div className="relative flex justify-center px-12">
             <div className="w-72 h-72 md:w-96 md:h-96 bg-skyblue/30 rounded-[60%_40%_55%_45%/50%_60%_40%_50%] flex items-center justify-center animate-float">
-              <Image
-                src="/logo.jpg"
-                alt="Kiddy Trends"
-                width={260}
-                height={260}
-                className="rounded-3xl shadow-2xl object-cover"
-              />
+              <Image src="/logo.jpg" alt="Kiddy Trends" width={260} height={260} className="rounded-3xl shadow-2xl object-cover" />
             </div>
-            <div className="absolute -top-4 right-0 bg-white rounded-2xl px-3 py-1.5 shadow-lg animate-bounce2 font-display text-coral text-xs whitespace-nowrap" style={{animationDelay:'0s'}}>
-              😍 Super Soft!
-            </div>
-            <div className="absolute top-6 -left-8 bg-mint rounded-2xl px-3 py-1.5 shadow-lg font-display text-charcoal text-xs animate-float whitespace-nowrap" style={{animationDelay:'0.7s'}}>
-              👩 Mom's First Choice
-            </div>
-            <div className="absolute top-1/3 -right-6 bg-coral rounded-2xl px-3 py-1.5 shadow-lg font-display text-white text-xs animate-bounce2 whitespace-nowrap" style={{animationDelay:'1.2s'}}>
-              💰 Dad's Pocket Friendly
-            </div>
-            <div className="absolute top-1/2 -left-4 bg-skyblue rounded-2xl px-3 py-1.5 shadow-lg font-display text-charcoal text-xs animate-float whitespace-nowrap" style={{animationDelay:'1.8s'}}>
-              🏆 Premium
-            </div>
-            <div className="absolute -bottom-2 right-8 bg-lavender rounded-2xl px-3 py-1.5 shadow-lg font-display text-white text-xs animate-bounce2 whitespace-nowrap" style={{animationDelay:'2.2s'}}>
-              ⭐ Branded
-            </div>
-            <div className="absolute bottom-10 -left-6 bg-sunny rounded-2xl px-3 py-1.5 shadow-lg font-display text-charcoal text-xs animate-float whitespace-nowrap" style={{animationDelay:'0.4s'}}>
-              ✨ 100% Safe
-            </div>
+            <div className="absolute -top-4 right-0 bg-white rounded-2xl px-3 py-1.5 shadow-lg animate-bounce2 font-display text-coral text-xs whitespace-nowrap" style={{animationDelay:'0s'}}>😍 Super Soft!</div>
+            <div className="absolute top-6 -left-8 bg-mint rounded-2xl px-3 py-1.5 shadow-lg font-display text-charcoal text-xs animate-float whitespace-nowrap" style={{animationDelay:'0.7s'}}>👩 Mom's First Choice</div>
+            <div className="absolute top-1/3 -right-6 bg-coral rounded-2xl px-3 py-1.5 shadow-lg font-display text-white text-xs animate-bounce2 whitespace-nowrap" style={{animationDelay:'1.2s'}}>💰 Dad's Pocket Friendly</div>
+            <div className="absolute top-1/2 -left-4 bg-skyblue rounded-2xl px-3 py-1.5 shadow-lg font-display text-charcoal text-xs animate-float whitespace-nowrap" style={{animationDelay:'1.8s'}}>🏆 Premium</div>
+            <div className="absolute -bottom-2 right-8 bg-lavender rounded-2xl px-3 py-1.5 shadow-lg font-display text-white text-xs animate-bounce2 whitespace-nowrap" style={{animationDelay:'2.2s'}}>⭐ Branded</div>
+            <div className="absolute bottom-10 -left-6 bg-sunny rounded-2xl px-3 py-1.5 shadow-lg font-display text-charcoal text-xs animate-float whitespace-nowrap" style={{animationDelay:'0.4s'}}>✨ 100% Safe</div>
           </div>
         </div>
       </section>
@@ -159,14 +132,13 @@ export default function Home() {
         </div>
       </section>
 
-      {/* TRENDING NOW — real Shopify products */}
+      {/* TRENDING NOW */}
       <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between mb-10">
           <h2 className="section-title">Trending Now 🔥</h2>
           <Link href="/collections" className="text-coral font-semibold hover:underline">See all →</Link>
         </div>
 
-        {/* Loading skeleton */}
         {loadingTrending && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
             {[...Array(8)].map((_, i) => (
@@ -182,54 +154,11 @@ export default function Home() {
           </div>
         )}
 
-        {/* Real products */}
         {!loadingTrending && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-            {trending.map(product => {
-              const price        = product.variants?.[0]?.price
-              const comparePrice = product.variants?.[0]?.compare_at_price
-              const image        = product.images?.[0]?.src
-              const isOnSale     = comparePrice && parseFloat(comparePrice) > parseFloat(price)
-              const isSoldOut    = !product.variants?.some(v => v.available)
-              return (
-                <div key={product.id} className="bg-white rounded-3xl overflow-hidden card-hover shadow-sm border border-gray-100">
-                  <div className="relative bg-white" style={{paddingBottom:'100%'}}>
-                    {image ? (
-                      <div className="absolute inset-0 bg-white flex items-center justify-center p-3">
-                        <img
-                          src={image}
-                          alt={product.title}
-                          className="w-full h-full object-contain mix-blend-multiply"
-                          loading="lazy"
-                        />
-                      </div>
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center text-5xl">👕</div>
-                    )}
-                    {isOnSale && !isSoldOut && (
-                      <span className="absolute top-2 left-2 bg-coral text-white text-xs px-2 py-1 rounded-full font-bold z-10">SALE</span>
-                    )}
-                    {isSoldOut && (
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
-                        <span className="bg-white text-charcoal font-display text-sm px-3 py-1 rounded-full">Sold Out</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <h4 className="font-display text-sm text-charcoal leading-tight line-clamp-2">{product.title}</h4>
-                    <div className="flex items-center gap-2 mt-2">
-                      <p className="text-coral font-bold text-sm">PKR {parseFloat(price).toLocaleString()}</p>
-                      {isOnSale && <p className="text-gray-400 text-xs line-through">PKR {parseFloat(comparePrice).toLocaleString()}</p>}
-                    </div>
-                    <a href={`https://the-kiddy-trends.myshopify.com/products/${product.handle}`}
-                      target="_blank" rel="noopener noreferrer"
-                      className="mt-3 w-full bg-charcoal text-white text-sm font-semibold py-2 rounded-xl hover:bg-coral transition-colors block text-center">
-                      {isSoldOut ? 'View Product' : 'Shop Now'}
-                    </a>
-                  </div>
-                </div>
-              )
-            })}
+            {trending.map(product => (
+              <ProductCard key={product.id} product={product} />
+            ))}
           </div>
         )}
       </section>
@@ -254,20 +183,13 @@ export default function Home() {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="bg-sunny rounded-[2rem] p-10 md:p-16 flex flex-col md:flex-row items-center justify-between gap-6">
           <div>
-            <h2 className="font-display text-4xl md:text-5xl text-charcoal mb-3">
-              New arrivals every week!
-            </h2>
+            <h2 className="font-display text-4xl md:text-5xl text-charcoal mb-3">New arrivals every week!</h2>
             <p className="text-gray-700 text-lg">Be the first to know about new collections & deals.</p>
           </div>
           <div className="flex gap-3 flex-wrap">
-            <input
-              type="email"
-              placeholder="your@email.com"
-              className="px-5 py-3 rounded-full border-2 border-charcoal/20 focus:outline-none focus:border-coral font-body text-base w-60"
-            />
-            <button className="btn-primary whitespace-nowrap">
-              Notify Me 🔔
-            </button>
+            <input type="email" placeholder="your@email.com"
+              className="px-5 py-3 rounded-full border-2 border-charcoal/20 focus:outline-none focus:border-coral font-body text-base w-60" />
+            <button className="btn-primary whitespace-nowrap">Notify Me 🔔</button>
           </div>
         </div>
       </section>
