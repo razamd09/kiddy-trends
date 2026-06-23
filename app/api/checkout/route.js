@@ -49,8 +49,9 @@ export async function POST(request) {
       note: customer.notes || '',
     }
 
-    const { data } = await shopifyFetch(createCheckout, { input: checkoutInput })
-
+const response = await shopifyFetch(createCheckout, { input: checkoutInput })
+console.log('Shopify response:', JSON.stringify(response, null, 2))
+const { data } = response
     if (data?.checkoutCreate?.checkoutUserErrors?.length > 0) {
       return Response.json({
         success: false,
