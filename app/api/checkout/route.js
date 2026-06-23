@@ -17,62 +17,74 @@ export async function POST(request) {
   try {
     const { cartItems, customer } = await request.json()
 
-    const lineItems = cartItems.map(item => ({
-      variantId: 'gid://shopify/ProductVariant/' + item.variantId,
+    const lines = cartItems.map(item => ({
+      merchandiseId: 'gid://shopify/ProductVariant/' + item.variantId,
       quantity: item.quantity,
     }))
 
-    const createCheckout = `
-      mutation checkoutCreate($input: CheckoutCreateInput!) {
-        checkoutCreate(input: $input) {
-          checkout {
+    const createCart = `
+      mutation cartCreate($input: CartInput!) {
+        cartCreate(input: $input) {
+          cart {
             id
-            webUrl
-            totalPriceV2 { amount currencyCode }
+            checkoutUrl
+            cost {
+              totalAmount { amount currencyCode }
+            }
           }
-          checkoutUserErrors { message field }
+          userErrors { message field }
         }
       }
     `
 
-    const checkoutInput = {
-      lineItems,
-      shippingAddress: {
-        firstName: customer.name.split(' ')[0],
-        lastName: customer.name.split(' ').slice(1).join(' ') || customer.name,
-        address1: customer.address,
-        city: customer.city,
-        country: 'PK',
+    const cartInput = {
+      lines,
+      buyerIdentity: {
         phone: customer.phone,
+        deliveryAddressPreferences: [{
+          deliveryAddress: {
+            firstName: customer.name.split(' ')[0],
+            lastName:  customer.name.split(' ').slice(1).join(' ') || customer.name,
+            address1:  customer.address,
+            city:      customer.city,
+            country:   'PK',
+            phone:     customer.phone,
+          }
+        }]
       },
-      email: customer.phone + '@kiddytrends.com',
       note: customer.notes || '',
+      attributes: [
+        { key: 'customer_name',  value: customer.name },
+        { key: 'customer_phone', value: customer.phone },
+        { key: 'city',           value: customer.city },
+        { key: 'address',        value: customer.address },
+        { key: 'payment_method', value: customer.payment || 'cod' },
+      ]
     }
 
-const response = await shopifyFetch(createCheckout, { input: checkoutInput })
-console.log('Shopify response:', JSON.stringify(response, null, 2))
-const { data } = response
-    if (data?.checkoutCreate?.checkoutUserErrors?.length > 0) {
+    const { data } = await shopifyFetch(createCart, { input: cartInput })
+
+    if (data?.cartCreate?.userErrors?.length > 0) {
       return Response.json({
         success: false,
-        error: data.checkoutCreate.checkoutUserErrors[0].message,
+        error: data.cartCreate.userErrors[0].message,
       }, { status: 400 })
     }
 
-    const checkout = data?.checkoutCreate?.checkout
+    const cart = data?.cartCreate?.cart
 
-    if (!checkout) {
+    if (!cart) {
       return Response.json({
         success: false,
-        error: 'Failed to create checkout',
+        error: 'Failed to create cart',
       }, { status: 500 })
     }
 
     return Response.json({
       success: true,
-      checkoutId: checkout.id,
-      checkoutUrl: checkout.webUrl,
-      total: checkout.totalPriceV2?.amount,
+      cartId:      cart.id,
+      checkoutUrl: cart.checkoutUrl,
+      total:       cart.cost?.totalAmount?.amount,
     })
 
   } catch (error) {

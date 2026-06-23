@@ -76,13 +76,14 @@ const [checkoutUrl, setCheckoutUrl] = useState('')
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           cartItems: items,
-          customer: {
-            name:    form.name,
-            phone:   form.phone,
-            address: form.address,
-            city:    form.city,
-            notes:   form.notes,
-          }
+        customer: {
+    name:    form.name,
+    phone:   form.phone,
+    address: form.address,
+    city:    form.city,
+    notes:   form.notes,
+    payment: form.payment,
+  }
         })
       })
 
@@ -209,24 +210,14 @@ const [checkoutUrl, setCheckoutUrl] = useState('')
                 {errors.address && <p className="text-red-400 text-xs mt-1">{errors.address}</p>}
               </div>
 
-              <div>
-                <label className="block font-semibold text-sm text-charcoal mb-2">Payment Method *</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button type="button" onClick={() => setForm({...form, payment:'cod'})}
-                    className={`p-3 rounded-2xl border-2 text-center transition-all ${form.payment === 'cod' ? 'border-coral bg-coral/10' : 'border-gray-100 bg-cream hover:border-coral/40'}`}>
-                    <div className="text-2xl mb-1">💵</div>
-                    <p className="font-display text-sm text-charcoal">Cash on Delivery</p>
-                    <p className="text-xs text-gray-400">Pay when received</p>
-                  </button>
-                  <button type="button" onClick={() => setForm({...form, payment:'online'})}
-                    className={`p-3 rounded-2xl border-2 text-center transition-all ${form.payment === 'online' ? 'border-coral bg-coral/10' : 'border-gray-100 bg-cream hover:border-coral/40'}`}>
-                    <div className="text-2xl mb-1">💳</div>
-                    <p className="font-display text-sm text-charcoal">Online Payment</p>
-                    <p className="text-xs text-gray-400">EasyPaisa / JazzCash</p>
-                  </button>
-                </div>
-              </div>
-
+              <div className="bg-coral/10 border-2 border-coral rounded-2xl p-4 flex items-center gap-3">
+  <div className="text-3xl">💵</div>
+  <div>
+    <p className="font-display text-base text-charcoal">Cash on Delivery</p>
+    <p className="text-xs text-gray-500">Pay when your order arrives</p>
+  </div>
+  <span className="ml-auto text-coral font-bold text-xs">✓ Selected</span>
+</div>
               <div>
                 <label className="block font-semibold text-sm text-charcoal mb-1">Order Notes (optional)</label>
                 <input type="text" placeholder="Any special instructions..." value={form.notes}
@@ -274,8 +265,7 @@ const [checkoutUrl, setCheckoutUrl] = useState('')
               <p className="text-sm"><span className="font-semibold">Name:</span> {form.name}</p>
               <p className="text-sm"><span className="font-semibold">Phone:</span> {form.phone}</p>
               <p className="text-sm"><span className="font-semibold">City:</span> {form.city}</p>
-              <p className="text-sm"><span className="font-semibold">Payment:</span> {form.payment === 'cod' ? 'Cash on Delivery' : 'Online Payment'}</p>
-              <p className="text-sm"><span className="font-semibold">Total:</span> <span className="text-coral font-bold">PKR {total.toLocaleString()}</span></p>
+<p className="text-sm"><span className="font-semibold">Payment:</span> Cash on Delivery</p>              <p className="text-sm"><span className="font-semibold">Total:</span> <span className="text-coral font-bold">PKR {total.toLocaleString()}</span></p>
             </div>
 			{checkoutUrl && (
   <a href={checkoutUrl} target="_blank" rel="noopener noreferrer"
