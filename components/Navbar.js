@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useCart } from '../context/CartContext'
+import SearchBar from './SearchBar'
 
 const links = [
   { href: '/',               label: 'Home' },
@@ -41,6 +42,7 @@ export default function Navbar() {
 
           {/* Cart + mobile toggle */}
           <div className="flex items-center gap-3">
+  <SearchBar />
             <button onClick={() => setCartOpen(true)}
               className="relative p-2 rounded-full hover:bg-coral/10 transition-colors">
               <svg className="w-6 h-6 text-charcoal" fill="none" stroke="currentColor" viewBox="0 0 24 24">

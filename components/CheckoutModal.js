@@ -49,7 +49,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   const comparePrice = parseFloat(variant?.compare_at_price || 0)
   const isOnSale     = !isCart && comparePrice > price
   const image        = product?.images?.[0]?.src
-  const shipping     = 200
+  const shipping     = 250
   const total        = price + shipping
 
   function formatPhone(val) {
