@@ -16,17 +16,20 @@ export function CartProvider({ children }) {
     localStorage.setItem('kt_cart', JSON.stringify(cart))
   }, [cart])
 
-  function addToCart(product, variant) {
+ function addToCart(product, variant, stock = 999, trackStock = false) {
     setCart(prev => {
       const existing = prev.find(item => item.variantId === variant.id)
       if (existing) {
+        // Don't exceed stock
+        const maxQty = trackStock ? stock : 999
+        if (existing.quantity >= maxQty) return prev
         return prev.map(item =>
           item.variantId === variant.id
             ? { ...item, quantity: item.quantity + 1 }
             : item
         )
       }
-      return [...prev, {
+    return [...prev, {
         variantId:    variant.id,
         productId:    product.id,
         title:        product.title,
@@ -35,6 +38,7 @@ export function CartProvider({ children }) {
         image:        product.images?.[0]?.src || null,
         handle:       product.handle,
         quantity:     1,
+        stock:        trackStock ? stock : 999,
       }]
     })
     setCartOpen(true)
@@ -46,9 +50,11 @@ export function CartProvider({ children }) {
 
   function updateQuantity(variantId, quantity) {
     if (quantity < 1) { removeFromCart(variantId); return }
-    setCart(prev => prev.map(item =>
-      item.variantId === variantId ? { ...item, quantity } : item
-    ))
+    setCart(prev => prev.map(item => {
+      if (item.variantId !== variantId) return item
+      const maxQty = item.stock || 999
+      return { ...item, quantity: Math.min(quantity, maxQty) }
+    }))
   }
 
   function clearCart() { setCart([]) }
