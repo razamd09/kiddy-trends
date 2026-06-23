@@ -72,10 +72,11 @@ export default function CartDrawer() {
                         −
                       </button>
                       <span className="font-bold text-sm w-5 text-center">{item.quantity}</span>
-                      <button onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
-                        className="w-7 h-7 rounded-full bg-white border border-gray-200 hover:bg-coral hover:text-white hover:border-coral transition-colors flex items-center justify-center text-sm font-bold">
-                        +
-                      </button>
+                     <button onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
+  disabled={item.quantity >= 2}
+  className={`w-7 h-7 rounded-full border transition-colors flex items-center justify-center text-sm font-bold ${item.quantity >= 2 ? 'bg-gray-100 border-gray-100 text-gray-300 cursor-not-allowed' : 'bg-white border-gray-200 hover:bg-coral hover:text-white hover:border-coral'}`}>
+  +
+</button>
                       <button onClick={() => removeFromCart(item.variantId)}
                         className="ml-auto text-gray-300 hover:text-coral transition-colors">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

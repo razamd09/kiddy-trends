@@ -9,7 +9,12 @@ export function CartProvider({ children }) {
 
   useEffect(() => {
     const saved = localStorage.getItem('kt_cart')
-    if (saved) setCart(JSON.parse(saved))
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      // Enforce max 2 on load
+      const fixed = parsed.map(item => ({ ...item, quantity: Math.min(item.quantity, 2) }))
+      setCart(fixed)
+    }
   }, [])
 
   useEffect(() => {
