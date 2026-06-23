@@ -251,11 +251,10 @@ const [checkoutUrl, setCheckoutUrl] = useState('')
 
               <button type="submit" disabled={loading}
                 className="w-full bg-coral text-white font-display text-lg py-4 rounded-2xl hover:bg-opacity-90 transition-all hover:scale-[1.02] active:scale-95 shadow-md disabled:opacity-70">
-                {loading ? 'Placing Order...' : 'Place Order via WhatsApp'}
-              </button>
+{loading ? 'Processing Order...' : 'Place Order'}              </button>
               <p className="text-center text-xs text-gray-400">
-                Your order details will be sent to our WhatsApp for confirmation
-              </p>
+  Your order will be created in our system instantly
+</p>
             </form>
           </div>
         )}

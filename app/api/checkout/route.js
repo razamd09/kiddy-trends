@@ -2,7 +2,7 @@ const STORE_DOMAIN = process.env.NEXT_PUBLIC_SHOPIFY_STORE_DOMAIN
 const STOREFRONT_TOKEN = process.env.NEXT_PUBLIC_SHOPIFY_STOREFRONT_TOKEN
 
 async function shopifyFetch(query, variables) {
-  const res = await fetch(`https://${STORE_DOMAIN}/api/2024-01/graphql.json`, {
+  const res = await fetch('https://' + STORE_DOMAIN + '/api/2024-01/graphql.json', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -18,7 +18,7 @@ export async function POST(request) {
     const { cartItems, customer } = await request.json()
 
     const lineItems = cartItems.map(item => ({
-      variantId: `gid://shopify/ProductVariant/${item.variantId}`,
+      variantId: 'gid://shopify/ProductVariant/' + item.variantId,
       quantity: item.quantity,
     }))
 
@@ -45,7 +45,7 @@ export async function POST(request) {
         country:   'PK',
         phone:     customer.phone,
       },
-      email: customer.email || customer.phone + '@kiddytrends.com',
+      email: customer.phone + '@kiddytrends.com',
       note:  customer.notes || '',
     }
 
@@ -71,6 +71,4 @@ export async function POST(request) {
     })
 
   } catch (error) {
-    return Response.json({ success: false, error: error.message }, { status: 500 })
-  }
-}
+    return Response.json({ success: false,
