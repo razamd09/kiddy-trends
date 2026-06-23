@@ -67,8 +67,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   function validate() {
     const e = {}
     if (!form.name.trim())               e.name     = 'Name is required'
-    if (!form.email.trim())              e.email    = 'Email is required'
-    if (!/\S+@\S+\.\S+/.test(form.email)) e.email  = 'Enter a valid email'
+   if (form.email.trim() && !/\S+@\S+\.\S+/.test(form.email)) e.email = 'Enter a valid email'
     if (!form.phone.trim())              e.phone    = 'Phone is required'
     if (!validatePhone(form.phone))      e.phone    = 'Enter 10 digits (e.g. 3360677340)'
     if (!form.sameAsPhone) {
@@ -148,7 +147,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
       if (data.success) {
         setLoading(false)
         setStep(2)
-        window.open('https://wa.me/' + WHATSAPP_NUMBER + '?text=' + buildWhatsAppMessage(), '_blank')
+        
       } else {
         setLoading(false)
         alert('Error: ' + (data.error || 'Something went wrong. Please try again.'))
@@ -237,7 +236,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
 
               {/* Email */}
               <div>
-                <label className="block font-semibold text-sm text-charcoal mb-1">Email Address *</label>
+               <label className="block font-semibold text-sm text-charcoal mb-1">Email Address (optional)</label>
                 <input type="email" placeholder="e.g. sara@gmail.com" value={form.email}
                   onChange={e => setForm({...form, email: e.target.value})}
                   className={`w-full px-4 py-3 rounded-2xl border-2 focus:outline-none text-sm ${errors.email ? 'border-red-300 bg-red-50' : 'border-gray-100 focus:border-coral bg-cream'}`} />
