@@ -13,10 +13,10 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   const [step, setStep]       = useState(1)
   const [loading, setLoading] = useState(false)
   const [form, setForm]       = useState({
-    name:'', phone:'', address:'', city:'', payment:'cod', notes:''
+    name:'', phone:'', address:'', city:'', notes:''
   })
   const [errors, setErrors] = useState({})
-const [checkoutUrl, setCheckoutUrl] = useState('')
+
   const price        = isCart ? cartTotal : parseFloat(variant?.price || 0)
   const comparePrice = parseFloat(variant?.compare_at_price || 0)
   const isOnSale     = !isCart && comparePrice > price
@@ -56,7 +56,7 @@ const [checkoutUrl, setCheckoutUrl] = useState('')
       'Name: ' + form.name + '\n' +
       'Phone: ' + form.phone + '\n' +
       'Address: ' + form.address + ', ' + form.city + '\n' +
-      'Payment: ' + (form.payment === 'cod' ? 'Cash on Delivery' : 'Online Payment') +
+      'Payment: Cash on Delivery' +
       (form.notes ? '\nNotes: ' + form.notes : '') + '\n\n' +
       'Order placed via kiddytrends.com'
 
@@ -69,35 +69,36 @@ const [checkoutUrl, setCheckoutUrl] = useState('')
     setLoading(true)
 
     try {
-      const items = isCart ? cartItems : [{ variantId: variant?.id, quantity: 1 }]
+      const items = isCart
+        ? cartItems.map(i => ({ variantId: i.variantId, quantity: i.quantity }))
+        : [{ variantId: variant?.id, quantity: 1 }]
 
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           cartItems: items,
-        customer: {
-    name:    form.name,
-    phone:   form.phone,
-    address: form.address,
-    city:    form.city,
-    notes:   form.notes,
-    payment: form.payment,
-  }
+          customer: {
+            name:    form.name,
+            phone:   form.phone,
+            address: form.address,
+            city:    form.city,
+            notes:   form.notes,
+            payment: 'cod',
+          }
         })
       })
 
       const data = await res.json()
 
-      if (data.success && data.checkoutUrl) {
+      if (data.success) {
         setLoading(false)
         setStep(2)
-        setCheckoutUrl(data.checkoutUrl)
-        // Also send WhatsApp notification
+        // Send WhatsApp notification silently
         window.open('https://wa.me/' + WHATSAPP_NUMBER + '?text=' + buildWhatsAppMessage(), '_blank')
       } else {
         setLoading(false)
-        alert('Error: ' + (data.error || 'Something went wrong'))
+        alert('Error: ' + (data.error || 'Something went wrong. Please try again.'))
       }
     } catch (err) {
       setLoading(false)
@@ -113,7 +114,7 @@ const [checkoutUrl, setCheckoutUrl] = useState('')
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
           <h2 className="font-display text-2xl text-charcoal">
-            {step === 1 ? 'Complete Your Order' : 'Order Placed!'}
+            {step === 1 ? 'Complete Your Order' : 'Order Confirmed!'}
           </h2>
           <button onClick={onClose} className="w-9 h-9 rounded-full bg-gray-100 hover:bg-coral hover:text-white transition-colors flex items-center justify-center">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -210,14 +211,16 @@ const [checkoutUrl, setCheckoutUrl] = useState('')
                 {errors.address && <p className="text-red-400 text-xs mt-1">{errors.address}</p>}
               </div>
 
+              {/* COD only */}
               <div className="bg-coral/10 border-2 border-coral rounded-2xl p-4 flex items-center gap-3">
-  <div className="text-3xl">💵</div>
-  <div>
-    <p className="font-display text-base text-charcoal">Cash on Delivery</p>
-    <p className="text-xs text-gray-500">Pay when your order arrives</p>
-  </div>
-  <span className="ml-auto text-coral font-bold text-xs">✓ Selected</span>
-</div>
+                <div className="text-3xl">💵</div>
+                <div>
+                  <p className="font-display text-base text-charcoal">Cash on Delivery</p>
+                  <p className="text-xs text-gray-500">Pay when your order arrives</p>
+                </div>
+                <span className="ml-auto text-coral font-bold text-xs">✓ Selected</span>
+              </div>
+
               <div>
                 <label className="block font-semibold text-sm text-charcoal mb-1">Order Notes (optional)</label>
                 <input type="text" placeholder="Any special instructions..." value={form.notes}
@@ -242,10 +245,11 @@ const [checkoutUrl, setCheckoutUrl] = useState('')
 
               <button type="submit" disabled={loading}
                 className="w-full bg-coral text-white font-display text-lg py-4 rounded-2xl hover:bg-opacity-90 transition-all hover:scale-[1.02] active:scale-95 shadow-md disabled:opacity-70">
-{loading ? 'Processing Order...' : 'Place Order'}              </button>
+                {loading ? 'Placing Order...' : 'Place Order'}
+              </button>
               <p className="text-center text-xs text-gray-400">
-  Your order will be created in our system instantly
-</p>
+                Your order will be confirmed via WhatsApp
+              </p>
             </form>
           </div>
         )}
@@ -254,33 +258,51 @@ const [checkoutUrl, setCheckoutUrl] = useState('')
         {step === 2 && (
           <div className="px-6 py-10 text-center">
             <div className="text-7xl mb-4">🎉</div>
-            <h3 className="font-display text-3xl text-charcoal mb-3">Order Placed!</h3>
-            <p className="text-gray-500 mb-2">
-              {isCart ? 'Your cart order has been received!' : 'Your order for ' + product?.title + ' has been received!'}
-            </p>
+            <h3 className="font-display text-3xl text-charcoal mb-2">Order Confirmed!</h3>
             <p className="text-gray-500 mb-6">
-              We have opened WhatsApp with your order details. Our team will confirm shortly.
+              Thank you! Your order has been placed successfully.
             </p>
-            <div className="bg-cream rounded-2xl p-4 text-left mb-6 space-y-2">
-              <p className="text-sm"><span className="font-semibold">Name:</span> {form.name}</p>
-              <p className="text-sm"><span className="font-semibold">Phone:</span> {form.phone}</p>
-              <p className="text-sm"><span className="font-semibold">City:</span> {form.city}</p>
-<p className="text-sm"><span className="font-semibold">Payment:</span> Cash on Delivery</p>              <p className="text-sm"><span className="font-semibold">Total:</span> <span className="text-coral font-bold">PKR {total.toLocaleString()}</span></p>
+
+            {/* Order details */}
+            <div className="bg-cream rounded-2xl p-5 text-left mb-6 space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Name</span>
+                <span className="font-semibold">{form.name}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Phone</span>
+                <span className="font-semibold">{form.phone}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">City</span>
+                <span className="font-semibold">{form.city}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Address</span>
+                <span className="font-semibold text-right max-w-[60%]">{form.address}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Payment</span>
+                <span className="font-semibold">Cash on Delivery</span>
+              </div>
+              <div className="flex justify-between border-t border-gray-200 pt-3">
+                <span className="font-display text-base text-charcoal">Total</span>
+                <span className="font-display text-lg text-coral">PKR {total.toLocaleString()}</span>
+              </div>
             </div>
-			{checkoutUrl && (
-  <a href={checkoutUrl} target="_blank" rel="noopener noreferrer"
-    className="w-full bg-coral text-white font-display text-base py-3 rounded-2xl hover:bg-opacity-90 transition-colors block text-center mb-3">
-    💳 Complete Payment on Shopify
-  </a>
-)}
-            <a href={'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + buildWhatsAppMessage()}
-              target="_blank" rel="noopener noreferrer"
-              className="w-full bg-green-500 text-white font-display text-base py-3 rounded-2xl hover:bg-green-600 transition-colors block text-center mb-3">
-              Open WhatsApp Again
-            </a>
+
+            {/* Delivery info */}
+            <div className="bg-skyblue/20 rounded-2xl p-4 mb-6">
+              <p className="text-2xl mb-1">📦</p>
+              <p className="font-display text-base text-charcoal">Expected Delivery: 3-5 days</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Our team will call <strong>{form.phone}</strong> to confirm your order
+              </p>
+            </div>
+
             <button onClick={onClose}
-              className="w-full border-2 border-gray-200 text-charcoal font-display text-base py-3 rounded-2xl hover:border-coral hover:text-coral transition-colors">
-              Continue Shopping
+              className="w-full bg-coral text-white font-display text-base py-3 rounded-2xl hover:bg-opacity-90 transition-colors">
+              Continue Shopping 🛍️
             </button>
           </div>
         )}
