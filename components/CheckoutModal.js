@@ -16,7 +16,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
     name:'', phone:'', address:'', city:'', payment:'cod', notes:''
   })
   const [errors, setErrors] = useState({})
-
+const [checkoutUrl, setCheckoutUrl] = useState('')
   const price        = isCart ? cartTotal : parseFloat(variant?.price || 0)
   const comparePrice = parseFloat(variant?.compare_at_price || 0)
   const isOnSale     = !isCart && comparePrice > price
@@ -67,10 +67,41 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
     e.preventDefault()
     if (!validate()) return
     setLoading(true)
-    await new Promise(r => setTimeout(r, 1000))
-    setLoading(false)
-    setStep(2)
-    window.open('https://wa.me/' + WHATSAPP_NUMBER + '?text=' + buildWhatsAppMessage(), '_blank')
+
+    try {
+      const items = isCart ? cartItems : [{ variantId: variant?.id, quantity: 1 }]
+
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cartItems: items,
+          customer: {
+            name:    form.name,
+            phone:   form.phone,
+            address: form.address,
+            city:    form.city,
+            notes:   form.notes,
+          }
+        })
+      })
+
+      const data = await res.json()
+
+      if (data.success && data.checkoutUrl) {
+        setLoading(false)
+        setStep(2)
+        setCheckoutUrl(data.checkoutUrl)
+        // Also send WhatsApp notification
+        window.open('https://wa.me/' + WHATSAPP_NUMBER + '?text=' + buildWhatsAppMessage(), '_blank')
+      } else {
+        setLoading(false)
+        alert('Error: ' + (data.error || 'Something went wrong'))
+      }
+    } catch (err) {
+      setLoading(false)
+      alert('Something went wrong. Please try again.')
+    }
   }
 
   return (
@@ -247,6 +278,12 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
               <p className="text-sm"><span className="font-semibold">Payment:</span> {form.payment === 'cod' ? 'Cash on Delivery' : 'Online Payment'}</p>
               <p className="text-sm"><span className="font-semibold">Total:</span> <span className="text-coral font-bold">PKR {total.toLocaleString()}</span></p>
             </div>
+			{checkoutUrl && (
+  <a href={checkoutUrl} target="_blank" rel="noopener noreferrer"
+    className="w-full bg-coral text-white font-display text-base py-3 rounded-2xl hover:bg-opacity-90 transition-colors block text-center mb-3">
+    💳 Complete Payment on Shopify
+  </a>
+)}
             <a href={'https://wa.me/' + WHATSAPP_NUMBER + '?text=' + buildWhatsAppMessage()}
               target="_blank" rel="noopener noreferrer"
               className="w-full bg-green-500 text-white font-display text-base py-3 rounded-2xl hover:bg-green-600 transition-colors block text-center mb-3">
