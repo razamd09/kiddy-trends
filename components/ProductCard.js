@@ -65,7 +65,8 @@ export default function ProductCard({ product }) {
       <div className="bg-white rounded-3xl overflow-hidden card-hover shadow-sm border border-gray-100 flex flex-col">
 
         {/* Image */}
-        <a <WishlistButton product={product} />href={'/products/' + product.handle} className="block relative bg-white" style={{paddingBottom:'100%'}}>
+        <a href={'/products/' + product.handle} className="block relative bg-white" style={{paddingBottom:'100%'}}>
+  <WishlistButton product={product} />
           {image ? (
             <div className="absolute inset-0 bg-white flex items-center justify-center p-3">
               <img src={image} alt={product.title}
