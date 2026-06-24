@@ -6,6 +6,7 @@ import CartDrawer from '../components/CartDrawer'
 import Script from 'next/script'
 import RewardsPopup from '../components/RewardsPopup'
 import LiveNotifications from '../components/LiveNotifications'
+import ExitIntentPopup from '../components/ExitIntentPopup'
 
 export const metadata = {
   title: 'Kiddy Trends – Fun Fashion for Little Ones',
@@ -104,7 +105,8 @@ export default function RootLayout({ children }) {
 		
 <CartProvider>
   <RewardsPopup />
-  <LiveNotifications />
+<ExitIntentPopup />
+<LiveNotifications />
   <Navbar />
   <CartDrawer />
           <main>{children}</main>

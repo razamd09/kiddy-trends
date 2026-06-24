@@ -5,6 +5,7 @@ import Link from 'next/link'
 import ProductCard from '../../../components/ProductCard'
 import { useCart } from '../../../context/CartContext'
 import CheckoutModal from '../../../components/CheckoutModal'
+import RecentlyViewed from '../../../components/RecentlyViewed'
 
 const STORE_DOMAIN = 'the-kiddy-trends.myshopify.com'
 
@@ -125,9 +126,16 @@ export default function ProductPage() {
         const res  = await fetch('https://' + STORE_DOMAIN + '/products/' + handle + '.json')
         const data = await res.json()
         if (data.product) {
-          setProduct(data.product)
-          setSelectedVariant(data.product.variants?.[0])
-        }
+  setProduct(data.product)
+  setSelectedVariant(data.product.variants?.[0])
+  // Save to recently viewed
+  try {
+    const stored = JSON.parse(localStorage.getItem('recently_viewed') || '[]')
+    const filtered = stored.filter(p => p.id !== data.product.id)
+    const updated = [data.product, ...filtered].slice(0, 10)
+    localStorage.setItem('recently_viewed', JSON.stringify(updated))
+  } catch {}
+}
         setLoading(false)
       } catch { setLoading(false) }
     }
@@ -410,6 +418,7 @@ export default function ProductPage() {
           </div>
         </div>
 
+<RecentlyViewed currentProductId={product.id} />
         {/* Related */}
         {related.length > 0 && (
           <section>
