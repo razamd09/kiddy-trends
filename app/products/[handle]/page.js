@@ -8,37 +8,94 @@ import CheckoutModal from '../../../components/CheckoutModal'
 
 const STORE_DOMAIN = 'the-kiddy-trends.myshopify.com'
 
-const reviewers = [
-  { name: 'Ayesha K.',  city: 'Lahore',     review: 'Love this product! The fabric is so soft and my daughter absolutely adores it. Will definitely order again!' },
-  { name: 'Sana M.',    city: 'Karachi',    review: 'Amazing quality for the price. The colors are exactly as shown and the stitching is very neat. Highly recommended!' },
-  { name: 'Fatima R.',  city: 'Islamabad',  review: 'Ordered for my 4 year old and she loves it. Super soft material and fits perfectly. Great value for money!' },
-  { name: 'Nadia A.',   city: 'Faisalabad', review: 'Very happy with this purchase. Fast delivery and the quality is better than expected. My kids love wearing it!' },
-  { name: 'Hina S.',    city: 'Multan',     review: 'Beautiful design and excellent quality. The fabric is breathable and perfect for Pakistani weather. Will order more!' },
-  { name: 'Zara T.',    city: 'Rawalpindi', review: 'So cute and affordable! My daughter gets compliments every time she wears it. Packaging was also very neat.' },
-  { name: 'Maria B.',   city: 'Sialkot',    review: 'Great product! True to size and the material is very comfortable. My little one wears it all day without any discomfort.' },
-  { name: 'Amna Q.',    city: 'Peshawar',   review: 'Excellent quality at such an affordable price. The dress looks even better in person. Very happy customer!' },
-  { name: 'Rabia N.',   city: 'Gujranwala', review: 'Loved the quality! My 6 year old daughter keeps asking to wear this every day. Super soft and durable fabric.' },
-  { name: 'Saima H.',   city: 'Quetta',     review: 'Very satisfied with this order. The product is exactly as described and the delivery was quick. Definitely buying more!' },
-  { name: 'Uzma F.',    city: 'Lahore',     review: 'Kiddy Trends never disappoints! This is my third order and every time the quality is consistent and amazing.' },
-  { name: 'Asma I.',    city: 'Karachi',    review: 'My daughter loves this so much! The colors are vibrant and the fabric is very soft. Great purchase overall.' },
-  { name: 'Bushra W.',  city: 'Hyderabad',  review: 'Really good quality for the price. Fits well and looks adorable on my little girl. Will recommend to friends!' },
-  { name: 'Maham J.',   city: 'Bahawalpur', review: 'Beautiful product! My daughter looks so cute in this. The material is premium quality and very comfortable.' },
-  { name: 'Shazia K.',  city: 'Sahiwal',    review: 'Amazing value! The product quality is much better than what I expected. Fast delivery and nice packaging too.' },
+const girlReviewers = [
+  { name: 'Ayesha K.',   city: 'Lahore',      review: 'Love this product! The fabric is so soft and my daughter absolutely adores it. Will definitely order again!' },
+  { name: 'Sana M.',     city: 'Karachi',     review: 'Amazing quality for the price. The colors are exactly as shown. My daughter looks so cute in it!' },
+  { name: 'Fatima R.',   city: 'Islamabad',   review: 'Ordered for my 4 year old and she loves it. Super soft material and fits perfectly. Great value!' },
+  { name: 'Nadia A.',    city: 'Faisalabad',  review: 'Very happy with this purchase. Fast delivery and quality is better than expected. My daughter wears it every day!' },
+  { name: 'Hina S.',     city: 'Multan',      review: 'Beautiful design and excellent quality. My little girl looks adorable in this. Will order more!' },
+  { name: 'Zara T.',     city: 'Rawalpindi',  review: 'So cute and affordable! My daughter gets compliments every time she wears it. Highly recommended!' },
+  { name: 'Maria B.',    city: 'Sialkot',     review: 'Great product! My daughter wears it all day without any discomfort. The fabric is so soft!' },
+  { name: 'Amna Q.',     city: 'Peshawar',    review: 'Excellent quality at such an affordable price. My princess loves it. Very happy customer!' },
+  { name: 'Rabia N.',    city: 'Gujranwala',  review: 'My 6 year old daughter keeps asking to wear this every day. Super soft and durable fabric!' },
+  { name: 'Saima H.',    city: 'Quetta',      review: 'Very satisfied with this order. My daughter looked so beautiful in it. Definitely buying more!' },
+  { name: 'Uzma F.',     city: 'Lahore',      review: 'Kiddy Trends never disappoints! My daughter absolutely loves this outfit. Amazing quality!' },
+  { name: 'Asma I.',     city: 'Karachi',     review: 'My daughter loves this so much! The colors are vibrant and the fabric is very soft.' },
+  { name: 'Bushra W.',   city: 'Hyderabad',   review: 'Really good quality. Fits well and looks adorable on my little girl. Will recommend to friends!' },
+  { name: 'Maham J.',    city: 'Bahawalpur',  review: 'My daughter looks so cute in this. Premium quality and very comfortable for daily wear.' },
+  { name: 'Shazia K.',   city: 'Sahiwal',     review: 'Amazing value! My daughter absolutely loves this dress. Fast delivery and nice packaging too.' },
+  { name: 'Rukhsar A.',  city: 'Multan',      review: 'Bought this for my 5 year old daughter. She refused to take it off! Great quality product.' },
+  { name: 'Mehwish T.',  city: 'Lahore',      review: 'My little girl is obsessed with this outfit. The color is gorgeous and fabric is very soft!' },
+  { name: 'Nabeela R.',  city: 'Karachi',     review: 'Ordered for my daughter and she was so happy! The quality is outstanding for this price.' },
+  { name: 'Sobia Q.',    city: 'Islamabad',   review: 'Beautiful outfit for my daughter. She looks like a princess in it. Will definitely reorder!' },
+  { name: 'Tayyaba M.',  city: 'Rawalpindi',  review: 'My daughter gets so many compliments wearing this. Absolutely love the quality and design!' },
+  { name: 'Iqra S.',     city: 'Faisalabad',  review: 'Excellent purchase! My daughter wore it to a party and everyone asked where I got it from!' },
+  { name: 'Lubna H.',    city: 'Gujranwala',  review: 'Very happy with this. My daughter loves the colors and it fits her perfectly. Great product!' },
+  { name: 'Kiran N.',    city: 'Sialkot',     review: 'Such a lovely outfit for my little girl. Super soft material and the design is beautiful!' },
+  { name: 'Amber Z.',    city: 'Peshawar',    review: 'My daughter absolutely loves this! Great quality for the price. Will order again for sure!' },
+  { name: 'Noor F.',     city: 'Quetta',      review: 'Bought this for my 3 year old daughter. She loves it and it fits perfectly. Highly recommended!' },
 ]
 
-function getProductReviews(productId) {
+const boyReviewers = [
+  { name: 'Sadia A.',    city: 'Lahore',      review: 'My son loves this outfit! The fabric is very comfortable and he wears it all day long.' },
+  { name: 'Uzma K.',     city: 'Karachi',     review: 'Amazing quality for the price. My son looks so handsome in this. Fast delivery too!' },
+  { name: 'Hira R.',     city: 'Islamabad',   review: 'Ordered for my 5 year old son and he loves it. Super soft material and fits perfectly!' },
+  { name: 'Samina B.',   city: 'Faisalabad',  review: 'Very happy with this purchase. My son wears this to school and gets lots of compliments!' },
+  { name: 'Nazia H.',    city: 'Multan',      review: 'Excellent quality! My son refused to wear anything else after getting this. Highly recommended!' },
+  { name: 'Farah T.',    city: 'Rawalpindi',  review: 'So comfortable and affordable! My son loves the colors. Packaging was also very neat.' },
+  { name: 'Shabana B.',  city: 'Sialkot',     review: 'Great product! My son wears it every day. Very durable and the stitching is excellent!' },
+  { name: 'Parveen Q.',  city: 'Peshawar',    review: 'Excellent quality at such an affordable price. My son looks so smart in this outfit!' },
+  { name: 'Nasreen N.',  city: 'Gujranwala',  review: 'My 7 year old son keeps asking to wear this every day. Super soft and very durable!' },
+  { name: 'Shahida H.',  city: 'Quetta',      review: 'Very satisfied with this order. My son loved it immediately. Definitely buying more!' },
+  { name: 'Razia F.',    city: 'Lahore',      review: 'Kiddy Trends never disappoints! My son absolutely loves this outfit. Consistent quality!' },
+  { name: 'Yasmeen I.',  city: 'Karachi',     review: 'My son loves this so much! Great colors and very soft fabric. Excellent purchase overall.' },
+  { name: 'Farhat W.',   city: 'Hyderabad',   review: 'Really good quality. Fits my son perfectly and looks very smart. Will recommend to all moms!' },
+  { name: 'Zeenat J.',   city: 'Bahawalpur',  review: 'My son looks so handsome in this. Premium quality and very comfortable for daily wear.' },
+  { name: 'Gulnaz K.',   city: 'Sahiwal',     review: 'Amazing value! My son loves this outfit. Fast delivery and very nice quality packaging.' },
+  { name: 'Rizwana A.',  city: 'Multan',      review: 'Bought this for my 6 year old son. He refused to take it off! Brilliant quality product.' },
+  { name: 'Tahira T.',   city: 'Lahore',      review: 'My little boy is obsessed with this outfit. The color is perfect and fabric is very soft!' },
+  { name: 'Azra R.',     city: 'Karachi',     review: 'Ordered for my son and he was so happy! Outstanding quality for this price range.' },
+  { name: 'Rubina Q.',   city: 'Islamabad',   review: 'Great outfit for my son. He looks so smart in it. Will definitely reorder next size!' },
+  { name: 'Mehnaz M.',   city: 'Rawalpindi',  review: 'My son gets so many compliments wearing this. Love the quality and the design is perfect!' },
+  { name: 'Sajida S.',   city: 'Faisalabad',  review: 'Excellent purchase! My son wore it to school and his teacher asked where I bought it from!' },
+  { name: 'Hamida H.',   city: 'Gujranwala',  review: 'Very happy with this. My son loves it and it fits him perfectly. Great product overall!' },
+  { name: 'Zubaida N.',  city: 'Sialkot',     review: 'Such a lovely outfit for my little boy. Super soft material and the design is very smart!' },
+  { name: 'Shakeela Z.', city: 'Peshawar',    review: 'My son absolutely loves this! Great quality for the price. Will definitely order again!' },
+  { name: 'Mumtaz F.',   city: 'Quetta',      review: 'Bought this for my 4 year old son. He loves it and it fits perfectly. Highly recommended!' },
+]
+
+const neutralReviewers = [
+  { name: 'Ayesha K.',   city: 'Lahore',      review: 'Amazing quality for the price! The product looks exactly as shown. Fast delivery too. Highly recommended!' },
+  { name: 'Sana M.',     city: 'Karachi',     review: 'Very satisfied with this purchase. Great value for money and the quality is excellent!' },
+  { name: 'Fatima R.',   city: 'Islamabad',   review: 'Excellent product! Super soft material and very durable. Will definitely order again!' },
+  { name: 'Nadia A.',    city: 'Faisalabad',  review: 'Very happy with this purchase. Fast delivery and quality is much better than expected!' },
+  { name: 'Hina S.',     city: 'Multan',      review: 'Beautiful design and excellent quality. The fabric is breathable and very comfortable!' },
+  { name: 'Uzma F.',     city: 'Lahore',      review: 'Kiddy Trends never disappoints! Consistent quality every time. Will keep ordering!' },
+  { name: 'Rabia N.',    city: 'Gujranwala',  review: 'Super soft and durable fabric. Great value for money. Packaging was also very neat!' },
+  { name: 'Saima H.',    city: 'Quetta',      review: 'Very satisfied with this order. Product exactly as described and delivery was quick!' },
+]
+
+function getProductReviews(productId, title) {
   const seed = productId % 100
   if (seed > 50) return null
+
+  const titleLower = (title || '').toLowerCase()
+  const isBoy  = titleLower.includes('boy') || titleLower.includes('boys')
+  const isGirl = titleLower.includes('girl') || titleLower.includes('girls') ||
+                 titleLower.includes('frock') || titleLower.includes('dress')
+
+  const pool = isBoy ? boyReviewers : isGirl ? girlReviewers : neutralReviewers
+
   const count    = (productId % 3) + 1
-  const startIdx = productId % reviewers.length
+  const startIdx = productId % pool.length
   const selected = []
   for (let i = 0; i < count; i++) {
-    selected.push(reviewers[(startIdx + i) % reviewers.length])
+    selected.push(pool[(startIdx + i) % pool.length])
   }
+
   const rating = (productId % 2 === 0) ? 5 : 4
   return { rating, reviews: selected }
 }
-
 function StarRating({ rating }) {
   return (
     <div className="flex gap-0.5">
@@ -148,8 +205,7 @@ export default function ProductPage() {
   const productTags  = typeof product.tags === 'string'
     ? product.tags.split(',').map(t => t.trim()).filter(Boolean)
     : (product.tags || [])
-  const reviewData = getProductReviews(product.id)
-
+const reviewData = getProductReviews(product.id, product.title)
   return (
     <>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -392,4 +448,4 @@ export default function ProductPage() {
       )}
     </>
   )
-}
+}	
