@@ -67,6 +67,8 @@ export default function RootLayout({ children }) {
     fbq('track', 'PageView');
   `}
 </Script>
+{/* TikTok embed */}
+<Script src="https://www.tiktok.com/embed.js" strategy="lazyOnload" />
 
 	   {/* Google Analytics */}
         <Script

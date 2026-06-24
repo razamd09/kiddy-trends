@@ -191,6 +191,37 @@ export default function Home() {
         </div>
       </section>
 
+{/* TIKTOK VIDEOS */}
+<section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+  <div className="text-center mb-10">
+    <h2 className="section-title mb-3">Watch Us on TikTok 🎵</h2>
+    <p className="text-gray-500 text-lg">See our latest collections in action!</p>
+    <a href="https://tiktok.com/@kiddy.trends" target="_blank" rel="noopener noreferrer"
+      className="inline-block mt-3 bg-charcoal text-white font-display text-sm px-5 py-2 rounded-full hover:bg-coral transition-colors">
+      Follow @kiddy.trends ➔
+    </a>
+  </div>
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    {[
+      '7649019831047458056',
+      '7647926799875214600',
+      '7649698031213858055',
+      '7647962725112352018',
+    ].map(id => (
+      <div key={id} className="rounded-3xl overflow-hidden shadow-sm border border-gray-100 bg-white">
+        <iframe
+          src={'https://www.tiktok.com/embed/v2/' + id}
+          className="w-full"
+          style={{height:'560px',border:'none'}}
+          allowFullScreen
+          allow="encrypted-media"
+          title={'TikTok video ' + id}
+        />
+      </div>
+    ))}
+  </div>
+</section>
+
       {/* NEWSLETTER */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="bg-sunny rounded-[2rem] p-10 md:p-16 flex flex-col md:flex-row items-center justify-between gap-6">
