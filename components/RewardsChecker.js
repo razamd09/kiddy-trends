@@ -34,7 +34,25 @@ export default function RewardsChecker() {
           Earn <strong>10 pts</strong> for every <strong>PKR 1,000</strong> spent!
         </p>
 
-        <div className="flex gap-3 max-w-md mx-auto mb-4">
+        <div className="flex gap-3 max-w-md mx-auto mb-4 relative">
+  <div className="relative flex-1">
+    <input type="text" placeholder="Enter your Rewards ID..."
+      value={userId}
+      onChange={e => { setUserId(e.target.value); setResult(null); setError('') }}
+      onKeyDown={e => e.key === 'Enter' && handleCheck()}
+      className="w-full px-5 py-3 rounded-2xl border-2 border-white focus:border-coral focus:outline-none bg-white text-sm font-semibold shadow-sm pr-36" />
+    {/* Flashing badge */}
+    {!userId && (
+      <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-coral text-white text-xs font-bold px-3 py-1 rounded-full animate-pulse whitespace-nowrap">
+        🎁 Discounts Available!
+      </div>
+    )}
+  </div>
+  <button onClick={handleCheck} disabled={loading || !userId.trim()}
+    className="px-6 py-3 bg-coral text-white font-display rounded-2xl hover:bg-opacity-90 transition-all hover:scale-105 disabled:opacity-50 shadow-sm">
+    {loading ? '...' : 'Check'}
+  </button>
+</div>
           <input type="text" placeholder="Enter your Rewards ID..."
             value={userId}
             onChange={e => { setUserId(e.target.value); setResult(null); setError('') }}
