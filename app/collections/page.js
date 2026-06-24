@@ -1,6 +1,5 @@
 'use client'
 import { useState, useEffect } from 'react'
-import Image from 'next/image'
 import ProductCard from '../../components/ProductCard'
 
 const STORE_DOMAIN = 'the-kiddy-trends.myshopify.com'
@@ -40,9 +39,9 @@ const categories = [
       { id: '11-12y', label: '11–12 Year', keywords: ['11-12 year','11 to 12','11yr','12yr'] },
     ]
   },
-  { id: 'bedding',     label: 'Bedding',      emoji: '🛏️', color: 'bg-skyblue/20', subFilters: [] },
-  { id: 'bags',        label: 'Bags',         emoji: '🎒', color: 'bg-sunny/30',   subFilters: [] },
-  { id: 'accessories', label: 'Accessories',  emoji: '🎀', color: 'bg-mint/20',    subFilters: [] },
+  { id: 'bedding',     label: 'Bedding',     emoji: '🛏️', color: 'bg-skyblue/20', subFilters: [] },
+  { id: 'bags',        label: 'Bags',        emoji: '🎒', color: 'bg-sunny/30',   subFilters: [] },
+  { id: 'accessories', label: 'Accessories', emoji: '🎀', color: 'bg-mint/20',    subFilters: [] },
 ]
 
 function productMatchesFilter(product, catId, subId, subFilters) {
@@ -59,68 +58,88 @@ function productMatchesFilter(product, catId, subId, subFilters) {
   const type  = (product.product_type || '').toLowerCase()
   const title = (product.title || '').toLowerCase()
 
-  // Sub-filter selected
   if (subId) {
     const sub = subFilters.find(s => s.id === subId)
     if (!sub) return false
     return sub.keywords.some(k => text.includes(k.toLowerCase()))
   }
 
-  // Main category
-  const ageText = text
   const newbornKw  = ['0-3','3-6','6-9','9-12','newborn','infant','0 month','1 month','2 month','3 month','4 month','5 month','6 month','7 month','8 month','9 month','10 month','11 month','12 month']
   const toddlerKw  = ['12-18','18-24','1 year','2 year','3 year','toddler','1yr','2yr','3yr']
   const kidsKw     = ['4 year','5 year','6 year','7 year','8 year','4yr','5yr','6yr','7yr','8yr','4-5','5-6','6-7','7-8','3-4']
   const tweensKw   = ['9 year','10 year','11 year','12 year','9yr','10yr','11yr','12yr','tween','9-10','11-12']
 
-  if (catId === 'newborn')     return newbornKw.some(k => ageText.includes(k))
-  if (catId === 'toddler')     return toddlerKw.some(k => ageText.includes(k))
-  if (catId === 'kids')        return kidsKw.some(k => ageText.includes(k))
-  if (catId === 'tweens')      return tweensKw.some(k => ageText.includes(k))
+  if (catId === 'newborn')     return newbornKw.some(k => text.includes(k))
+  if (catId === 'toddler')     return toddlerKw.some(k => text.includes(k))
+  if (catId === 'kids')        return kidsKw.some(k => text.includes(k))
+  if (catId === 'tweens')      return tweensKw.some(k => text.includes(k))
   if (catId === 'bedding')     return type.includes('bed') || type.includes('sheet') || type.includes('pillow') || title.includes('bed') || title.includes('sheet')
   if (catId === 'bags')        return type.includes('bag') || type.includes('backpack') || title.includes('bag') || title.includes('backpack')
   if (catId === 'accessories') return type.includes('access') || type.includes('hair') || title.includes('pin') || title.includes('hair') || title.includes('ponytail') || title.includes('scrunchie') || title.includes('clip') || title.includes('headband')
   return true
 }
 
+// Cache products in module scope so they persist between renders
+let cachedProducts = []
+let cacheTime = 0
+const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+
 export default function Collections() {
-  const [products, setProducts]   = useState([])
-  const [loading, setLoading]     = useState(true)
+  const [products, setProducts]   = useState(cachedProducts)
+  const [loading, setLoading]     = useState(cachedProducts.length === 0)
   const [activeCat, setActiveCat] = useState('all')
   const [activeSub, setActiveSub] = useState(null)
   const [sort, setSort]           = useState('default')
+  const [page, setPage]           = useState(1)
+  const ITEMS_PER_PAGE = 40
 
   useEffect(() => {
+    // Use cache if fresh
+    if (cachedProducts.length > 0 && Date.now() - cacheTime < CACHE_DURATION) {
+      setProducts(cachedProducts)
+      setLoading(false)
+      return
+    }
     async function fetchAll() {
       try {
         const [p1, p2] = await Promise.all([
-          fetch(`https://${STORE_DOMAIN}/products.json?limit=250&page=1`).then(r => r.json()),
-          fetch(`https://${STORE_DOMAIN}/products.json?limit=250&page=2`).then(r => r.json()),
+          fetch('https://' + STORE_DOMAIN + '/products.json?limit=250&page=1').then(r => r.json()),
+          fetch('https://' + STORE_DOMAIN + '/products.json?limit=250&page=2').then(r => r.json()),
         ])
-        setProducts([...(p1.products || []), ...(p2.products || [])])
+        const all = [...(p1.products || []), ...(p2.products || [])]
+        cachedProducts = all
+        cacheTime = Date.now()
+        setProducts(all)
         setLoading(false)
       } catch { setLoading(false) }
     }
     fetchAll()
   }, [])
 
-  const activeCatObj  = categories.find(c => c.id === activeCat)
-  const subFilters    = activeCatObj?.subFilters || []
+  const activeCatObj = categories.find(c => c.id === activeCat)
+  const subFilters   = activeCatObj?.subFilters || []
 
   let filtered = activeCat === 'all'
     ? products
     : products.filter(p => productMatchesFilter(p, activeCat, activeSub, subFilters))
 
-  if (sort === 'low')     filtered = [...filtered].sort((a,b) => parseFloat(a.variants[0]?.price) - parseFloat(b.variants[0]?.price))
-if (sort === 'high')    filtered = [...filtered].sort((a,b) => parseFloat(b.variants[0]?.price) - parseFloat(a.variants[0]?.price))
-if (sort === 'az')      filtered = [...filtered].sort((a,b) => a.title.localeCompare(b.title))
-if (sort === 'za')      filtered = [...filtered].sort((a,b) => b.title.localeCompare(a.title))
-if (sort === 'old')     filtered = [...filtered].sort((a,b) => new Date(a.created_at) - new Date(b.created_at))
-if (sort === 'new')     filtered = [...filtered].sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
-if (sort === 'best_selling') filtered = [...filtered].sort((a,b) => (b.variants?.[0]?.inventory_quantity || 0) - (a.variants?.[0]?.inventory_quantity || 0))
+  if (sort === 'low')          filtered = [...filtered].sort((a,b) => parseFloat(a.variants[0]?.price) - parseFloat(b.variants[0]?.price))
+  if (sort === 'high')         filtered = [...filtered].sort((a,b) => parseFloat(b.variants[0]?.price) - parseFloat(a.variants[0]?.price))
+  if (sort === 'az')           filtered = [...filtered].sort((a,b) => a.title.localeCompare(b.title))
+  if (sort === 'za')           filtered = [...filtered].sort((a,b) => b.title.localeCompare(a.title))
+  if (sort === 'old')          filtered = [...filtered].sort((a,b) => new Date(a.created_at) - new Date(b.created_at))
+  if (sort === 'new')          filtered = [...filtered].sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
+  if (sort === 'best_selling') filtered = [...filtered].sort((a,b) => (b.variants?.[0]?.inventory_quantity || 0) - (a.variants?.[0]?.inventory_quantity || 0))
+
+  // Pagination
+  const totalPages   = Math.ceil(filtered.length / ITEMS_PER_PAGE)
+  const paginated    = filtered.slice(0, page * ITEMS_PER_PAGE)
+  const hasMore      = page < totalPages
+
   function handleCatClick(catId) {
     setActiveCat(catId)
     setActiveSub(null)
+    setPage(1)
   }
 
   return (
@@ -135,32 +154,29 @@ if (sort === 'best_selling') filtered = [...filtered].sort((a,b) => (b.variants?
       {/* Main category pills */}
       <div className="flex flex-wrap gap-2 justify-center mb-4">
         <button onClick={() => handleCatClick('all')}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-display text-sm transition-all border-2 ${activeCat === 'all' ? 'bg-coral text-white border-coral shadow-md' : 'bg-white text-charcoal border-gray-100 hover:border-coral/40'}`}>
+          className={'flex items-center gap-2 px-5 py-2.5 rounded-full font-display text-sm transition-all border-2 ' + (activeCat === 'all' ? 'bg-coral text-white border-coral shadow-md' : 'bg-white text-charcoal border-gray-100 hover:border-coral/40')}>
           🛍️ All Products
         </button>
         {categories.map(cat => (
           <button key={cat.id} onClick={() => handleCatClick(cat.id)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-display text-sm transition-all border-2 ${activeCat === cat.id ? 'bg-coral text-white border-coral shadow-md' : 'bg-white text-charcoal border-gray-100 hover:border-coral/40'}`}>
+            className={'flex items-center gap-2 px-5 py-2.5 rounded-full font-display text-sm transition-all border-2 ' + (activeCat === cat.id ? 'bg-coral text-white border-coral shadow-md' : 'bg-white text-charcoal border-gray-100 hover:border-coral/40')}>
             {cat.emoji} {cat.label}
           </button>
         ))}
       </div>
 
-      {/* Sub-filters — age chips */}
+      {/* Sub-filters */}
       {subFilters.length > 0 && (
-        <div className="flex flex-wrap gap-2 justify-center mb-8 animate-fade-up">
-          <div className={`w-full flex flex-wrap gap-2 justify-center p-4 rounded-2xl ${activeCatObj?.color}`}>
-            <p className="w-full text-center font-display text-charcoal text-sm mb-1">
-              Select age group:
-            </p>
-            <button
-              onClick={() => setActiveSub(null)}
-              className={`px-4 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ${!activeSub ? 'bg-charcoal text-white border-charcoal' : 'bg-white text-charcoal border-gray-200 hover:border-charcoal'}`}>
+        <div className="flex flex-wrap gap-2 justify-center mb-8">
+          <div className={'w-full flex flex-wrap gap-2 justify-center p-4 rounded-2xl ' + activeCatObj?.color}>
+            <p className="w-full text-center font-display text-charcoal text-sm mb-1">Select age group:</p>
+            <button onClick={() => setActiveSub(null)}
+              className={'px-4 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ' + (!activeSub ? 'bg-charcoal text-white border-charcoal' : 'bg-white text-charcoal border-gray-200 hover:border-charcoal')}>
               All Ages
             </button>
             {subFilters.map(sub => (
               <button key={sub.id} onClick={() => setActiveSub(sub.id)}
-                className={`px-4 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ${activeSub === sub.id ? 'bg-charcoal text-white border-charcoal' : 'bg-white text-charcoal border-gray-200 hover:border-charcoal'}`}>
+                className={'px-4 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ' + (activeSub === sub.id ? 'bg-charcoal text-white border-charcoal' : 'bg-white text-charcoal border-gray-200 hover:border-charcoal')}>
                 {sub.label}
               </button>
             ))}
@@ -174,18 +190,17 @@ if (sort === 'best_selling') filtered = [...filtered].sort((a,b) => (b.variants?
           {loading ? 'Loading...' : `${filtered.length} product${filtered.length !== 1 ? 's' : ''}`}
           {activeSub && <span className="ml-2 text-coral">· {subFilters.find(s => s.id === activeSub)?.label}</span>}
         </p>
-        <select value={sort} onChange={e => setSort(e.target.value)}
-  className="px-4 py-2 rounded-full border-2 border-gray-100 text-sm font-semibold focus:outline-none focus:border-coral bg-cream">
-  <option value="default">Featured</option>
-  <option value="relevant">Most Relevant</option>
-  <option value="best_selling">Best Selling</option>
-  <option value="az">Alphabetically, A–Z</option>
-  <option value="za">Alphabetically, Z–A</option>
-  <option value="low">Price: Low to High</option>
-  <option value="high">Price: High to Low</option>
-  <option value="old">Date: Old to New</option>
-  <option value="new">Date: New to Old</option>
-</select>
+        <select value={sort} onChange={e => { setSort(e.target.value); setPage(1) }}
+          className="px-4 py-2 rounded-full border-2 border-gray-100 text-sm font-semibold focus:outline-none focus:border-coral bg-cream">
+          <option value="default">Featured</option>
+          <option value="best_selling">Best Selling</option>
+          <option value="az">A–Z</option>
+          <option value="za">Z–A</option>
+          <option value="low">Price: Low to High</option>
+          <option value="high">Price: High to Low</option>
+          <option value="new">Newest First</option>
+          <option value="old">Oldest First</option>
+        </select>
       </div>
 
       {/* Loading skeleton */}
@@ -217,12 +232,24 @@ if (sort === 'best_selling') filtered = [...filtered].sort((a,b) => (b.variants?
       )}
 
       {/* Product grid */}
-      {!loading && filtered.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-          {filtered.map(product => (
-  <ProductCard key={product.id} product={product} />
-))}
-        </div>
+      {!loading && paginated.length > 0 && (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+            {paginated.map(product => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+
+          {/* Load more button */}
+          {hasMore && (
+            <div className="text-center mt-10">
+              <button onClick={() => setPage(p => p + 1)}
+                className="bg-coral text-white font-display text-base px-10 py-3 rounded-full hover:bg-opacity-90 transition-all hover:scale-105 shadow-md">
+                Load More Products ({filtered.length - paginated.length} remaining)
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   )

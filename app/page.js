@@ -28,7 +28,7 @@ export default function Home() {
   useEffect(() => {
     async function fetchTrending() {
       try {
-        const res  = await fetch('https://' + STORE_DOMAIN + '/products.json?limit=250')
+        const res = await fetch('https://' + STORE_DOMAIN + '/products.json?limit=250', { next: { revalidate: 300 } })
         const data = await res.json()
         const all  = data.products || []
 
@@ -216,7 +216,8 @@ export default function Home() {
           style={{height:'560px',border:'none'}}
           allowFullScreen
           allow="encrypted-media"
-          title={'TikTok video ' + id}
+loading="lazy"
+title={'TikTok video ' + id}
         />
       </div>
     ))}
