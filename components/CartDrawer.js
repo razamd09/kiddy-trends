@@ -3,7 +3,18 @@ import { useState } from 'react'
 import { useCart } from '../context/CartContext'
 import CheckoutModal from './CheckoutModal'
 
+
+
 export default function CartDrawer() {
+const [emailInput, setEmailInput]     = useState('')
+const [abandonEmail, setAbandonEmail] = useState('')
+
+function handleSaveEmail() {
+  if (!emailInput.includes('@')) return
+  setAbandonEmail(emailInput)
+  localStorage.setItem('cart_email', emailInput)
+}
+
   const { cart, cartOpen, setCartOpen, removeFromCart, updateQuantity, totalItems, totalPrice } = useCart()
   const [showCheckout, setShowCheckout] = useState(false)
   return (
@@ -97,6 +108,22 @@ export default function CartDrawer() {
               </div>
               <button onClick={() => setShowCheckout(true)}
   className="w-full bg-coral text-white font-display text-lg py-4 rounded-2xl hover:bg-opacity-90 transition-all hover:scale-[1.02] active:scale-95 shadow-md block text-center">
+  
+  {/* Abandoned cart email capture */}
+{cart.length > 0 && !abandonEmail && (
+  <div className="px-4 pb-3">
+    <div className="bg-sunny/20 rounded-2xl p-3 flex gap-2">
+      <input type="email" placeholder="Email for order updates..."
+        value={emailInput} onChange={e => setEmailInput(e.target.value)}
+        className="flex-1 text-xs px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:border-coral bg-white" />
+      <button onClick={handleSaveEmail}
+        className="text-xs bg-coral text-white px-3 py-2 rounded-xl font-bold hover:bg-opacity-90">
+        Save
+      </button>
+    </div>
+    <p className="text-xs text-gray-400 mt-1 text-center">Get notified about your cart</p>
+  </div>
+)}
   Checkout 🛍️
 </button>
               <button onClick={() => setCartOpen(false)}

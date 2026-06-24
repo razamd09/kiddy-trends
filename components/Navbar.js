@@ -7,11 +7,12 @@ import SearchBar from './SearchBar'
 import RewardsNavChecker from './RewardsNavChecker'
 
 const links = [
-  { href: '/',               label: 'Home' },
-  { href: '/collections',    label: 'Collections' },
-  { href: '/about',          label: 'About Us' },
-  { href: '/refund-policy',  label: 'Refund Policy' },
-  { href: '/size-chart',     label: 'Size Chart' },
+  { href: '/',                label: 'Home' },
+  { href: '/collections',     label: 'Collections' },
+  { href: '/about',           label: 'About Us' },
+  { href: '/refund-policy',   label: 'Refund Policy' },
+  { href: '/size-chart',      label: 'Size Chart' },
+  { href: '/order-tracking',  label: 'Track Order' },
 ]
 
 export default function Navbar() {
@@ -35,16 +36,26 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-1">
             {links.map(link => (
               <Link key={link.href} href={link.href}
-                className="font-body font-700 text-charcoal hover:text-coral px-4 py-2 rounded-full hover:bg-coral/10 transition-all text-sm font-semibold">
+                className="font-body text-charcoal hover:text-coral px-4 py-2 rounded-full hover:bg-coral/10 transition-all text-sm font-semibold">
                 {link.label}
               </Link>
             ))}
           </div>
 
-          {/* Cart + mobile toggle */}
-          <div className="flex items-center gap-3">
-  <RewardsNavChecker />
-  <SearchBar />
+          {/* Right icons */}
+          <div className="flex items-center gap-2">
+            <RewardsNavChecker />
+            <SearchBar />
+
+            {/* Wishlist */}
+            <a href="/wishlist" title="Wishlist"
+              className="relative p-2 rounded-full hover:bg-coral/10 transition-colors text-charcoal hover:text-coral">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+            </a>
+
+            {/* Cart */}
             <button onClick={() => setCartOpen(true)}
               className="relative p-2 rounded-full hover:bg-coral/10 transition-colors">
               <svg className="w-6 h-6 text-charcoal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -57,6 +68,7 @@ export default function Navbar() {
               )}
             </button>
 
+            {/* Mobile menu toggle */}
             <button onClick={() => setOpen(!open)}
               className="md:hidden p-2 rounded-full hover:bg-coral/10 transition-colors">
               <svg className="w-6 h-6 text-charcoal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,6 +91,10 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          <a href="/wishlist" onClick={() => setOpen(false)}
+            className="block font-semibold text-charcoal hover:text-coral hover:bg-coral/10 px-4 py-3 rounded-2xl transition-all">
+            💝 My Wishlist
+          </a>
         </div>
       )}
     </nav>
