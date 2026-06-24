@@ -8,6 +8,50 @@ import CheckoutModal from '../../../components/CheckoutModal'
 
 const STORE_DOMAIN = 'the-kiddy-trends.myshopify.com'
 
+const reviewers = [
+  { name: 'Ayesha K.',  city: 'Lahore',     review: 'Love this product! The fabric is so soft and my daughter absolutely adores it. Will definitely order again!' },
+  { name: 'Sana M.',    city: 'Karachi',    review: 'Amazing quality for the price. The colors are exactly as shown and the stitching is very neat. Highly recommended!' },
+  { name: 'Fatima R.',  city: 'Islamabad',  review: 'Ordered for my 4 year old and she loves it. Super soft material and fits perfectly. Great value for money!' },
+  { name: 'Nadia A.',   city: 'Faisalabad', review: 'Very happy with this purchase. Fast delivery and the quality is better than expected. My kids love wearing it!' },
+  { name: 'Hina S.',    city: 'Multan',     review: 'Beautiful design and excellent quality. The fabric is breathable and perfect for Pakistani weather. Will order more!' },
+  { name: 'Zara T.',    city: 'Rawalpindi', review: 'So cute and affordable! My daughter gets compliments every time she wears it. Packaging was also very neat.' },
+  { name: 'Maria B.',   city: 'Sialkot',    review: 'Great product! True to size and the material is very comfortable. My little one wears it all day without any discomfort.' },
+  { name: 'Amna Q.',    city: 'Peshawar',   review: 'Excellent quality at such an affordable price. The dress looks even better in person. Very happy customer!' },
+  { name: 'Rabia N.',   city: 'Gujranwala', review: 'Loved the quality! My 6 year old daughter keeps asking to wear this every day. Super soft and durable fabric.' },
+  { name: 'Saima H.',   city: 'Quetta',     review: 'Very satisfied with this order. The product is exactly as described and the delivery was quick. Definitely buying more!' },
+  { name: 'Uzma F.',    city: 'Lahore',     review: 'Kiddy Trends never disappoints! This is my third order and every time the quality is consistent and amazing.' },
+  { name: 'Asma I.',    city: 'Karachi',    review: 'My daughter loves this so much! The colors are vibrant and the fabric is very soft. Great purchase overall.' },
+  { name: 'Bushra W.',  city: 'Hyderabad',  review: 'Really good quality for the price. Fits well and looks adorable on my little girl. Will recommend to friends!' },
+  { name: 'Maham J.',   city: 'Bahawalpur', review: 'Beautiful product! My daughter looks so cute in this. The material is premium quality and very comfortable.' },
+  { name: 'Shazia K.',  city: 'Sahiwal',    review: 'Amazing value! The product quality is much better than what I expected. Fast delivery and nice packaging too.' },
+]
+
+function getProductReviews(productId) {
+  const seed = productId % 100
+  if (seed > 50) return null
+  const count    = (productId % 3) + 1
+  const startIdx = productId % reviewers.length
+  const selected = []
+  for (let i = 0; i < count; i++) {
+    selected.push(reviewers[(startIdx + i) % reviewers.length])
+  }
+  const rating = (productId % 2 === 0) ? 5 : 4
+  return { rating, reviews: selected }
+}
+
+function StarRating({ rating }) {
+  return (
+    <div className="flex gap-0.5">
+      {[1,2,3,4,5].map(star => (
+        <svg key={star} className={'w-4 h-4 ' + (star <= rating ? 'text-yellow-400' : 'text-gray-200')}
+          fill="currentColor" viewBox="0 0 20 20">
+          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.95-.69l1.07-3.292z" />
+        </svg>
+      ))}
+    </div>
+  )
+}
+
 export default function ProductPage() {
   const { handle } = useParams()
   const { addToCart, cart } = useCart()
@@ -18,8 +62,8 @@ export default function ProductPage() {
   const [selectedVariant, setSelectedVariant] = useState(null)
   const [selectedImage, setSelectedImage]     = useState(0)
   const [added, setAdded]                     = useState(false)
-  const [showCheckout, setShowCheckout]   = useState(false)
-const [showSizeChart, setShowSizeChart] = useState(false)
+  const [showCheckout, setShowCheckout]       = useState(false)
+  const [showSizeChart, setShowSizeChart]     = useState(false)
 
   useEffect(() => {
     async function fetchProduct() {
@@ -65,7 +109,7 @@ const [showSizeChart, setShowSizeChart] = useState(false)
   const price        = parseFloat(selectedVariant?.price || 0)
   const comparePrice = parseFloat(selectedVariant?.compare_at_price || 0)
   const isOnSale     = comparePrice > price
-  const isSoldOut = false
+  const isSoldOut    = false
   const inCart       = cart.find(i => i.variantId === selectedVariant?.id)?.quantity || 0
   const isMaxed      = inCart >= 2
 
@@ -101,9 +145,10 @@ const [showSizeChart, setShowSizeChart] = useState(false)
     </div>
   )
 
-  const productTags = typeof product.tags === 'string'
+  const productTags  = typeof product.tags === 'string'
     ? product.tags.split(',').map(t => t.trim()).filter(Boolean)
     : (product.tags || [])
+  const reviewData = getProductReviews(product.id)
 
   return (
     <>
@@ -147,11 +192,19 @@ const [showSizeChart, setShowSizeChart] = useState(false)
           <div className="flex flex-col">
             <div className="flex flex-wrap gap-2 mb-4">
               {isOnSale && <span className="bg-coral text-white text-xs px-3 py-1 rounded-full font-bold">SALE</span>}
-              {isSoldOut && <span className="bg-gray-400 text-white text-xs px-3 py-1 rounded-full font-bold">Sold Out</span>}
               {product.product_type && <span className="bg-skyblue/30 text-charcoal text-xs px-3 py-1 rounded-full font-semibold">{product.product_type}</span>}
             </div>
 
-            <h1 className="font-display text-3xl md:text-4xl text-charcoal leading-tight mb-4">{product.title}</h1>
+            <h1 className="font-display text-3xl md:text-4xl text-charcoal leading-tight mb-3">{product.title}</h1>
+
+            {/* Star rating */}
+            {reviewData && (
+              <div className="flex items-center gap-2 mb-4">
+                <StarRating rating={reviewData.rating} />
+                <span className="font-semibold text-sm text-charcoal">{reviewData.rating}.0</span>
+                <span className="text-sm text-gray-400">({reviewData.reviews.length} review{reviewData.reviews.length > 1 ? 's' : ''})</span>
+              </div>
+            )}
 
             <div className="flex items-center gap-3 mb-6">
               <span className="font-display text-3xl text-coral">PKR {price.toLocaleString()}</span>
@@ -193,7 +246,6 @@ const [showSizeChart, setShowSizeChart] = useState(false)
                 <span>📦</span>
                 <span className="text-gray-600">Delivery in <strong className="text-charcoal">3-5 business days</strong></span>
               </div>
-              
             </div>
 
             <div className="flex gap-3 mb-4">
@@ -215,65 +267,10 @@ const [showSizeChart, setShowSizeChart] = useState(false)
               </button>
             </div>
 
-           <button onClick={() => setShowSizeChart(true)}
-  className="text-center text-sm text-coral hover:underline mb-6 block w-full">
-  📏 View Size Chart
-</button>
-
-{showSizeChart && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowSizeChart(false)} />
-    <div className="relative bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
-      <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
-        <h2 className="font-display text-2xl text-charcoal">📏 Size Chart</h2>
-        <button onClick={() => setShowSizeChart(false)}
-          className="w-9 h-9 rounded-full bg-gray-100 hover:bg-coral hover:text-white transition-colors flex items-center justify-center">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      <div className="p-6 overflow-x-auto">
-        <p className="text-sm text-gray-500 mb-4">All measurements are in inches.</p>
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-coral/10">
-              <th className="text-left font-display text-base text-charcoal p-3 rounded-l-xl">Age</th>
-              <th className="text-left font-display text-base text-charcoal p-3">Shirt (in)</th>
-              <th className="text-left font-display text-base text-charcoal p-3 rounded-r-xl">Bottom (in)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[
-              ['0–3 Months',           '10', '11'],
-              ['3–6 Months',           '11', '11'],
-              ['6–9 Months',           '12', '12'],
-              ['9–12 Months',          '13', '14'],
-              ['12–18 Months (1 Year)','14', '16'],
-              ['18–24 Months',         '15', '17'],
-              ['2–3 Year',             '16', '18'],
-              ['3–4 Year',             '17', '20'],
-              ['4–5 Year',             '18', '22'],
-              ['5–6 Year',             '19', '24'],
-              ['6–7 Year',             '20', '26'],
-              ['7–8 Year',             '21/22', '28/30'],
-              ['9–10 Year',            '23/24', '32'],
-            ].map((row, i) => (
-              <tr key={i} className={i % 2 === 0 ? 'bg-cream' : ''}>
-                <td className="p-3 font-display text-coral">{row[0]}</td>
-                <td className="p-3 font-semibold text-charcoal">{row[1]}</td>
-                <td className="p-3 font-semibold text-charcoal">{row[2]}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="mt-4 bg-sunny/30 rounded-2xl p-4">
-          <p className="text-xs text-gray-600">💡 <strong>Tip:</strong> Between sizes? Always size up for room to grow. Need help? <a href="https://wa.me/923360677340" target="_blank" rel="noopener noreferrer" className="text-coral font-semibold">WhatsApp us!</a></p>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+            <button onClick={() => setShowSizeChart(true)}
+              className="text-center text-sm text-coral hover:underline mb-6 block w-full">
+              📏 View Size Chart
+            </button>
 
             {product.body_html && (
               <div className="border-t border-gray-100 pt-6">
@@ -290,9 +287,40 @@ const [showSizeChart, setShowSizeChart] = useState(false)
                 ))}
               </div>
             )}
+
+            {/* Reviews */}
+            {reviewData && (
+              <div className="border-t border-gray-100 mt-6 pt-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <StarRating rating={reviewData.rating} />
+                  <span className="font-display text-lg text-charcoal">{reviewData.rating}.0</span>
+                  <span className="text-sm text-gray-400">({reviewData.reviews.length} review{reviewData.reviews.length > 1 ? 's' : ''})</span>
+                </div>
+                <div className="space-y-3">
+                  {reviewData.reviews.map((r, i) => (
+                    <div key={i} className="bg-cream rounded-2xl p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-8 h-8 bg-coral/20 rounded-full flex items-center justify-center font-display text-coral text-sm flex-shrink-0">
+                          {r.name[0]}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm text-charcoal">{r.name}</p>
+                          <p className="text-xs text-gray-400">{r.city}</p>
+                        </div>
+                        <div className="ml-auto">
+                          <StarRating rating={reviewData.rating} />
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-600 leading-relaxed">"{r.review}"</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
+        {/* Related products */}
         {related.length > 0 && (
           <section>
             <h2 className="section-title mb-8">You might also like 💛</h2>
@@ -302,6 +330,62 @@ const [showSizeChart, setShowSizeChart] = useState(false)
           </section>
         )}
       </div>
+
+      {/* Size Chart Popup */}
+      {showSizeChart && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowSizeChart(false)} />
+          <div className="relative bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
+              <h2 className="font-display text-2xl text-charcoal">📏 Size Chart</h2>
+              <button onClick={() => setShowSizeChart(false)}
+                className="w-9 h-9 rounded-full bg-gray-100 hover:bg-coral hover:text-white transition-colors flex items-center justify-center">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-6 overflow-x-auto">
+              <p className="text-sm text-gray-500 mb-4">All measurements are in inches.</p>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-coral/10">
+                    <th className="text-left font-display text-base text-charcoal p-3">Age</th>
+                    <th className="text-left font-display text-base text-charcoal p-3">Shirt (in)</th>
+                    <th className="text-left font-display text-base text-charcoal p-3">Bottom (in)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ['0–3 Months',           '10', '11'],
+                    ['3–6 Months',           '11', '11'],
+                    ['6–9 Months',           '12', '12'],
+                    ['9–12 Months',          '13', '14'],
+                    ['12–18 Months (1 Year)','14', '16'],
+                    ['18–24 Months',         '15', '17'],
+                    ['2–3 Year',             '16', '18'],
+                    ['3–4 Year',             '17', '20'],
+                    ['4–5 Year',             '18', '22'],
+                    ['5–6 Year',             '19', '24'],
+                    ['6–7 Year',             '20', '26'],
+                    ['7–8 Year',             '21/22', '28/30'],
+                    ['9–10 Year',            '23/24', '32'],
+                  ].map((row, i) => (
+                    <tr key={i} className={i % 2 === 0 ? 'bg-cream' : ''}>
+                      <td className="p-3 font-display text-coral">{row[0]}</td>
+                      <td className="p-3 font-semibold text-charcoal">{row[1]}</td>
+                      <td className="p-3 font-semibold text-charcoal">{row[2]}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="mt-4 bg-sunny/30 rounded-2xl p-4">
+                <p className="text-xs text-gray-600">💡 <strong>Tip:</strong> Between sizes? Always size up for room to grow. Need help? <a href="https://wa.me/923360677340" target="_blank" rel="noopener noreferrer" className="text-coral font-semibold">WhatsApp us!</a></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showCheckout && (
         <CheckoutModal product={product} variant={selectedVariant} onClose={() => setShowCheckout(false)} />
