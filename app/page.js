@@ -112,9 +112,27 @@ export default function Home() {
         </div>
       </section>
 
-      {/* SHOP BY CATEGORY */}
-      <section className="bg-white py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+     {/* PROMO BANNER */}
+<section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+  <div className="bg-charcoal rounded-3xl px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+    <div className="flex items-center gap-3">
+      <span className="text-2xl animate-bounce2">🎉</span>
+      <div>
+        <p className="font-display text-white text-lg leading-tight">Summer Sale is LIVE!</p>
+        <p className="text-gray-300 text-sm">Up to 50% OFF on kids clothing — Limited time only!</p>
+      </div>
+    </div>
+    <div className="flex items-center gap-3 flex-shrink-0">
+      <div className="bg-sunny text-charcoal font-display text-sm px-4 py-1.5 rounded-full">
+        Use code: <strong>KIDDY20</strong>
+      </div>
+      <a href="/collections"
+        className="bg-coral text-white font-display text-sm px-5 py-2 rounded-full hover:bg-opacity-90 transition-all hover:scale-105">
+        Shop Now →
+      </a>
+    </div>
+  </div>
+</section>   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <h2 className="section-title mb-3">Shop by Category</h2>
             <p className="text-gray-500 text-lg">Everything your little one needs</p>
