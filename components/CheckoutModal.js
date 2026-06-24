@@ -43,14 +43,27 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   const [form, setForm]       = useState({
     name:'', phone:'', whatsapp:'', sameAsPhone: true, email:'', address:'', city:'', notes:''
   })
-  const [errors, setErrors] = useState({})
+  const [errors, setErrors]           = useState({})
+const [coupon, setCoupon]           = useState('')
+const [discount, setDiscount]       = useState(null)
+const [couponError, setCouponError] = useState('')
+const [couponLoading, setCouponLoading] = useState(false)
 
   const price        = isCart ? cartTotal : parseFloat(variant?.price || 0)
   const comparePrice = parseFloat(variant?.compare_at_price || 0)
   const isOnSale     = !isCart && comparePrice > price
   const image        = product?.images?.[0]?.src
-  const shipping     = 250
-  const total        = price + shipping
+ const shipping = discount?.type === 'shipping' ? 0 : 250
+const discountAmount = discount
+  ? discount.type === 'percent'
+    ? Math.round(price * discount.value / 100)
+    : discount.type === 'fixed'
+    ? Math.min(discount.value, price)
+    : discount.type === 'shipping'
+    ? 250
+    : 0
+  : 0
+const total = price + shipping - (discount?.type !== 'shipping' ? discountAmount : 0)
 
   function formatPhone(val) {
     // Remove everything except digits
@@ -79,7 +92,37 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
     setErrors(e)
     return Object.keys(e).length === 0
   }
+async function applyCoupon() {
+    if (!coupon.trim()) return
+    setCouponLoading(true)
+    setCouponError('')
+    setDiscount(null)
 
+    try {
+      const res  = await fetch('https://the-kiddy-trends.myshopify.com/discount/' + coupon.trim() + '?format=json')
+      // Shopify discount codes — validate via a simple approach
+      // We'll use predefined codes for now
+      const validCodes = {
+        'KIDDY10':  { type: 'percent', value: 10,   label: '10% OFF' },
+        'KIDDY20':  { type: 'percent', value: 20,   label: '20% OFF' },
+        'WELCOME':  { type: 'percent', value: 15,   label: '15% OFF' },
+        'FLAT100':  { type: 'fixed',   value: 100,  label: 'PKR 100 OFF' },
+        'FLAT200':  { type: 'fixed',   value: 200,  label: 'PKR 200 OFF' },
+        'FREESHIP': { type: 'shipping',value: 250,  label: 'Free Shipping' },
+      }
+
+      const code = coupon.trim().toUpperCase()
+      if (validCodes[code]) {
+        setDiscount({ ...validCodes[code], code })
+        setCouponError('')
+      } else {
+        setCouponError('Invalid coupon code. Please try again.')
+      }
+    } catch {
+      setCouponError('Could not verify code. Please try again.')
+    }
+    setCouponLoading(false)
+  }
   function buildWhatsAppMessage() {
     const variantText = variant?.title !== 'Default Title' ? '\nVariant: ' + variant?.title : ''
     const productText = isCart
@@ -96,9 +139,10 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
     const msg =
       'NEW ORDER - Kiddy Trends\n\n' +
       (isCart ? 'Products:\n' + productText : 'Product: ' + productText) + '\n' +
-      'Subtotal: PKR ' + price.toLocaleString() + '\n' +
-      'Shipping: PKR ' + shipping.toLocaleString() + '\n' +
-      'Total: PKR ' + total.toLocaleString() + '\n\n' +
+     'Subtotal: PKR ' + price.toLocaleString() + '\n' +
+(discount ? 'Discount (' + discount.code + '): - PKR ' + discountAmount.toLocaleString() + '\n' : '') +
+'Shipping: PKR ' + shipping.toLocaleString() + '\n' +
+'Total: PKR ' + total.toLocaleString() + '\n\n' +
       'Customer Details\n' +
       'Name: ' + form.name + '\n' +
       'Email: ' + form.email + '\n' +
@@ -316,7 +360,28 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
               </div>
 
               {/* Notes */}
-              <div>
+              {/* Coupon code */}
+<div>
+  <label className="block font-semibold text-sm text-charcoal mb-1">Discount Code (optional)</label>
+  <div className="flex gap-2">
+    <input type="text" placeholder="Enter coupon code" value={coupon}
+      onChange={e => { setCoupon(e.target.value.toUpperCase()); setDiscount(null); setCouponError('') }}
+      className="flex-1 px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm font-bold tracking-wider" />
+    <button type="button" onClick={applyCoupon} disabled={couponLoading || !coupon.trim()}
+      className="px-5 py-3 rounded-2xl bg-charcoal text-white text-sm font-bold hover:bg-coral transition-colors disabled:opacity-50">
+      {couponLoading ? '...' : 'Apply'}
+    </button>
+  </div>
+  {couponError && <p className="text-red-400 text-xs mt-1">{couponError}</p>}
+  {discount && (
+    <div className="flex items-center gap-2 mt-2 bg-mint/20 rounded-xl px-3 py-2">
+      <span className="text-green-600 font-bold text-xs">✓ {discount.label} applied!</span>
+      <button type="button" onClick={() => { setDiscount(null); setCoupon('') }}
+        className="ml-auto text-gray-400 hover:text-coral text-xs">✕ Remove</button>
+    </div>
+  )}
+</div>
+			  <div>
                 <label className="block font-semibold text-sm text-charcoal mb-1">Order Notes (optional)</label>
                 <input type="text" placeholder="Any special instructions..." value={form.notes}
                   onChange={e => setForm({...form, notes: e.target.value})}
@@ -324,20 +389,29 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
               </div>
 
               {/* Total */}
-              <div className="bg-cream rounded-2xl p-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Subtotal</span>
-                  <span className="font-semibold">PKR {price.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Shipping</span>
-                  <span className="font-semibold">PKR {shipping.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between border-t border-gray-200 pt-2">
-                  <span className="font-display text-base text-charcoal">Total</span>
-                  <span className="font-display text-lg text-coral">PKR {total.toLocaleString()}</span>
-                </div>
-              </div>
+             <div className="bg-cream rounded-2xl p-4 space-y-2">
+  <div className="flex justify-between text-sm">
+    <span className="text-gray-500">Subtotal</span>
+    <span className="font-semibold">PKR {price.toLocaleString()}</span>
+  </div>
+  {discount && discount.type !== 'shipping' && (
+    <div className="flex justify-between text-sm">
+      <span className="text-green-600 font-semibold">Discount ({discount.code})</span>
+      <span className="text-green-600 font-semibold">- PKR {discountAmount.toLocaleString()}</span>
+    </div>
+  )}
+  <div className="flex justify-between text-sm">
+    <span className="text-gray-500">Shipping</span>
+    <span className={discount?.type === 'shipping' ? 'text-green-600 font-semibold line-through' : 'font-semibold'}>
+      PKR 250
+    </span>
+    {discount?.type === 'shipping' && <span className="text-green-600 font-semibold">FREE</span>}
+  </div>
+  <div className="flex justify-between border-t border-gray-200 pt-2">
+    <span className="font-display text-base text-charcoal">Total</span>
+    <span className="font-display text-lg text-coral">PKR {total.toLocaleString()}</span>
+  </div>
+</div>
 
               <button type="submit" disabled={loading}
                 className="w-full bg-coral text-white font-display text-lg py-4 rounded-2xl hover:bg-opacity-90 transition-all hover:scale-[1.02] active:scale-95 shadow-md disabled:opacity-70">
