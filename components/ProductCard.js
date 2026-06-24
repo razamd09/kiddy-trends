@@ -13,7 +13,7 @@ export default function ProductCard({ product }) {
   const comparePrice = parseFloat(selectedVariant?.compare_at_price || 0)
   const image        = product.images?.[0]?.src
   const isOnSale     = comparePrice > price
-  const isSoldOut    = !selectedVariant?.available
+  const isSoldOut = !selectedVariant?.available && selectedVariant?.inventory_management === 'shopify'
   const inCart       = cart.find(i => i.variantId === selectedVariant?.id)?.quantity || 0
   const isMaxed      = inCart >= 2
 
