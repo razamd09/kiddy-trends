@@ -14,52 +14,23 @@ const categories = [
   { label: 'Little Accessories', desc: 'Pins, ponytails & more',      color: 'bg-mint/30',    emoji: '🎀', href: '/collections' },
 ]
 
-const features = [
-  { icon:'🌿', title:'Soft & Safe Fabrics',  desc:'Skin-friendly, breathable materials safe for even the most sensitive skin.' },
-  { icon:'🎨', title:'Vibrant Designs',      desc:'Playful prints and colours that kids actually want to wear!' },
-  { icon:'📦', title:'Fast Delivery',        desc:'Quick shipping across Pakistan. Packed with care and love.' },
-  { icon:'↩️', title:'Easy Returns',         desc:'Not the right fit? Hassle-free returns within 7 days.' },
-]
-
 export default function Home() {
-  const [trending, setTrending]             = useState([])
+  const [trending, setTrending]               = useState([])
   const [loadingTrending, setLoadingTrending] = useState(true)
 
   useEffect(() => {
     async function fetchTrending() {
       try {
-        const res = await fetch('https://' + STORE_DOMAIN + '/products.json?limit=250', { next: { revalidate: 300 } })
+        const res  = await fetch('https://' + STORE_DOMAIN + '/products.json?limit=250', { next: { revalidate: 300 } })
         const data = await res.json()
         const all  = data.products || []
-
-        const bags  = all.filter(p => {
-          const t = (p.product_type || '').toLowerCase()
-          const h = (p.title || '').toLowerCase()
-          return t.includes('bag') || t.includes('backpack') || h.includes('bag') || h.includes('backpack')
-        })
-        const bedding = all.filter(p => {
-          const t = (p.product_type || '').toLowerCase()
-          const h = (p.title || '').toLowerCase()
-          return t.includes('bed') || t.includes('sheet') || t.includes('pillow') || h.includes('bed') || h.includes('sheet')
-        })
-        const girls = all.filter(p => {
-          const t = (p.tags || []).join(' ').toLowerCase()
-          const h = (p.title || '').toLowerCase()
-          return t.includes('girl') || h.includes('girl') || h.includes('frock') || h.includes('dress')
-        })
-        const boys = all.filter(p => {
-          const t = (p.tags || []).join(' ').toLowerCase()
-          const h = (p.title || '').toLowerCase()
-          return t.includes('boy') || h.includes('boy') || h.includes('shirt') || h.includes('trouser')
-        })
-        const newArrivals = all.filter(p => {
-          const t = (p.tags || []).join(' ').toLowerCase()
-          const h = (p.title || '').toLowerCase()
-          return t.includes('new') || h.includes('new arrival') || h.includes('summer')
-        })
-
+        const bags     = all.filter(p => { const t = (p.product_type||'').toLowerCase(); const h = (p.title||'').toLowerCase(); return t.includes('bag')||t.includes('backpack')||h.includes('bag')||h.includes('backpack') })
+        const bedding  = all.filter(p => { const t = (p.product_type||'').toLowerCase(); const h = (p.title||'').toLowerCase(); return t.includes('bed')||t.includes('sheet')||t.includes('pillow')||h.includes('bed')||h.includes('sheet') })
+        const girls    = all.filter(p => { const t = (p.tags||[]).join(' ').toLowerCase(); const h = (p.title||'').toLowerCase(); return t.includes('girl')||h.includes('girl')||h.includes('frock')||h.includes('dress') })
+        const boys     = all.filter(p => { const t = (p.tags||[]).join(' ').toLowerCase(); const h = (p.title||'').toLowerCase(); return t.includes('boy')||h.includes('boy')||h.includes('shirt')||h.includes('trouser') })
+        const newArrivals = all.filter(p => { const t = (p.tags||[]).join(' ').toLowerCase(); const h = (p.title||'').toLowerCase(); return t.includes('new')||h.includes('new arrival')||h.includes('summer') })
         const pick = (arr, n) => arr.sort(() => 0.5 - Math.random()).slice(0, n)
-        const trending = [...pick(girls, 2), ...pick(boys, 2), ...pick(bags, 2), ...pick(bedding, 2)]
+        const trending = [...pick(girls,2),...pick(boys,2),...pick(bags,2),...pick(bedding,2)]
         const final = trending.length >= 6 ? trending : [...trending, ...pick(newArrivals, 8 - trending.length)]
         setTrending(final.slice(0, 8))
         setLoadingTrending(false)
@@ -90,7 +61,6 @@ export default function Home() {
               <Link href="/about" className="btn-outline">Our Story</Link>
             </div>
           </div>
-
           <div className="relative flex justify-center px-12">
             <div className="w-72 h-72 md:w-96 md:h-96 bg-skyblue/30 rounded-[60%_40%_55%_45%/50%_60%_40%_50%] flex items-center justify-center animate-float">
               <Image src="/logo.jpg" alt="Kiddy Trends" width={260} height={260} className="rounded-3xl shadow-2xl object-cover" />
@@ -104,34 +74,36 @@ export default function Home() {
           </div>
         </div>
       </section>
-{/* SOCIAL PROOF BAR */}
-<section className="bg-charcoal py-3">
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div className="flex flex-wrap items-center justify-center gap-6 text-white text-sm">
-      <div className="flex items-center gap-2">
-        <span className="text-sunny font-bold text-lg">🛍️ 1,200+</span>
-        <span className="text-gray-300">Happy Customers</span>
-      </div>
-      <div className="hidden sm:block w-px h-4 bg-gray-600" />
-      <div className="flex items-center gap-2">
-        <span className="text-sunny font-bold text-lg">⭐ 4.8/5</span>
-        <span className="text-gray-300">Average Rating</span>
-      </div>
-      <div className="hidden sm:block w-px h-4 bg-gray-600" />
-      <div className="flex items-center gap-2">
-        <span className="text-sunny font-bold text-lg">📦 3-5</span>
-        <span className="text-gray-300">Days Delivery</span>
-      </div>
-      <div className="hidden sm:block w-px h-4 bg-gray-600" />
-      <div className="flex items-center gap-2">
-        <span className="text-sunny font-bold text-lg">🔄 100%</span>
-        <span className="text-gray-300">Exchange Guarantee</span>
-      </div>
-    </div>
-  </div>
-</section>
+
+      {/* SOCIAL PROOF BAR */}
+      <section className="bg-charcoal py-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-wrap items-center justify-center gap-6 text-white text-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-sunny font-bold text-lg">🛍️ 1,200+</span>
+              <span className="text-gray-300">Happy Customers</span>
+            </div>
+            <div className="hidden sm:block w-px h-4 bg-gray-600" />
+            <div className="flex items-center gap-2">
+              <span className="text-sunny font-bold text-lg">⭐ 4.8/5</span>
+              <span className="text-gray-300">Average Rating</span>
+            </div>
+            <div className="hidden sm:block w-px h-4 bg-gray-600" />
+            <div className="flex items-center gap-2">
+              <span className="text-sunny font-bold text-lg">📦 3-5</span>
+              <span className="text-gray-300">Days Delivery</span>
+            </div>
+            <div className="hidden sm:block w-px h-4 bg-gray-600" />
+            <div className="flex items-center gap-2">
+              <span className="text-sunny font-bold text-lg">🔄 100%</span>
+              <span className="text-gray-300">Exchange Guarantee</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* PROMO BANNER */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6 pt-6">
         <div className="bg-charcoal rounded-3xl px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="text-2xl animate-bounce2">🎉</span>
@@ -162,7 +134,7 @@ export default function Home() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
             {categories.map(cat => (
               <Link key={cat.label} href={cat.href}
-                className={`${cat.color} rounded-3xl p-6 text-center card-hover block`}>
+                className={cat.color + ' rounded-3xl p-6 text-center card-hover block'}>
                 <div className="text-5xl mb-3">{cat.emoji}</div>
                 <h3 className="font-display text-xl text-charcoal">{cat.label}</h3>
                 <p className="text-sm text-gray-500 mt-1">{cat.desc}</p>
@@ -201,107 +173,58 @@ export default function Home() {
         )}
       </section>
 
-     
+      {/* TIKTOK VIDEOS */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="text-center mb-10">
+          <h2 className="section-title mb-3">Watch Us on TikTok 🎵</h2>
+          <p className="text-gray-500 text-lg">See our latest collections in action!</p>
+          <a href="https://tiktok.com/@kiddy.trends" target="_blank" rel="noopener noreferrer"
+            className="inline-block mt-3 bg-charcoal text-white font-display text-sm px-5 py-2 rounded-full hover:bg-coral transition-colors">
+            Follow @kiddy.trends ➔
+          </a>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {['7649019831047458056','7647926799875214600','7649698031213858055','7647962725112352018'].map(id => (
+            <div key={id} className="rounded-3xl overflow-hidden shadow-sm border border-gray-100 bg-white">
+              <iframe src={'https://www.tiktok.com/embed/v2/' + id} className="w-full"
+                style={{height:'560px',border:'none'}} allowFullScreen allow="encrypted-media"
+                loading="lazy" title={'TikTok video ' + id} />
+            </div>
+          ))}
+        </div>
+      </section>
 
-{/* TIKTOK VIDEOS */}
-<section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-  <div className="text-center mb-10">
-    <h2 className="section-title mb-3">Watch Us on TikTok 🎵</h2>
-    <p className="text-gray-500 text-lg">See our latest collections in action!</p>
-    <a href="https://tiktok.com/@kiddy.trends" target="_blank" rel="noopener noreferrer"
-      className="inline-block mt-3 bg-charcoal text-white font-display text-sm px-5 py-2 rounded-full hover:bg-coral transition-colors">
-      Follow @kiddy.trends ➔
-    </a>
-  </div>
-  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-    {[
-      '7649019831047458056',
-      '7647926799875214600',
-      '7649698031213858055',
-      '7647962725112352018',
-    ].map(id => (
-      <div key={id} className="rounded-3xl overflow-hidden shadow-sm border border-gray-100 bg-white">
-        <iframe
-          src={'https://www.tiktok.com/embed/v2/' + id}
-          className="w-full"
-          style={{height:'560px',border:'none'}}
-          allowFullScreen
-          allow="encrypted-media"
-loading="lazy"
-title={'TikTok video ' + id}
-        />
-      </div>
-    ))}
-  </div>
-</section>
-{/* REWARDS CHECKER */}
-<section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
-  <RewardsChecker />
-</section>
-{/* INSTAGRAM */}
-{/* INSTAGRAM */}
-<section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
-  <div className="text-center mb-8">
-    <div className="text-4xl mb-3">📸</div>
-    <h2 className="section-title mb-2">Follow Us on Instagram</h2>
-    <p className="text-gray-500 mb-1">See our latest collections & happy customers!</p>
-    <a href="https://instagram.com/trenydkids.2020" target="_blank" rel="noopener noreferrer"
-      className="text-coral font-bold hover:underline">@trendykids.2020</a>
-  </div>
-  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-    {[
-      'DZ7W_ZWo-k1',
-      'DZ9YMmLCCjg',
-      'DZ4bJK5iHA3',
-      'DZ21w0hCOEz',
-    ].map(id => (
-      <div key={id} className="rounded-3xl overflow-hidden shadow-sm border border-gray-100 bg-white">
-        <iframe
-          src={'https://www.instagram.com/p/' + id + '/embed/captioned/'}
-          className="w-full"
-          style={{height:'480px', border:'none'}}
-          allowFullScreen
-          loading="lazy"
-          title={'Instagram post ' + id}
-          scrolling="no"
-          frameBorder="0"
-        />
-      </div>
-    ))}
-  </div>
-  <div className="text-center mt-6">
-    <a href="https://instagram.com/trenydkids.2020" target="_blank" rel="noopener noreferrer"
-      className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-display px-8 py-3 rounded-full hover:opacity-90 transition-all hover:scale-105 shadow-md">
-      📸 Follow @trendykids.2020
-    </a>
-  </div>
-</section>
-  <div className="bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-coral/10 rounded-3xl p-8 text-center">
-    <div className="text-4xl mb-3">📸</div>
-    <h2 className="font-display text-3xl text-charcoal mb-2">Follow Us on Instagram</h2>
-    <p className="text-gray-500 mb-2">See our latest collections, styling ideas & happy customers!</p>
-    <p className="text-coral font-bold text-lg mb-5">@trenydkids.2020</p>
-    <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-6">
-      {[
-        'https://images.unsplash.com/photo-1503944583220-79d8926ad5e2?w=200&h=200&fit=crop',
-        'https://images.unsplash.com/photo-1471286174890-9c112ffca5b4?w=200&h=200&fit=crop',
-        'https://images.unsplash.com/photo-1504439468489-c8920d796a29?w=200&h=200&fit=crop',
-        'https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=200&h=200&fit=crop',
-        'https://images.unsplash.com/photo-1519689680058-324335c77eba?w=200&h=200&fit=crop',
-        'https://images.unsplash.com/photo-1543702233-b09e5c9fa60e?w=200&h=200&fit=crop',
-      ].map((src, i) => (
-        <a key={i} href="https://instagram.com/trenydkids.2020" target="_blank" rel="noopener noreferrer"
-          className="aspect-square rounded-2xl overflow-hidden hover:opacity-80 transition-opacity">
-          <img src={src} alt={'Instagram post ' + (i+1)} className="w-full h-full object-cover" loading="lazy" />
-        </a>
-      ))}
-    </div>
-    <a href="https://instagram.com/trenydkids.2020" target="_blank" rel="noopener noreferrer"
-      className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-display px-8 py-3 rounded-full hover:opacity-90 transition-all hover:scale-105 shadow-md">
-      📸 Follow @trenydkids.2020
-    </a>
-  </div>
-</section>
+      {/* REWARDS CHECKER */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+        <RewardsChecker />
+      </section>
+
+      {/* INSTAGRAM */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+        <div className="text-center mb-8">
+          <div className="text-4xl mb-3">📸</div>
+          <h2 className="section-title mb-2">Follow Us on Instagram</h2>
+          <p className="text-gray-500 mb-1">See our latest collections & happy customers!</p>
+          <a href="https://instagram.com/trendykids.2020" target="_blank" rel="noopener noreferrer"
+            className="text-coral font-bold hover:underline">@trendykids.2020</a>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {['DZ7W_ZWo-k1','DZ9YMmLCCjg','DZ4bJK5iHA3','DZ21w0hCOEz'].map(id => (
+            <div key={id} className="rounded-3xl overflow-hidden shadow-sm border border-gray-100 bg-white">
+              <iframe src={'https://www.instagram.com/p/' + id + '/embed/captioned/'}
+                className="w-full" style={{height:'480px',border:'none'}}
+                allowFullScreen loading="lazy" title={'Instagram post ' + id}
+                scrolling="no" frameBorder="0" />
+            </div>
+          ))}
+        </div>
+        <div className="text-center mt-6">
+          <a href="https://instagram.com/trendykids.2020" target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-display px-8 py-3 rounded-full hover:opacity-90 transition-all hover:scale-105 shadow-md">
+            📸 Follow @trendykids.2020
+          </a>
+        </div>
+      </section>
 
       {/* NEWSLETTER */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
