@@ -1,222 +1,188 @@
 'use client'
-
 import { useState } from 'react'
 import emailjs from '@emailjs/browser'
 
-const WHATSAPP_NUMBER = '923360677340'
+const WHATSAPP_NUMBER  = '923360677340'
 const EMAILJS_SERVICE  = 'service_9p08wct'
 const EMAILJS_TEMPLATE = 'template_gyanmsp'
 const EMAILJS_KEY      = 'G3OmrUP2PwOat-o1W'
 
 const cities = [
-  // Major Cities
   'Karachi','Lahore','Islamabad','Rawalpindi','Faisalabad',
   'Multan','Peshawar','Quetta','Sialkot','Gujranwala',
   'Hyderabad','Bahawalpur','Sargodha','Sukkur','Larkana',
-  // Punjab
   'Gujrat','Sheikhupura','Jhang','Rahim Yar Khan','Kasur',
   'Okara','Sahiwal','Wah Cantt','Attock','Chakwal',
   'Jhelum','Khanewal','Hafizabad','Chiniot','Kamoke',
   'Mandi Bahauddin','Narowal','Pakpattan','Bahawalnagar',
   'Vehari','Lodhran','Muzaffargarh','Layyah','Bhakkar',
   'Mianwali','Khushab','Toba Tek Singh','Nankana Sahib',
-  // Sindh
   'Mirpur Khas','Nawabshah','Jacobabad','Shikarpur','Khairpur',
   'Dadu','Badin','Thatta','Tando Adam','Tando Allahyar',
   'Sanghar','Umerkot','Ghotki','Kashmore','Kandhkot',
-  // KPK
   'Mardan','Mingora','Abbottabad','Kohat','Bannu',
   'Dera Ismail Khan','Swabi','Nowshera','Charsadda','Haripur',
   'Mansehra','Karak','Lakki Marwat','Tank','Buner',
-  // Balochistan
   'Turbat','Khuzdar','Hub','Chaman','Zhob',
   'Gwadar','Dera Murad Jamali','Sibi','Kharan',
-  // AJK & GB
-  'Muzaffarabad','Mirpur','Kotli','Gilgit','Skardu',
-  'Rawalakot','Bagh',
-  // Famous Towns & Areas
+  'Muzaffarabad','Mirpur','Kotli','Gilgit','Skardu','Rawalakot','Bagh',
   'DHA Karachi','Clifton','Gulshan-e-Iqbal','North Nazimabad',
   'DHA Lahore','Gulberg','Model Town','Johar Town','Bahria Town Lahore',
   'Bahria Town Karachi','Bahria Town Rawalpindi','F-7 Islamabad','G-9 Islamabad',
-  'Hayatabad Peshawar','University Town Peshawar',
-  'Other'
+  'Hayatabad Peshawar','University Town Peshawar','Other'
 ].sort()
 
 export default function CheckoutModal({ product, variant, onClose, isCart, cartItems, totalPrice: cartTotal }) {
-  const [step, setStep]       = useState(1)
-  const [loading, setLoading] = useState(false)
-  const [form, setForm]       = useState({
+  const [step, setStep]               = useState(1)
+  const [loading, setLoading]         = useState(false)
+  const [form, setForm]               = useState({
     name:'', phone:'', whatsapp:'', sameAsPhone: true, email:'', address:'', city:'', notes:''
   })
   const [errors, setErrors]           = useState({})
-const [coupon, setCoupon]           = useState('')
-const [discount, setDiscount]       = useState(null)
-const [couponError, setCouponError] = useState('')
-const [couponLoading, setCouponLoading] = useState(false)
+  const [coupon, setCoupon]           = useState('')
+  const [discount, setDiscount]       = useState(null)
+  const [couponError, setCouponError] = useState('')
+  const [couponLoading, setCouponLoading] = useState(false)
 
-  const price        = isCart ? cartTotal : parseFloat(variant?.price || 0)
-  const comparePrice = parseFloat(variant?.compare_at_price || 0)
-  const isOnSale     = !isCart && comparePrice > price
-  const image        = product?.images?.[0]?.src
- const shipping = discount?.type === 'shipping' ? 0 : 250
-const discountAmount = discount
-  ? discount.type === 'percent'
-    ? Math.round(price * discount.value / 100)
-    : discount.type === 'fixed'
-    ? Math.min(discount.value, price)
-    : discount.type === 'shipping'
-    ? 250
-    : 0
-  : 0
-const total = price + shipping - (discount?.type !== 'shipping' ? discountAmount : 0)
+  const price          = isCart ? cartTotal : parseFloat(variant?.price || 0)
+  const comparePrice   = parseFloat(variant?.compare_at_price || 0)
+  const isOnSale       = !isCart && comparePrice > price
+  const image          = product?.images?.[0]?.src
+  const shipping       = discount?.type === 'shipping' ? 0 : 250
+  const discountAmount = discount
+    ? discount.type === 'percent' ? Math.round(price * discount.value / 100)
+    : discount.type === 'fixed'   ? Math.min(discount.value, price)
+    : 0 : 0
+  const total = price + shipping - (discount?.type !== 'shipping' ? discountAmount : 0)
 
   function formatPhone(val) {
-    // Remove everything except digits
-    const digits = val.replace(/\D/g, '')
-    // Limit to 10 digits
-    return digits.slice(0, 10)
+    return val.replace(/\D/g, '').slice(0, 10)
   }
 
   function validatePhone(val) {
-    const digits = val.replace(/\D/g, '')
-    return digits.length === 10
+    return val.replace(/\D/g, '').length === 10
   }
 
   function validate() {
     const e = {}
-    if (!form.name.trim())               e.name     = 'Name is required'
-   if (form.email.trim() && !/\S+@\S+\.\S+/.test(form.email)) e.email = 'Enter a valid email'
-    if (!form.phone.trim())              e.phone    = 'Phone is required'
-    if (!validatePhone(form.phone))      e.phone    = 'Enter 10 digits (e.g. 3360677340)'
+    if (!form.name.trim())    e.name    = 'Name is required'
+    if (form.email.trim() && !/\S+@\S+\.\S+/.test(form.email)) e.email = 'Enter a valid email'
+    if (!form.phone.trim())   e.phone   = 'Phone is required'
+    if (!validatePhone(form.phone)) e.phone = 'Enter 10 digits (e.g. 3360677340)'
     if (!form.sameAsPhone) {
-      if (!form.whatsapp.trim())         e.whatsapp = 'WhatsApp number is required'
-      if (!validatePhone(form.whatsapp)) e.whatsapp = 'Enter 10 digits (e.g. 3360677340)'
+      if (!form.whatsapp.trim())    e.whatsapp = 'WhatsApp number is required'
+      if (!validatePhone(form.whatsapp)) e.whatsapp = 'Enter 10 digits'
     }
-    if (!form.address.trim())            e.address  = 'Address is required'
-    if (!form.city)                      e.city     = 'Please select your city'
+    if (!form.address.trim()) e.address = 'Address is required'
+    if (!form.city)           e.city    = 'Please select your city'
     setErrors(e)
     return Object.keys(e).length === 0
   }
-async function applyCoupon() {
+
+  async function applyCoupon() {
     if (!coupon.trim()) return
     setCouponLoading(true)
     setCouponError('')
     setDiscount(null)
-
-    try {
-      const res  = await fetch('https://the-kiddy-trends.myshopify.com/discount/' + coupon.trim() + '?format=json')
-      // Shopify discount codes — validate via a simple approach
-      // We'll use predefined codes for now
-      const validCodes = {
-        'KIDDY10':  { type: 'percent', value: 10,   label: '10% OFF' },
-        'KIDDY20':  { type: 'percent', value: 20,   label: '20% OFF' },
-        'WELCOME':  { type: 'percent', value: 15,   label: '15% OFF' },
-        'FLAT100':  { type: 'fixed',   value: 100,  label: 'PKR 100 OFF' },
-        'FLAT200':  { type: 'fixed',   value: 200,  label: 'PKR 200 OFF' },
-        'FREESHIP': { type: 'shipping',value: 250,  label: 'Free Shipping' },
-      }
-
-      const code = coupon.trim().toUpperCase()
-      if (validCodes[code]) {
-        setDiscount({ ...validCodes[code], code })
-        setCouponError('')
-      } else {
-        setCouponError('Invalid coupon code. Please try again.')
-      }
-    } catch {
-      setCouponError('Could not verify code. Please try again.')
+    const validCodes = {
+      'KIDDY10':  { type: 'percent',  value: 10,  label: '10% OFF' },
+      'KIDDY20':  { type: 'percent',  value: 20,  label: '20% OFF' },
+      'WELCOME':  { type: 'percent',  value: 15,  label: '15% OFF' },
+      'FLAT100':  { type: 'fixed',    value: 100, label: 'PKR 100 OFF' },
+      'FLAT200':  { type: 'fixed',    value: 200, label: 'PKR 200 OFF' },
+      'FREESHIP': { type: 'shipping', value: 250, label: 'Free Shipping' },
+    }
+    const code = coupon.trim().toUpperCase()
+    if (validCodes[code]) {
+      setDiscount({ ...validCodes[code], code })
+      setCouponError('')
+    } else {
+      setCouponError('Invalid coupon code. Please try again.')
     }
     setCouponLoading(false)
   }
+
   function buildWhatsAppMessage() {
     const variantText = variant?.title !== 'Default Title' ? '\nVariant: ' + variant?.title : ''
     const productText = isCart
       ? cartItems?.map(item =>
           '- ' + item.title +
           (item.variantTitle ? ' (' + item.variantTitle + ')' : '') +
-          ' x' + item.quantity +
-          ' = PKR ' + (item.price * item.quantity).toLocaleString()
+          ' x' + item.quantity + ' = PKR ' + (item.price * item.quantity).toLocaleString()
         ).join('\n')
       : product?.title + variantText
-
     const waNumber = form.sameAsPhone ? form.phone : form.whatsapp
-
-    const msg =
+    return encodeURIComponent(
       'NEW ORDER - Kiddy Trends\n\n' +
       (isCart ? 'Products:\n' + productText : 'Product: ' + productText) + '\n' +
-     'Subtotal: PKR ' + price.toLocaleString() + '\n' +
-(discount ? 'Discount (' + discount.code + '): - PKR ' + discountAmount.toLocaleString() + '\n' : '') +
-'Shipping: PKR ' + shipping.toLocaleString() + '\n' +
-'Total: PKR ' + total.toLocaleString() + '\n\n' +
+      'Subtotal: PKR ' + price.toLocaleString() + '\n' +
+      (discount ? 'Discount (' + discount.code + '): - PKR ' + discountAmount.toLocaleString() + '\n' : '') +
+      'Shipping: PKR ' + shipping.toLocaleString() + '\n' +
+      'Total: PKR ' + total.toLocaleString() + '\n\n' +
       'Customer Details\n' +
       'Name: ' + form.name + '\n' +
-      'Email: ' + form.email + '\n' +
+      'Email: ' + (form.email || 'N/A') + '\n' +
       'Phone: +92' + form.phone + '\n' +
       'WhatsApp: +92' + waNumber + '\n' +
       'Address: ' + form.address + ', ' + form.city + '\n' +
       'Payment: Cash on Delivery' +
       (form.notes ? '\nNotes: ' + form.notes : '') + '\n\n' +
       'Order placed via kiddytrends.com'
-
-    return encodeURIComponent(msg)
+    )
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (!validate()) return
     setLoading(true)
-
     try {
-      const items = isCart
+      const items    = isCart
         ? cartItems.map(i => ({ variantId: i.variantId, quantity: i.quantity }))
         : [{ variantId: variant?.id, quantity: 1 }]
-
       const waNumber = form.sameAsPhone ? form.phone : form.whatsapp
-
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           cartItems: items,
           customer: {
-            name:      form.name,
-            email:     form.email,
-            phone:     '+92' + form.phone,
-            whatsapp:  '+92' + waNumber,
-            address:   form.address,
-            city:      form.city,
-            notes:     form.notes,
-            payment:   'cod',
+            name:     form.name,
+            email:    form.email,
+            phone:    '+92' + form.phone,
+            whatsapp: '+92' + waNumber,
+            address:  form.address,
+            city:     form.city,
+            notes:    form.notes,
+            payment:  'cod',
           }
         })
       })
-
       const data = await res.json()
-
       if (data.success) {
-        // Send confirmation email
-        try {
-          const orderItems = isCart
-            ? cartItems.map(i => i.title + ' x' + i.quantity + ' = PKR ' + (i.price * i.quantity).toLocaleString()).join('\n')
-            : (product?.title || '') + ' x1 = PKR ' + price.toLocaleString()
-
-          await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
-            customer_name:  form.name,
-            customer_email: form.email,
-            phone:          '+92' + form.phone,
-            address:        form.address,
-            city:           form.city,
-            order_items:    orderItems,
-            subtotal:       'PKR ' + price.toLocaleString(),
-            shipping:       'PKR ' + shipping.toLocaleString(),
-            total:          'PKR ' + total.toLocaleString(),
-          }, EMAILJS_KEY)
-        } catch (emailErr) {
-          console.log('Email error:', emailErr)
+        // Send confirmation email if email provided
+        if (form.email.trim()) {
+          try {
+            const orderItems = isCart
+              ? cartItems.map(i => i.title + ' x' + i.quantity + ' = PKR ' + (i.price * i.quantity).toLocaleString()).join('\n')
+              : (product?.title || '') + ' x1 = PKR ' + price.toLocaleString()
+            await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
+              customer_name:  form.name,
+              customer_email: form.email,
+              phone:          '+92' + form.phone,
+              address:        form.address,
+              city:           form.city,
+              order_items:    orderItems,
+              subtotal:       'PKR ' + price.toLocaleString(),
+              shipping:       'PKR ' + shipping.toLocaleString(),
+              total:          'PKR ' + total.toLocaleString(),
+            }, EMAILJS_KEY)
+          } catch (emailErr) {
+            console.log('Email error:', emailErr)
+          }
         }
-
         setLoading(false)
-        setStep(2) else {
+        setStep(2)
+      } else {
         setLoading(false)
         alert('Error: ' + (data.error || 'Something went wrong. Please try again.'))
       }
@@ -246,8 +212,6 @@ async function applyCoupon() {
         {/* Step 1 - Form */}
         {step === 1 && (
           <div className="px-6 py-5">
-
-            {/* Order Summary */}
             <div className="bg-cream rounded-2xl p-4 mb-6">
               {isCart ? (
                 <div className="space-y-2">
@@ -255,28 +219,20 @@ async function applyCoupon() {
                   {cartItems?.map(item => (
                     <div key={item.variantId} className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
-                        {item.image
-                          ? <img src={item.image} alt={item.title} className="w-full h-full object-contain mix-blend-multiply p-0.5" />
-                          : <span className="text-lg">👕</span>
-                        }
+                        {item.image ? <img src={item.image} alt={item.title} className="w-full h-full object-contain mix-blend-multiply p-0.5" /> : <span className="text-lg">👕</span>}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-charcoal truncate">{item.title}</p>
                         {item.variantTitle && <p className="text-xs text-gray-400">{item.variantTitle}</p>}
                       </div>
-                      <p className="text-xs font-bold text-coral whitespace-nowrap">
-                        x{item.quantity} — PKR {(item.price * item.quantity).toLocaleString()}
-                      </p>
+                      <p className="text-xs font-bold text-coral whitespace-nowrap">x{item.quantity} — PKR {(item.price * item.quantity).toLocaleString()}</p>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="flex gap-4">
                   <div className="w-20 h-20 bg-white rounded-xl flex items-center justify-center flex-shrink-0">
-                    {image
-                      ? <img src={image} alt={product.title} className="w-full h-full object-contain mix-blend-multiply p-1 rounded-xl" />
-                      : <span className="text-3xl">👕</span>
-                    }
+                    {image ? <img src={image} alt={product.title} className="w-full h-full object-contain mix-blend-multiply p-1 rounded-xl" /> : <span className="text-3xl">👕</span>}
                   </div>
                   <div className="flex-1">
                     <h4 className="font-display text-sm text-charcoal leading-tight">{product?.title}</h4>
@@ -292,42 +248,34 @@ async function applyCoupon() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-
-              {/* Name */}
               <div>
                 <label className="block font-semibold text-sm text-charcoal mb-1">Full Name *</label>
                 <input type="text" placeholder="e.g. Sara Ahmed" value={form.name}
                   onChange={e => setForm({...form, name: e.target.value})}
-                  className={`w-full px-4 py-3 rounded-2xl border-2 focus:outline-none text-sm ${errors.name ? 'border-red-300 bg-red-50' : 'border-gray-100 focus:border-coral bg-cream'}`} />
+                  className={'w-full px-4 py-3 rounded-2xl border-2 focus:outline-none text-sm ' + (errors.name ? 'border-red-300 bg-red-50' : 'border-gray-100 focus:border-coral bg-cream')} />
                 {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
               </div>
 
-              {/* Email */}
               <div>
-               <label className="block font-semibold text-sm text-charcoal mb-1">Email Address (optional)</label>
+                <label className="block font-semibold text-sm text-charcoal mb-1">Email Address (optional)</label>
                 <input type="email" placeholder="e.g. sara@gmail.com" value={form.email}
                   onChange={e => setForm({...form, email: e.target.value})}
-                  className={`w-full px-4 py-3 rounded-2xl border-2 focus:outline-none text-sm ${errors.email ? 'border-red-300 bg-red-50' : 'border-gray-100 focus:border-coral bg-cream'}`} />
+                  className={'w-full px-4 py-3 rounded-2xl border-2 focus:outline-none text-sm ' + (errors.email ? 'border-red-300 bg-red-50' : 'border-gray-100 focus:border-coral bg-cream')} />
                 {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
               </div>
 
-              {/* Phone */}
               <div>
                 <label className="block font-semibold text-sm text-charcoal mb-1">Phone Number *</label>
                 <div className="flex gap-2">
-                  <div className="bg-cream border-2 border-gray-100 rounded-2xl px-3 flex items-center text-sm font-bold text-charcoal flex-shrink-0">
-                    🇵🇰 +92
-                  </div>
+                  <div className="bg-cream border-2 border-gray-100 rounded-2xl px-3 flex items-center text-sm font-bold text-charcoal flex-shrink-0">🇵🇰 +92</div>
                   <input type="tel" placeholder="3360677340" value={form.phone}
-                    onChange={e => setForm({...form, phone: formatPhone(e.target.value)})}
-                    maxLength={10}
-                    className={`flex-1 px-4 py-3 rounded-2xl border-2 focus:outline-none text-sm ${errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-100 focus:border-coral bg-cream'}`} />
+                    onChange={e => setForm({...form, phone: formatPhone(e.target.value)})} maxLength={10}
+                    className={'flex-1 px-4 py-3 rounded-2xl border-2 focus:outline-none text-sm ' + (errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-100 focus:border-coral bg-cream')} />
                 </div>
                 <p className="text-xs text-gray-400 mt-1">Enter 10 digits without 0 (e.g. 3360677340)</p>
                 {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone}</p>}
               </div>
 
-              {/* WhatsApp */}
               <div>
                 <label className="block font-semibold text-sm text-charcoal mb-2">WhatsApp Number *</label>
                 <label className="flex items-center gap-2 mb-3 cursor-pointer">
@@ -339,13 +287,10 @@ async function applyCoupon() {
                 {!form.sameAsPhone && (
                   <div>
                     <div className="flex gap-2">
-                      <div className="bg-cream border-2 border-gray-100 rounded-2xl px-3 flex items-center text-sm font-bold text-charcoal flex-shrink-0">
-                        🇵🇰 +92
-                      </div>
+                      <div className="bg-cream border-2 border-gray-100 rounded-2xl px-3 flex items-center text-sm font-bold text-charcoal flex-shrink-0">🇵🇰 +92</div>
                       <input type="tel" placeholder="3360677340" value={form.whatsapp}
-                        onChange={e => setForm({...form, whatsapp: formatPhone(e.target.value)})}
-                        maxLength={10}
-                        className={`flex-1 px-4 py-3 rounded-2xl border-2 focus:outline-none text-sm ${errors.whatsapp ? 'border-red-300 bg-red-50' : 'border-gray-100 focus:border-coral bg-cream'}`} />
+                        onChange={e => setForm({...form, whatsapp: formatPhone(e.target.value)})} maxLength={10}
+                        className={'flex-1 px-4 py-3 rounded-2xl border-2 focus:outline-none text-sm ' + (errors.whatsapp ? 'border-red-300 bg-red-50' : 'border-gray-100 focus:border-coral bg-cream')} />
                     </div>
                     <p className="text-xs text-gray-400 mt-1">Enter 10 digits without 0</p>
                     {errors.whatsapp && <p className="text-red-400 text-xs mt-1">{errors.whatsapp}</p>}
@@ -353,27 +298,24 @@ async function applyCoupon() {
                 )}
               </div>
 
-              {/* City */}
               <div>
                 <label className="block font-semibold text-sm text-charcoal mb-1">City / Town *</label>
                 <select value={form.city} onChange={e => setForm({...form, city: e.target.value})}
-                  className={`w-full px-4 py-3 rounded-2xl border-2 focus:outline-none text-sm ${errors.city ? 'border-red-300 bg-red-50' : 'border-gray-100 focus:border-coral bg-cream'}`}>
+                  className={'w-full px-4 py-3 rounded-2xl border-2 focus:outline-none text-sm ' + (errors.city ? 'border-red-300 bg-red-50' : 'border-gray-100 focus:border-coral bg-cream')}>
                   <option value="">Select your city or town</option>
                   {cities.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
                 {errors.city && <p className="text-red-400 text-xs mt-1">{errors.city}</p>}
               </div>
 
-              {/* Address */}
               <div>
                 <label className="block font-semibold text-sm text-charcoal mb-1">Delivery Address *</label>
                 <textarea placeholder="House #, Street, Area, Landmark..." value={form.address}
                   onChange={e => setForm({...form, address: e.target.value})} rows={2}
-                  className={`w-full px-4 py-3 rounded-2xl border-2 focus:outline-none text-sm resize-none ${errors.address ? 'border-red-300 bg-red-50' : 'border-gray-100 focus:border-coral bg-cream'}`} />
+                  className={'w-full px-4 py-3 rounded-2xl border-2 focus:outline-none text-sm resize-none ' + (errors.address ? 'border-red-300 bg-red-50' : 'border-gray-100 focus:border-coral bg-cream')} />
                 {errors.address && <p className="text-red-400 text-xs mt-1">{errors.address}</p>}
               </div>
 
-              {/* COD */}
               <div className="bg-coral/10 border-2 border-coral rounded-2xl p-4 flex items-center gap-3">
                 <div className="text-3xl">💵</div>
                 <div>
@@ -383,67 +325,63 @@ async function applyCoupon() {
                 <span className="ml-auto text-coral font-bold text-xs">✓ Selected</span>
               </div>
 
-              {/* Notes */}
-              {/* Coupon code */}
-<div>
-  <label className="block font-semibold text-sm text-charcoal mb-1">Discount Code (optional)</label>
-  <div className="flex gap-2">
-    <input type="text" placeholder="Enter coupon code" value={coupon}
-      onChange={e => { setCoupon(e.target.value.toUpperCase()); setDiscount(null); setCouponError('') }}
-      className="flex-1 px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm font-bold tracking-wider" />
-    <button type="button" onClick={applyCoupon} disabled={couponLoading || !coupon.trim()}
-      className="px-5 py-3 rounded-2xl bg-charcoal text-white text-sm font-bold hover:bg-coral transition-colors disabled:opacity-50">
-      {couponLoading ? '...' : 'Apply'}
-    </button>
-  </div>
-  {couponError && <p className="text-red-400 text-xs mt-1">{couponError}</p>}
-  {discount && (
-    <div className="flex items-center gap-2 mt-2 bg-mint/20 rounded-xl px-3 py-2">
-      <span className="text-green-600 font-bold text-xs">✓ {discount.label} applied!</span>
-      <button type="button" onClick={() => { setDiscount(null); setCoupon('') }}
-        className="ml-auto text-gray-400 hover:text-coral text-xs">✕ Remove</button>
-    </div>
-  )}
-</div>
-			  <div>
+              <div>
+                <label className="block font-semibold text-sm text-charcoal mb-1">Discount Code (optional)</label>
+                <div className="flex gap-2">
+                  <input type="text" placeholder="Enter coupon code" value={coupon}
+                    onChange={e => { setCoupon(e.target.value.toUpperCase()); setDiscount(null); setCouponError('') }}
+                    className="flex-1 px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm font-bold tracking-wider" />
+                  <button type="button" onClick={applyCoupon} disabled={couponLoading || !coupon.trim()}
+                    className="px-5 py-3 rounded-2xl bg-charcoal text-white text-sm font-bold hover:bg-coral transition-colors disabled:opacity-50">
+                    {couponLoading ? '...' : 'Apply'}
+                  </button>
+                </div>
+                {couponError && <p className="text-red-400 text-xs mt-1">{couponError}</p>}
+                {discount && (
+                  <div className="flex items-center gap-2 mt-2 bg-mint/20 rounded-xl px-3 py-2">
+                    <span className="text-green-600 font-bold text-xs">✓ {discount.label} applied!</span>
+                    <button type="button" onClick={() => { setDiscount(null); setCoupon('') }}
+                      className="ml-auto text-gray-400 hover:text-coral text-xs">✕ Remove</button>
+                  </div>
+                )}
+              </div>
+
+              <div>
                 <label className="block font-semibold text-sm text-charcoal mb-1">Order Notes (optional)</label>
                 <input type="text" placeholder="Any special instructions..." value={form.notes}
                   onChange={e => setForm({...form, notes: e.target.value})}
                   className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm" />
               </div>
 
-              {/* Total */}
-             <div className="bg-cream rounded-2xl p-4 space-y-2">
-  <div className="flex justify-between text-sm">
-    <span className="text-gray-500">Subtotal</span>
-    <span className="font-semibold">PKR {price.toLocaleString()}</span>
-  </div>
-  {discount && discount.type !== 'shipping' && (
-    <div className="flex justify-between text-sm">
-      <span className="text-green-600 font-semibold">Discount ({discount.code})</span>
-      <span className="text-green-600 font-semibold">- PKR {discountAmount.toLocaleString()}</span>
-    </div>
-  )}
-  <div className="flex justify-between text-sm">
-    <span className="text-gray-500">Shipping</span>
-    <span className={discount?.type === 'shipping' ? 'text-green-600 font-semibold line-through' : 'font-semibold'}>
-      PKR 250
-    </span>
-    {discount?.type === 'shipping' && <span className="text-green-600 font-semibold">FREE</span>}
-  </div>
-  <div className="flex justify-between border-t border-gray-200 pt-2">
-    <span className="font-display text-base text-charcoal">Total</span>
-    <span className="font-display text-lg text-coral">PKR {total.toLocaleString()}</span>
-  </div>
-</div>
+              <div className="bg-cream rounded-2xl p-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Subtotal</span>
+                  <span className="font-semibold">PKR {price.toLocaleString()}</span>
+                </div>
+                {discount && discount.type !== 'shipping' && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-green-600 font-semibold">Discount ({discount.code})</span>
+                    <span className="text-green-600 font-semibold">- PKR {discountAmount.toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Shipping</span>
+                  {discount?.type === 'shipping'
+                    ? <div className="flex gap-2"><span className="line-through text-gray-400">PKR 250</span><span className="text-green-600 font-semibold">FREE</span></div>
+                    : <span className="font-semibold">PKR 250</span>
+                  }
+                </div>
+                <div className="flex justify-between border-t border-gray-200 pt-2">
+                  <span className="font-display text-base text-charcoal">Total</span>
+                  <span className="font-display text-lg text-coral">PKR {total.toLocaleString()}</span>
+                </div>
+              </div>
 
               <button type="submit" disabled={loading}
                 className="w-full bg-coral text-white font-display text-lg py-4 rounded-2xl hover:bg-opacity-90 transition-all hover:scale-[1.02] active:scale-95 shadow-md disabled:opacity-70">
                 {loading ? 'Placing Order...' : 'Place Order'}
               </button>
-              <p className="text-center text-xs text-gray-400">
-                Your order will be confirmed via WhatsApp
-              </p>
+              <p className="text-center text-xs text-gray-400">Your order will be confirmed shortly</p>
             </form>
           </div>
         )}
@@ -453,34 +391,13 @@ async function applyCoupon() {
           <div className="px-6 py-10 text-center">
             <div className="text-7xl mb-4">🎉</div>
             <h3 className="font-display text-3xl text-charcoal mb-2">Order Confirmed!</h3>
-            <p className="text-gray-500 mb-6">
-              Thank you! Your order has been placed successfully.
-            </p>
+            <p className="text-gray-500 mb-6">Thank you! Your order has been placed successfully.</p>
             <div className="bg-cream rounded-2xl p-5 text-left mb-6 space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Name</span>
-                <span className="font-semibold">{form.name}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Email</span>
-                <span className="font-semibold">{form.email}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Phone</span>
-                <span className="font-semibold">+92{form.phone}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">WhatsApp</span>
-                <span className="font-semibold">+92{form.sameAsPhone ? form.phone : form.whatsapp}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">City</span>
-                <span className="font-semibold">{form.city}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Payment</span>
-                <span className="font-semibold">Cash on Delivery</span>
-              </div>
+              <div className="flex justify-between text-sm"><span className="text-gray-500">Name</span><span className="font-semibold">{form.name}</span></div>
+              {form.email && <div className="flex justify-between text-sm"><span className="text-gray-500">Email</span><span className="font-semibold">{form.email}</span></div>}
+              <div className="flex justify-between text-sm"><span className="text-gray-500">Phone</span><span className="font-semibold">+92{form.phone}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-gray-500">City</span><span className="font-semibold">{form.city}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-gray-500">Payment</span><span className="font-semibold">Cash on Delivery</span></div>
               <div className="flex justify-between border-t border-gray-200 pt-3">
                 <span className="font-display text-base text-charcoal">Total</span>
                 <span className="font-display text-lg text-coral">PKR {total.toLocaleString()}</span>
@@ -489,12 +406,9 @@ async function applyCoupon() {
             <div className="bg-skyblue/20 rounded-2xl p-4 mb-6">
               <p className="text-2xl mb-1">📦</p>
               <p className="font-display text-base text-charcoal">Expected Delivery: 3-5 days</p>
-              <p className="text-xs text-gray-500 mt-1">
-                Our team will contact you on <strong>+92{form.phone}</strong> to confirm delivery
-              </p>
+              <p className="text-xs text-gray-500 mt-1">Our team will contact you on <strong>+92{form.phone}</strong> to confirm delivery</p>
             </div>
-            <button onClick={onClose}
-              className="w-full bg-coral text-white font-display text-base py-3 rounded-2xl hover:bg-opacity-90 transition-colors">
+            <button onClick={onClose} className="w-full bg-coral text-white font-display text-base py-3 rounded-2xl hover:bg-opacity-90 transition-colors">
               Continue Shopping 🛍️
             </button>
           </div>
