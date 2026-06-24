@@ -2,23 +2,21 @@
 const nextConfig = {
   images: {
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'cdn.shopify.com',
-      },
+      { protocol: 'https', hostname: 'cdn.shopify.com' },
     ],
     formats: ['image/webp'],
+    minimumCacheTTL: 3600,
   },
+  compress: true,
   async headers() {
     return [
       {
+        source: '/(.*)\\.(jpg|jpeg|png|gif|webp|svg|ico)',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+      {
         source: '/(.*)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=300, stale-while-revalidate=600',
-          },
-        ],
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=300, stale-while-revalidate=600' }],
       },
     ]
   },

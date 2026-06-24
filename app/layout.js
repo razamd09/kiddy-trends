@@ -16,22 +16,13 @@ export const metadata = {
   creator: 'Kiddy Trends',
   publisher: 'Kiddy Trends',
   metadataBase: new URL('https://thekiddytrends.com'),
-  alternates: {
-    canonical: '/',
-  },
+  alternates: { canonical: '/' },
   openGraph: {
     title: 'Kiddy Trends – Fun Fashion for Little Ones',
     description: 'Shop cute & affordable kids clothing, bedding, bags and accessories in Pakistan. Newborn to 12 years.',
     url: 'https://thekiddytrends.com',
     siteName: 'Kiddy Trends',
-    images: [
-      {
-        url: 'https://thekiddytrends.com/logo.jpg',
-        width: 800,
-        height: 800,
-        alt: 'Kiddy Trends Logo',
-      }
-    ],
+    images: [{ url: 'https://thekiddytrends.com/logo.jpg', width: 800, height: 800, alt: 'Kiddy Trends Logo' }],
     locale: 'en_PK',
     type: 'website',
   },
@@ -44,37 +35,15 @@ export const metadata = {
   robots: {
     index: true,
     follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-    },
+    googleBot: { index: true, follow: true },
   },
 }
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-       
-{/* Facebook Pixel */}
-<Script id="facebook-pixel" strategy="afterInteractive">
-  {`
-    !function(f,b,e,v,n,t,s)
-    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-    n.queue=[];t=b.createElement(e);t.async=!0;
-    t.src=v;s=b.getElementsByTagName(e)[0];
-    s.parentNode.insertBefore(t,s)}(window, document,'script',
-    'https://connect.facebook.net/en_US/fbevents.js');
-    fbq('init', '8362200723884208');
-    fbq('track', 'PageView');
-  `}
-</Script>
-{/* TikTok embed */}
-<Script src="https://www.tiktok.com/embed.js" strategy="lazyOnload" />
-<Script src="https://www.instagram.com/embed.js" strategy="lazyOnload" />
-
-	   {/* Google Analytics */}
+        {/* Google Analytics — loads after page interactive */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-RWMHQN9PL4"
           strategy="afterInteractive"
@@ -84,33 +53,55 @@ export default function RootLayout({ children }) {
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', 'G-RWMHQN9PL4');
+            gtag('config', 'G-RWMHQN9PL4', { send_page_view: false });
           `}
         </Script>
-		
-		{/* Tawk.to Live Chat */}
-<Script id="tawk-to" strategy="lazyOnload">
-  {`
-    var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
-    (function(){
-    var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
-    s1.async=true;
-    s1.src='https://embed.tawk.to/6a3c0c849358261d45a3012b/1jrt91qcr';
-    s1.charset='UTF-8';
-    s1.setAttribute('crossorigin','*');
-    s0.parentNode.insertBefore(s1,s0);
-    })();
-  `}
-</Script>
-		
-<CartProvider>
-  <RewardsPopup />
-<ExitIntentPopup />
-<LiveNotifications />
-  <Navbar />
-  <CartDrawer />
+
+        {/* Facebook Pixel — lazy */}
+        <Script id="facebook-pixel" strategy="lazyOnload">
+          {`
+            !function(f,b,e,v,n,t,s)
+            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+            n.queue=[];t=b.createElement(e);t.async=!0;
+            t.src=v;s=b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t,s)}(window, document,'script',
+            'https://connect.facebook.net/en_US/fbevents.js');
+            fbq('init', '8362200723884208');
+            fbq('track', 'PageView');
+          `}
+        </Script>
+
+        {/* TikTok & Instagram embeds — lazy */}
+        <Script src="https://www.tiktok.com/embed.js" strategy="lazyOnload" />
+        <Script src="https://www.instagram.com/embed.js" strategy="lazyOnload" />
+
+        {/* Tawk.to Live Chat — lazy */}
+        <Script id="tawk-to" strategy="lazyOnload">
+          {`
+            var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+            (function(){
+            var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+            s1.async=true;
+            s1.src='https://embed.tawk.to/6a3c0c849358261d45a3012b/1jrt91qcr';
+            s1.charset='UTF-8';
+            s1.setAttribute('crossorigin','*');
+            s0.parentNode.insertBefore(s1,s0);
+            })();
+          `}
+        </Script>
+
+        <CartProvider>
+          <RewardsPopup />
+          <ExitIntentPopup />
+          <LiveNotifications />
+          <Navbar />
+          <CartDrawer />
           <main>{children}</main>
           <Footer />
+
+          {/* WhatsApp floating button */}
           <a href="https://wa.me/923360677340" target="_blank" rel="noopener noreferrer"
             className="fixed bottom-6 right-6 z-50 bg-green-500 hover:bg-green-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:scale-110 transition-all"
             title="Chat with us on WhatsApp">

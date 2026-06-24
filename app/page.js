@@ -157,7 +157,64 @@ export default function Home() {
       </section>
 
       {/* TIKTOK VIDEOS */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      {/* TIKTOK VIDEOS */}
+<section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+  <div className="text-center mb-10">
+    <h2 className="section-title mb-3">Watch Us on TikTok 🎵</h2>
+    <p className="text-gray-500 text-lg">See our latest collections in action!</p>
+    <a href="https://tiktok.com/@kiddy.trends" target="_blank" rel="noopener noreferrer"
+      className="inline-block mt-3 bg-charcoal text-white font-display text-sm px-5 py-2 rounded-full hover:bg-coral transition-colors">
+      Follow @kiddy.trends ➔
+    </a>
+  </div>
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    {['7649019831047458056','7647926799875214600','7649698031213858055','7647962725112352018'].map(id => (
+      <div key={id} className="rounded-3xl overflow-hidden shadow-sm border border-gray-100 bg-white">
+        <iframe
+          src={'https://www.tiktok.com/embed/v2/' + id}
+          className="w-full"
+          style={{height:'560px',border:'none'}}
+          allowFullScreen
+          allow="encrypted-media"
+          loading="lazy"
+          title={'TikTok video ' + id}
+        />
+      </div>
+    ))}
+  </div>
+</section>
+
+{/* INSTAGRAM */}
+<section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+  <div className="text-center mb-8">
+    <div className="text-4xl mb-3">📸</div>
+    <h2 className="section-title mb-2">Follow Us on Instagram</h2>
+    <p className="text-gray-500 mb-1">See our latest collections & happy customers!</p>
+    <a href="https://instagram.com/trendykids.2020" target="_blank" rel="noopener noreferrer"
+      className="text-coral font-bold hover:underline">@trendykids.2020</a>
+  </div>
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    {['DZ7W_ZWo-k1','DZ9YMmLCCjg','DZ4bJK5iHA3','DZ21w0hCOEz'].map(id => (
+      <div key={id} className="rounded-3xl overflow-hidden shadow-sm border border-gray-100 bg-white min-h-[480px]">
+        <iframe
+          src={'https://www.instagram.com/p/' + id + '/embed/captioned/'}
+          className="w-full"
+          style={{height:'480px',border:'none'}}
+          allowFullScreen
+          loading="lazy"
+          title={'Instagram post ' + id}
+          scrolling="no"
+        />
+      </div>
+    ))}
+  </div>
+  <div className="text-center mt-6">
+    <a href="https://instagram.com/trendykids.2020" target="_blank" rel="noopener noreferrer"
+      className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-display px-8 py-3 rounded-full hover:opacity-90 transition-all hover:scale-105 shadow-md">
+      📸 Follow @trendykids.2020
+    </a>
+  </div>
+</section>
         <div className="text-center mb-10">
           <h2 className="section-title mb-3">Watch Us on TikTok 🎵</h2>
           <p className="text-gray-500 text-lg">See our latest collections in action!</p>

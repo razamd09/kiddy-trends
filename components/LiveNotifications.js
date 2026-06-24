@@ -26,9 +26,7 @@ export default function LiveNotifications() {
 
   useEffect(() => {
     // Start after 5 seconds
-    const startTimer = setTimeout(() => {
-      showNext(0)
-    }, 5000)
+    const startTimer = setTimeout(() => tick(), 10000)
     return () => clearTimeout(startTimer)
   }, [])
 
