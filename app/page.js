@@ -21,7 +21,7 @@ const features = [
 ]
 
 export default function Home() {
-  const [trending, setTrending] = useState([])
+  const [trending, setTrending]             = useState([])
   const [loadingTrending, setLoadingTrending] = useState(true)
 
   useEffect(() => {
@@ -31,22 +31,22 @@ export default function Home() {
         const data = await res.json()
         const all  = data.products || []
 
-        const bags     = all.filter(p => {
+        const bags  = all.filter(p => {
           const t = (p.product_type || '').toLowerCase()
           const h = (p.title || '').toLowerCase()
           return t.includes('bag') || t.includes('backpack') || h.includes('bag') || h.includes('backpack')
         })
-        const bedding  = all.filter(p => {
+        const bedding = all.filter(p => {
           const t = (p.product_type || '').toLowerCase()
           const h = (p.title || '').toLowerCase()
           return t.includes('bed') || t.includes('sheet') || t.includes('pillow') || h.includes('bed') || h.includes('sheet')
         })
-        const girls    = all.filter(p => {
+        const girls = all.filter(p => {
           const t = (p.tags || []).join(' ').toLowerCase()
           const h = (p.title || '').toLowerCase()
           return t.includes('girl') || h.includes('girl') || h.includes('frock') || h.includes('dress')
         })
-        const boys     = all.filter(p => {
+        const boys = all.filter(p => {
           const t = (p.tags || []).join(' ').toLowerCase()
           const h = (p.title || '').toLowerCase()
           return t.includes('boy') || h.includes('boy') || h.includes('shirt') || h.includes('trouser')
@@ -58,16 +58,8 @@ export default function Home() {
         })
 
         const pick = (arr, n) => arr.sort(() => 0.5 - Math.random()).slice(0, n)
-        const trending = [
-          ...pick(girls, 2),
-          ...pick(boys, 2),
-          ...pick(bags, 2),
-          ...pick(bedding, 2),
-        ]
-        const final = trending.length >= 6
-          ? trending
-          : [...trending, ...pick(newArrivals, 8 - trending.length)]
-
+        const trending = [...pick(girls, 2), ...pick(boys, 2), ...pick(bags, 2), ...pick(bedding, 2)]
+        const final = trending.length >= 6 ? trending : [...trending, ...pick(newArrivals, 8 - trending.length)]
         setTrending(final.slice(0, 8))
         setLoadingTrending(false)
       } catch { setLoadingTrending(false) }
@@ -112,27 +104,31 @@ export default function Home() {
         </div>
       </section>
 
-     {/* PROMO BANNER */}
-<section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-  <div className="bg-charcoal rounded-3xl px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-    <div className="flex items-center gap-3">
-      <span className="text-2xl animate-bounce2">🎉</span>
-      <div>
-        <p className="font-display text-white text-lg leading-tight">Summer Sale is LIVE!</p>
-        <p className="text-gray-300 text-sm">Up to 50% OFF on kids clothing — Limited time only!</p>
-      </div>
-    </div>
-    <div className="flex items-center gap-3 flex-shrink-0">
-      <div className="bg-sunny text-charcoal font-display text-sm px-4 py-1.5 rounded-full">
-        Use code: <strong>KIDDY20</strong>
-      </div>
-      <a href="/collections"
-        className="bg-coral text-white font-display text-sm px-5 py-2 rounded-full hover:bg-opacity-90 transition-all hover:scale-105">
-        Shop Now →
-      </a>
-    </div>
-  </div>
-</section>   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* PROMO BANNER */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
+        <div className="bg-charcoal rounded-3xl px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl animate-bounce2">🎉</span>
+            <div>
+              <p className="font-display text-white text-lg leading-tight">Summer Sale is LIVE!</p>
+              <p className="text-gray-300 text-sm">Up to 50% OFF on kids clothing — Limited time only!</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="bg-sunny text-charcoal font-display text-sm px-4 py-1.5 rounded-full">
+              Use code: <strong>KIDDY20</strong>
+            </div>
+            <Link href="/collections"
+              className="bg-coral text-white font-display text-sm px-5 py-2 rounded-full hover:bg-opacity-90 transition-all hover:scale-105">
+              Shop Now →
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* SHOP BY CATEGORY */}
+      <section className="bg-white py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <h2 className="section-title mb-3">Shop by Category</h2>
             <p className="text-gray-500 text-lg">Everything your little one needs</p>
@@ -156,7 +152,6 @@ export default function Home() {
           <h2 className="section-title">Trending Now 🔥</h2>
           <Link href="/collections" className="text-coral font-semibold hover:underline">See all →</Link>
         </div>
-
         {loadingTrending && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
             {[...Array(8)].map((_, i) => (
@@ -171,7 +166,6 @@ export default function Home() {
             ))}
           </div>
         )}
-
         {!loadingTrending && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
             {trending.map(product => (
