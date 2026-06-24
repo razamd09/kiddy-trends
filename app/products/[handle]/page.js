@@ -65,37 +65,34 @@ const boyReviewers = [
 ]
 
 const neutralReviewers = [
-  { name: 'Ayesha K.',   city: 'Lahore',      review: 'Amazing quality for the price! The product looks exactly as shown. Fast delivery too. Highly recommended!' },
-  { name: 'Sana M.',     city: 'Karachi',     review: 'Very satisfied with this purchase. Great value for money and the quality is excellent!' },
-  { name: 'Fatima R.',   city: 'Islamabad',   review: 'Excellent product! Super soft material and very durable. Will definitely order again!' },
-  { name: 'Nadia A.',    city: 'Faisalabad',  review: 'Very happy with this purchase. Fast delivery and quality is much better than expected!' },
-  { name: 'Hina S.',     city: 'Multan',      review: 'Beautiful design and excellent quality. The fabric is breathable and very comfortable!' },
-  { name: 'Uzma F.',     city: 'Lahore',      review: 'Kiddy Trends never disappoints! Consistent quality every time. Will keep ordering!' },
-  { name: 'Rabia N.',    city: 'Gujranwala',  review: 'Super soft and durable fabric. Great value for money. Packaging was also very neat!' },
-  { name: 'Saima H.',    city: 'Quetta',      review: 'Very satisfied with this order. Product exactly as described and delivery was quick!' },
+  { name: 'Ayesha K.',  city: 'Lahore',     review: 'Amazing quality for the price! The product looks exactly as shown. Fast delivery too. Highly recommended!' },
+  { name: 'Sana M.',    city: 'Karachi',    review: 'Very satisfied with this purchase. Great value for money and the quality is excellent!' },
+  { name: 'Fatima R.',  city: 'Islamabad',  review: 'Excellent product! Super soft material and very durable. Will definitely order again!' },
+  { name: 'Nadia A.',   city: 'Faisalabad', review: 'Very happy with this purchase. Fast delivery and quality is much better than expected!' },
+  { name: 'Hina S.',    city: 'Multan',     review: 'Beautiful design and excellent quality. The fabric is breathable and very comfortable!' },
+  { name: 'Uzma F.',    city: 'Lahore',     review: 'Kiddy Trends never disappoints! Consistent quality every time. Will keep ordering!' },
+  { name: 'Rabia N.',   city: 'Gujranwala', review: 'Super soft and durable fabric. Great value for money. Packaging was also very neat!' },
+  { name: 'Saima H.',   city: 'Quetta',     review: 'Very satisfied with this order. Product exactly as described and delivery was quick!' },
 ]
 
 function getProductReviews(productId, title) {
   const seed = productId % 100
   if (seed > 50) return null
-
   const titleLower = (title || '').toLowerCase()
   const isBoy  = titleLower.includes('boy') || titleLower.includes('boys')
   const isGirl = titleLower.includes('girl') || titleLower.includes('girls') ||
                  titleLower.includes('frock') || titleLower.includes('dress')
-
-  const pool = isBoy ? boyReviewers : isGirl ? girlReviewers : neutralReviewers
-
+  const pool     = isBoy ? boyReviewers : isGirl ? girlReviewers : neutralReviewers
   const count    = (productId % 3) + 1
   const startIdx = productId % pool.length
   const selected = []
   for (let i = 0; i < count; i++) {
     selected.push(pool[(startIdx + i) % pool.length])
   }
-
   const rating = (productId % 2 === 0) ? 5 : 4
   return { rating, reviews: selected }
 }
+
 function StarRating({ rating }) {
   return (
     <div className="flex gap-0.5">
@@ -163,12 +160,30 @@ export default function ProductPage() {
     fetchRelated()
   }, [product])
 
-  const price        = parseFloat(selectedVariant?.price || 0)
+  const price      = parseFloat(selectedVariant?.price || 0)
   const comparePrice = parseFloat(selectedVariant?.compare_at_price || 0)
-  const isOnSale     = comparePrice > price
-  const isSoldOut    = false
-  const inCart       = cart.find(i => i.variantId === selectedVariant?.id)?.quantity || 0
-  const isMaxed      = inCart >= 2
+  const isSoldOut  = false
+  const inCart     = cart.find(i => i.variantId === selectedVariant?.id)?.quantity || 0
+  const isMaxed    = inCart >= 2
+
+  const discountPct = (() => {
+    const type  = (product?.product_type || '').toLowerCase()
+    const title = (product?.title || '').toLowerCase()
+    if (type.includes('bag') || title.includes('bag')) return 25
+    if (type.includes('bed') || title.includes('bed')) return 30
+    if (type.includes('access') || title.includes('pin') || title.includes('hair')) return 20
+    return 50
+  })()
+
+  const fakeOriginal = comparePrice > price
+    ? comparePrice
+    : Math.round(price * (1 + discountPct / 100) / 100) * 100
+
+  const lowStock = (() => {
+    const seed = product?.id % 10
+    if (!product || seed > 4) return null
+    return [1,2,3,2,1,3,2,1,3,2][seed]
+  })()
 
   const hasVariants = product?.variants?.length > 1 &&
     !(product?.variants?.length === 1 && product?.variants[0]?.title === 'Default Title')
@@ -202,10 +217,11 @@ export default function ProductPage() {
     </div>
   )
 
-  const productTags  = typeof product.tags === 'string'
+  const productTags = typeof product.tags === 'string'
     ? product.tags.split(',').map(t => t.trim()).filter(Boolean)
     : (product.tags || [])
-const reviewData = getProductReviews(product.id, product.title)
+  const reviewData = getProductReviews(product.id, product.title)
+
   return (
     <>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -246,8 +262,10 @@ const reviewData = getProductReviews(product.id, product.title)
 
           {/* Info */}
           <div className="flex flex-col">
+
+            {/* Badges */}
             <div className="flex flex-wrap gap-2 mb-4">
-              {isOnSale && <span className="bg-coral text-white text-xs px-3 py-1 rounded-full font-bold">SALE</span>}
+              <span className="bg-coral text-white text-xs px-3 py-1 rounded-full font-bold">{discountPct}% OFF</span>
               {product.product_type && <span className="bg-skyblue/30 text-charcoal text-xs px-3 py-1 rounded-full font-semibold">{product.product_type}</span>}
             </div>
 
@@ -262,12 +280,24 @@ const reviewData = getProductReviews(product.id, product.title)
               </div>
             )}
 
-            <div className="flex items-center gap-3 mb-6">
+            {/* Price */}
+            <div className="flex items-center gap-3 mb-4">
               <span className="font-display text-3xl text-coral">PKR {price.toLocaleString()}</span>
-              {isOnSale && <span className="font-display text-xl text-gray-400 line-through">PKR {comparePrice.toLocaleString()}</span>}
-              {isOnSale && <span className="bg-coral/10 text-coral text-sm px-3 py-1 rounded-full font-bold">Save PKR {(comparePrice - price).toLocaleString()}</span>}
+              <span className="font-display text-xl text-gray-400 line-through">PKR {fakeOriginal.toLocaleString()}</span>
+              <span className="bg-coral/10 text-coral text-sm px-3 py-1 rounded-full font-bold">
+                Save PKR {(fakeOriginal - price).toLocaleString()}
+              </span>
             </div>
 
+            {/* Low stock */}
+            {lowStock && (
+              <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 mb-4">
+                <span className="text-orange-500 text-lg">🔥</span>
+                <p className="text-orange-600 font-bold text-sm">Only {lowStock} left in stock — order soon!</p>
+              </div>
+            )}
+
+            {/* Variants */}
             {hasVariants && (
               <div className="mb-6">
                 <p className="font-semibold text-sm text-charcoal mb-3">
@@ -289,6 +319,7 @@ const reviewData = getProductReviews(product.id, product.title)
               </div>
             )}
 
+            {/* Shipping info */}
             <div className="bg-cream rounded-2xl p-4 mb-6 space-y-2">
               <div className="flex items-center gap-2 text-sm">
                 <span>🚚</span>
@@ -304,6 +335,7 @@ const reviewData = getProductReviews(product.id, product.title)
               </div>
             </div>
 
+            {/* Buttons */}
             <div className="flex gap-3 mb-4">
               <button onClick={handleAddToCart} disabled={isSoldOut || isMaxed}
                 className={'flex-1 py-4 rounded-2xl font-display text-base border-2 transition-all ' + (
@@ -328,6 +360,7 @@ const reviewData = getProductReviews(product.id, product.title)
               📏 View Size Chart
             </button>
 
+            {/* Description */}
             {product.body_html && (
               <div className="border-t border-gray-100 pt-6">
                 <h3 className="font-display text-xl text-charcoal mb-3">Product Details</h3>
@@ -336,6 +369,7 @@ const reviewData = getProductReviews(product.id, product.title)
               </div>
             )}
 
+            {/* Tags */}
             {productTags.length > 0 && (
               <div className="mt-4 flex flex-wrap gap-2">
                 {productTags.slice(0, 6).map(tag => (
@@ -376,7 +410,7 @@ const reviewData = getProductReviews(product.id, product.title)
           </div>
         </div>
 
-        {/* Related products */}
+        {/* Related */}
         {related.length > 0 && (
           <section>
             <h2 className="section-title mb-8">You might also like 💛</h2>
@@ -413,19 +447,11 @@ const reviewData = getProductReviews(product.id, product.title)
                 </thead>
                 <tbody>
                   {[
-                    ['0–3 Months',           '10', '11'],
-                    ['3–6 Months',           '11', '11'],
-                    ['6–9 Months',           '12', '12'],
-                    ['9–12 Months',          '13', '14'],
-                    ['12–18 Months (1 Year)','14', '16'],
-                    ['18–24 Months',         '15', '17'],
-                    ['2–3 Year',             '16', '18'],
-                    ['3–4 Year',             '17', '20'],
-                    ['4–5 Year',             '18', '22'],
-                    ['5–6 Year',             '19', '24'],
-                    ['6–7 Year',             '20', '26'],
-                    ['7–8 Year',             '21/22', '28/30'],
-                    ['9–10 Year',            '23/24', '32'],
+                    ['0–3 Months','10','11'],['3–6 Months','11','11'],['6–9 Months','12','12'],
+                    ['9–12 Months','13','14'],['12–18 Months (1 Year)','14','16'],
+                    ['18–24 Months','15','17'],['2–3 Year','16','18'],['3–4 Year','17','20'],
+                    ['4–5 Year','18','22'],['5–6 Year','19','24'],['6–7 Year','20','26'],
+                    ['7–8 Year','21/22','28/30'],['9–10 Year','23/24','32'],
                   ].map((row, i) => (
                     <tr key={i} className={i % 2 === 0 ? 'bg-cream' : ''}>
                       <td className="p-3 font-display text-coral">{row[0]}</td>
@@ -448,4 +474,4 @@ const reviewData = getProductReviews(product.id, product.title)
       )}
     </>
   )
-}	
+}

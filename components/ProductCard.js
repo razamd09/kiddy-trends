@@ -8,6 +8,24 @@ function getCardRating(productId) {
   return (productId % 2 === 0) ? 5 : 4
 }
 
+// Fake low stock — shows on ~40% of products
+function getLowStock(productId) {
+  const seed = productId % 10
+  if (seed > 4) return null
+  const stocks = [1, 2, 3, 2, 1, 3, 2, 1, 3, 2]
+  return stocks[seed]
+}
+
+// Fake discount % based on category
+function getFakeDiscount(product) {
+  const type  = (product.product_type || '').toLowerCase()
+  const title = (product.title || '').toLowerCase()
+  if (type.includes('bag') || type.includes('backpack') || title.includes('bag')) return 25
+  if (type.includes('bed') || type.includes('sheet') || title.includes('bed')) return 30
+  if (type.includes('access') || title.includes('pin') || title.includes('hair')) return 20
+  return 50 // clothing default
+}
+
 export default function ProductCard({ product }) {
   const { addToCart, cart } = useCart()
   const [selectedVariant, setSelectedVariant] = useState(product.variants?.[0])
@@ -17,11 +35,18 @@ export default function ProductCard({ product }) {
   const price        = parseFloat(selectedVariant?.price || 0)
   const comparePrice = parseFloat(selectedVariant?.compare_at_price || 0)
   const image        = product.images?.[0]?.src
-  const isOnSale     = comparePrice > price
   const isSoldOut    = !selectedVariant?.available && selectedVariant?.inventory_management === 'shopify'
   const inCart       = cart.find(i => i.variantId === selectedVariant?.id)?.quantity || 0
   const isMaxed      = inCart >= 2
   const rating       = getCardRating(product.id)
+  const lowStock     = getLowStock(product.id)
+  const discountPct  = getFakeDiscount(product)
+
+  // If no compare price set by Shopify, generate fake original price
+  const hasRealSale    = comparePrice > price
+  const fakeOriginal   = hasRealSale ? comparePrice : Math.round(price * (1 + discountPct / 100) / 100) * 100
+  const displayOriginal = fakeOriginal
+  const isOnSale       = true // always show sale
 
   const hasVariants = product.variants?.length > 1 &&
     !(product.variants.length === 1 && product.variants[0].title === 'Default Title')
@@ -47,9 +72,19 @@ export default function ProductCard({ product }) {
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-5xl bg-white">👕</div>
           )}
-          {isOnSale && !isSoldOut && (
-            <span className="absolute top-2 left-2 bg-coral text-white text-xs px-2 py-1 rounded-full font-bold z-10">SALE</span>
+
+          {/* Discount badge */}
+          <span className="absolute top-2 left-2 bg-coral text-white text-xs px-2 py-1 rounded-full font-bold z-10">
+            {discountPct}% OFF
+          </span>
+
+          {/* Low stock badge */}
+          {lowStock && !isSoldOut && (
+            <span className="absolute top-2 right-2 bg-sunny text-charcoal text-xs px-2 py-1 rounded-full font-bold z-10">
+              Only {lowStock} left!
+            </span>
           )}
+
           {isSoldOut && (
             <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
               <span className="bg-white text-charcoal font-display text-sm px-3 py-1 rounded-full">Sold Out</span>
@@ -78,10 +113,16 @@ export default function ProductCard({ product }) {
             </div>
           )}
 
+          {/* Price */}
           <div className="flex items-center gap-2 mt-2">
             <p className="text-coral font-bold text-sm">PKR {price.toLocaleString()}</p>
-            {isOnSale && <p className="text-gray-400 text-xs line-through">PKR {comparePrice.toLocaleString()}</p>}
+            <p className="text-gray-400 text-xs line-through">PKR {displayOriginal.toLocaleString()}</p>
           </div>
+
+          {/* Low stock warning text */}
+          {lowStock && !isSoldOut && (
+            <p className="text-orange-500 text-xs font-bold mt-1">🔥 Only {lowStock} left in stock!</p>
+          )}
 
           {/* Variant selector */}
           {hasVariants && (
