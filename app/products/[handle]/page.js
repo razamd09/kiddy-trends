@@ -192,10 +192,7 @@ export default function ProductPage() {
                 <span>📦</span>
                 <span className="text-gray-600">Delivery in <strong className="text-charcoal">3-5 business days</strong></span>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <span>↩️</span>
-                <span className="text-gray-600"><strong className="text-charcoal">7-day returns</strong> — hassle free</span>
-              </div>
+              
             </div>
 
             <div className="flex gap-3 mb-4">
