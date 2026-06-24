@@ -86,6 +86,22 @@ export default function RootLayout({ children }) {
             gtag('config', 'G-RWMHQN9PL4');
           `}
         </Script>
+		
+		{/* Tawk.to Live Chat */}
+<Script id="tawk-to" strategy="lazyOnload">
+  {`
+    var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+    (function(){
+    var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+    s1.async=true;
+    s1.src='https://embed.tawk.to/6a3c0c849358261d45a3012b/1jrt91qcr';
+    s1.charset='UTF-8';
+    s1.setAttribute('crossorigin','*');
+    s0.parentNode.insertBefore(s1,s0);
+    })();
+  `}
+</Script>
+		
 <CartProvider>
   <RewardsPopup />
   <LiveNotifications />
