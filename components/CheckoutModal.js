@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import emailjs from '@emailjs/browser''
+import emailjs from '@emailjs/browser'
 
 const WHATSAPP_NUMBER = '923360677340'
 const EMAILJS_SERVICE  = 'service_9p08wct'
