@@ -1,3 +1,4 @@
+const isSoldOut    = !selectedVariant?.available
 'use client'
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
@@ -17,6 +18,7 @@ export default function ProductPage() {
   const [loading, setLoading]               = useState(true)
   const [selectedVariant, setSelectedVariant] = useState(null)
   const [selectedImage, setSelectedImage]   = useState(0)
+const isSoldOut = !selectedVariant?.available && selectedVariant?.inventory_management === 'shopify'
   const [added, setAdded]                   = useState(false)
   const [showCheckout, setShowCheckout]     = useState(false)
 
@@ -58,7 +60,9 @@ export default function ProductPage() {
   const price        = parseFloat(selectedVariant?.price || 0)
   const comparePrice = parseFloat(selectedVariant?.compare_at_price || 0)
   const isOnSale     = comparePrice > price
-  const isSoldOut    = !selectedVariant?.available
+  const isSoldOut = selectedVariant
+  ? (selectedVariant.available === false && selectedVariant.inventory_quantity === 0)
+  : false
   const inCart       = cart.find(i => i.variantId === selectedVariant?.id)?.quantity || 0
   const isMaxed      = inCart >= 2
 
