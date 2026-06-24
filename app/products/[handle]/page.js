@@ -18,7 +18,8 @@ export default function ProductPage() {
   const [selectedVariant, setSelectedVariant] = useState(null)
   const [selectedImage, setSelectedImage]     = useState(0)
   const [added, setAdded]                     = useState(false)
-  const [showCheckout, setShowCheckout]       = useState(false)
+  const [showCheckout, setShowCheckout]   = useState(false)
+const [showSizeChart, setShowSizeChart] = useState(false)
 
   useEffect(() => {
     async function fetchProduct() {
@@ -214,9 +215,65 @@ export default function ProductPage() {
               </button>
             </div>
 
-            <Link href="/size-chart" className="text-center text-sm text-coral hover:underline mb-6 block">
-              📏 View Size Chart
-            </Link>
+           <button onClick={() => setShowSizeChart(true)}
+  className="text-center text-sm text-coral hover:underline mb-6 block w-full">
+  📏 View Size Chart
+</button>
+
+{showSizeChart && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowSizeChart(false)} />
+    <div className="relative bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
+        <h2 className="font-display text-2xl text-charcoal">📏 Size Chart</h2>
+        <button onClick={() => setShowSizeChart(false)}
+          className="w-9 h-9 rounded-full bg-gray-100 hover:bg-coral hover:text-white transition-colors flex items-center justify-center">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div className="p-6 overflow-x-auto">
+        <p className="text-sm text-gray-500 mb-4">All measurements are in inches.</p>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-coral/10">
+              <th className="text-left font-display text-base text-charcoal p-3 rounded-l-xl">Age</th>
+              <th className="text-left font-display text-base text-charcoal p-3">Shirt (in)</th>
+              <th className="text-left font-display text-base text-charcoal p-3 rounded-r-xl">Bottom (in)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ['0–3 Months',           '10', '11'],
+              ['3–6 Months',           '11', '11'],
+              ['6–9 Months',           '12', '12'],
+              ['9–12 Months',          '13', '14'],
+              ['12–18 Months (1 Year)','14', '16'],
+              ['18–24 Months',         '15', '17'],
+              ['2–3 Year',             '16', '18'],
+              ['3–4 Year',             '17', '20'],
+              ['4–5 Year',             '18', '22'],
+              ['5–6 Year',             '19', '24'],
+              ['6–7 Year',             '20', '26'],
+              ['7–8 Year',             '21/22', '28/30'],
+              ['9–10 Year',            '23/24', '32'],
+            ].map((row, i) => (
+              <tr key={i} className={i % 2 === 0 ? 'bg-cream' : ''}>
+                <td className="p-3 font-display text-coral">{row[0]}</td>
+                <td className="p-3 font-semibold text-charcoal">{row[1]}</td>
+                <td className="p-3 font-semibold text-charcoal">{row[2]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="mt-4 bg-sunny/30 rounded-2xl p-4">
+          <p className="text-xs text-gray-600">💡 <strong>Tip:</strong> Between sizes? Always size up for room to grow. Need help? <a href="https://wa.me/923360677340" target="_blank" rel="noopener noreferrer" className="text-coral font-semibold">WhatsApp us!</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
             {product.body_html && (
               <div className="border-t border-gray-100 pt-6">
