@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import emailjs from '@emailjs/browser'
+import RewardsSection from './RewardsSection'
 
 const WHATSAPP_NUMBER  = '923360677340'
 const EMAILJS_SERVICE  = 'service_9p08wct'
@@ -43,6 +44,9 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   const [discount, setDiscount]       = useState(null)
   const [couponError, setCouponError] = useState('')
   const [couponLoading, setCouponLoading] = useState(false)
+  const [rewards, setRewards]         = useState({ userId: '', points: 0, redeemed: 0 })
+  const [earnedPoints, setEarnedPoints] = useState(0)
+  const [bonusAwarded, setBonusAwarded] = useState(false)
 
   const price          = isCart ? cartTotal : parseFloat(variant?.price || 0)
   const comparePrice   = parseFloat(variant?.compare_at_price || 0)
@@ -53,15 +57,11 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
     ? discount.type === 'percent' ? Math.round(price * discount.value / 100)
     : discount.type === 'fixed'   ? Math.min(discount.value, price)
     : 0 : 0
-  const total = price + shipping - (discount?.type !== 'shipping' ? discountAmount : 0)
+  const rewardsDiscount = rewards.redeemed || 0
+  const total = price + shipping - (discount?.type !== 'shipping' ? discountAmount : 0) - rewardsDiscount
 
-  function formatPhone(val) {
-    return val.replace(/\D/g, '').slice(0, 10)
-  }
-
-  function validatePhone(val) {
-    return val.replace(/\D/g, '').length === 10
-  }
+  function formatPhone(val) { return val.replace(/\D/g, '').slice(0, 10) }
+  function validatePhone(val) { return val.replace(/\D/g, '').length === 10 }
 
   function validate() {
     const e = {}
@@ -70,7 +70,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
     if (!form.phone.trim())   e.phone   = 'Phone is required'
     if (!validatePhone(form.phone)) e.phone = 'Enter 10 digits (e.g. 3360677340)'
     if (!form.sameAsPhone) {
-      if (!form.whatsapp.trim())    e.whatsapp = 'WhatsApp number is required'
+      if (!form.whatsapp.trim())         e.whatsapp = 'WhatsApp number is required'
       if (!validatePhone(form.whatsapp)) e.whatsapp = 'Enter 10 digits'
     }
     if (!form.address.trim()) e.address = 'Address is required'
@@ -117,6 +117,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
       (isCart ? 'Products:\n' + productText : 'Product: ' + productText) + '\n' +
       'Subtotal: PKR ' + price.toLocaleString() + '\n' +
       (discount ? 'Discount (' + discount.code + '): - PKR ' + discountAmount.toLocaleString() + '\n' : '') +
+      (rewardsDiscount > 0 ? 'Rewards Discount: - PKR ' + rewardsDiscount + '\n' : '') +
       'Shipping: PKR ' + shipping.toLocaleString() + '\n' +
       'Total: PKR ' + total.toLocaleString() + '\n\n' +
       'Customer Details\n' +
@@ -126,6 +127,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
       'WhatsApp: +92' + waNumber + '\n' +
       'Address: ' + form.address + ', ' + form.city + '\n' +
       'Payment: Cash on Delivery' +
+      (rewards.userId ? '\nRewards ID: ' + rewards.userId : '') +
       (form.notes ? '\nNotes: ' + form.notes : '') + '\n\n' +
       'Order placed via kiddytrends.com'
     )
@@ -159,7 +161,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
       })
       const data = await res.json()
       if (data.success) {
-        // Send confirmation email if email provided
+        // Send confirmation email
         if (form.email.trim()) {
           try {
             const orderItems = isCart
@@ -176,10 +178,25 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
               shipping:       'PKR ' + shipping.toLocaleString(),
               total:          'PKR ' + total.toLocaleString(),
             }, EMAILJS_KEY)
-          } catch (emailErr) {
-            console.log('Email error:', emailErr)
-          }
+          } catch (emailErr) { console.log('Email error:', emailErr) }
         }
+
+        // Add reward points
+        if (rewards.userId) {
+          try {
+            const rewardRes = await fetch('/api/rewards', {
+              method:  'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body:    JSON.stringify({ userId: rewards.userId, orderTotal: total })
+            })
+            const rewardData = await rewardRes.json()
+            if (rewardData.success) {
+              setEarnedPoints(rewardData.earned || 0)
+              setBonusAwarded(rewardData.bonus || false)
+            }
+          } catch (e) { console.log('Rewards error:', e) }
+        }
+
         setLoading(false)
         setStep(2)
       } else {
@@ -212,6 +229,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
         {/* Step 1 - Form */}
         {step === 1 && (
           <div className="px-6 py-5">
+            {/* Order Summary */}
             <div className="bg-cream rounded-2xl p-4 mb-6">
               {isCart ? (
                 <div className="space-y-2">
@@ -248,6 +266,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Name */}
               <div>
                 <label className="block font-semibold text-sm text-charcoal mb-1">Full Name *</label>
                 <input type="text" placeholder="e.g. Sara Ahmed" value={form.name}
@@ -256,6 +275,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                 {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
               </div>
 
+              {/* Email */}
               <div>
                 <label className="block font-semibold text-sm text-charcoal mb-1">Email Address (optional)</label>
                 <input type="email" placeholder="e.g. sara@gmail.com" value={form.email}
@@ -264,6 +284,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                 {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
               </div>
 
+              {/* Phone */}
               <div>
                 <label className="block font-semibold text-sm text-charcoal mb-1">Phone Number *</label>
                 <div className="flex gap-2">
@@ -276,6 +297,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                 {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone}</p>}
               </div>
 
+              {/* WhatsApp */}
               <div>
                 <label className="block font-semibold text-sm text-charcoal mb-2">WhatsApp Number *</label>
                 <label className="flex items-center gap-2 mb-3 cursor-pointer">
@@ -298,6 +320,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                 )}
               </div>
 
+              {/* City */}
               <div>
                 <label className="block font-semibold text-sm text-charcoal mb-1">City / Town *</label>
                 <select value={form.city} onChange={e => setForm({...form, city: e.target.value})}
@@ -308,6 +331,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                 {errors.city && <p className="text-red-400 text-xs mt-1">{errors.city}</p>}
               </div>
 
+              {/* Address */}
               <div>
                 <label className="block font-semibold text-sm text-charcoal mb-1">Delivery Address *</label>
                 <textarea placeholder="House #, Street, Area, Landmark..." value={form.address}
@@ -316,6 +340,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                 {errors.address && <p className="text-red-400 text-xs mt-1">{errors.address}</p>}
               </div>
 
+              {/* COD */}
               <div className="bg-coral/10 border-2 border-coral rounded-2xl p-4 flex items-center gap-3">
                 <div className="text-3xl">💵</div>
                 <div>
@@ -325,6 +350,10 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                 <span className="ml-auto text-coral font-bold text-xs">✓ Selected</span>
               </div>
 
+              {/* Rewards */}
+              <RewardsSection onRewardsChange={setRewards} />
+
+              {/* Coupon */}
               <div>
                 <label className="block font-semibold text-sm text-charcoal mb-1">Discount Code (optional)</label>
                 <div className="flex gap-2">
@@ -346,6 +375,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                 )}
               </div>
 
+              {/* Notes */}
               <div>
                 <label className="block font-semibold text-sm text-charcoal mb-1">Order Notes (optional)</label>
                 <input type="text" placeholder="Any special instructions..." value={form.notes}
@@ -353,6 +383,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                   className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm" />
               </div>
 
+              {/* Total */}
               <div className="bg-cream rounded-2xl p-4 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Subtotal</span>
@@ -362,6 +393,12 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                   <div className="flex justify-between text-sm">
                     <span className="text-green-600 font-semibold">Discount ({discount.code})</span>
                     <span className="text-green-600 font-semibold">- PKR {discountAmount.toLocaleString()}</span>
+                  </div>
+                )}
+                {rewardsDiscount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-green-600 font-semibold">⭐ Rewards Discount</span>
+                    <span className="text-green-600 font-semibold">- PKR {rewardsDiscount}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm">
@@ -392,22 +429,42 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
             <div className="text-7xl mb-4">🎉</div>
             <h3 className="font-display text-3xl text-charcoal mb-2">Order Confirmed!</h3>
             <p className="text-gray-500 mb-6">Thank you! Your order has been placed successfully.</p>
+
+            {/* Points earned notification */}
+            {earnedPoints > 0 && (
+              <div className="bg-sunny/30 rounded-2xl p-4 mb-4 text-left">
+                <p className="font-display text-base text-charcoal">⭐ You earned {earnedPoints} points!</p>
+                <p className="text-xs text-gray-500 mt-1">Keep shopping to earn more rewards.</p>
+              </div>
+            )}
+
+            {/* Bonus notification */}
+            {bonusAwarded && (
+              <div className="bg-mint/20 rounded-2xl p-4 mb-4 text-left border-2 border-mint">
+                <p className="font-display text-base text-charcoal">🎁 Bonus 100 Points!</p>
+                <p className="text-xs text-gray-500 mt-1">You hit 500 points! Kiddy Trends added 100 bonus points to your account!</p>
+              </div>
+            )}
+
             <div className="bg-cream rounded-2xl p-5 text-left mb-6 space-y-3">
               <div className="flex justify-between text-sm"><span className="text-gray-500">Name</span><span className="font-semibold">{form.name}</span></div>
               {form.email && <div className="flex justify-between text-sm"><span className="text-gray-500">Email</span><span className="font-semibold">{form.email}</span></div>}
               <div className="flex justify-between text-sm"><span className="text-gray-500">Phone</span><span className="font-semibold">+92{form.phone}</span></div>
               <div className="flex justify-between text-sm"><span className="text-gray-500">City</span><span className="font-semibold">{form.city}</span></div>
               <div className="flex justify-between text-sm"><span className="text-gray-500">Payment</span><span className="font-semibold">Cash on Delivery</span></div>
+              {rewards.userId && <div className="flex justify-between text-sm"><span className="text-gray-500">Rewards ID</span><span className="font-semibold text-coral">{rewards.userId}</span></div>}
               <div className="flex justify-between border-t border-gray-200 pt-3">
                 <span className="font-display text-base text-charcoal">Total</span>
                 <span className="font-display text-lg text-coral">PKR {total.toLocaleString()}</span>
               </div>
             </div>
+
             <div className="bg-skyblue/20 rounded-2xl p-4 mb-6">
               <p className="text-2xl mb-1">📦</p>
               <p className="font-display text-base text-charcoal">Expected Delivery: 3-5 days</p>
               <p className="text-xs text-gray-500 mt-1">Our team will contact you on <strong>+92{form.phone}</strong> to confirm delivery</p>
             </div>
+
             <button onClick={onClose} className="w-full bg-coral text-white font-display text-base py-3 rounded-2xl hover:bg-opacity-90 transition-colors">
               Continue Shopping 🛍️
             </button>
