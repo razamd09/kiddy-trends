@@ -71,6 +71,7 @@ export default function RootLayout({ children }) {
 </Script>
 {/* TikTok embed */}
 <Script src="https://www.tiktok.com/embed.js" strategy="lazyOnload" />
+<Script src="https://www.instagram.com/embed.js" strategy="lazyOnload" />
 
 	   {/* Google Analytics */}
         <Script

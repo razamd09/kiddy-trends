@@ -201,21 +201,7 @@ export default function Home() {
         )}
       </section>
 
-      {/* WHY KIDDY TRENDS */}
-      <section className="bg-coral py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="section-title text-white text-center mb-12">Why Parents Love Us ❤️</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-            {features.map(f => (
-              <div key={f.title} className="bg-white/20 backdrop-blur rounded-3xl p-6 text-white text-center">
-                <div className="text-4xl mb-3">{f.icon}</div>
-                <h3 className="font-display text-lg mb-2">{f.title}</h3>
-                <p className="text-sm text-white/80 leading-relaxed">{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+     
 
 {/* TIKTOK VIDEOS */}
 <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
@@ -253,7 +239,43 @@ title={'TikTok video ' + id}
   <RewardsChecker />
 </section>
 {/* INSTAGRAM */}
+{/* INSTAGRAM */}
 <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+  <div className="text-center mb-8">
+    <div className="text-4xl mb-3">📸</div>
+    <h2 className="section-title mb-2">Follow Us on Instagram</h2>
+    <p className="text-gray-500 mb-1">See our latest collections & happy customers!</p>
+    <a href="https://instagram.com/trenydkids.2020" target="_blank" rel="noopener noreferrer"
+      className="text-coral font-bold hover:underline">@trendykids.2020</a>
+  </div>
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    {[
+      'DZ7W_ZWo-k1',
+      'DZ9YMmLCCjg',
+      'DZ4bJK5iHA3',
+      'DZ21w0hCOEz',
+    ].map(id => (
+      <div key={id} className="rounded-3xl overflow-hidden shadow-sm border border-gray-100 bg-white">
+        <iframe
+          src={'https://www.instagram.com/p/' + id + '/embed/captioned/'}
+          className="w-full"
+          style={{height:'480px', border:'none'}}
+          allowFullScreen
+          loading="lazy"
+          title={'Instagram post ' + id}
+          scrolling="no"
+          frameBorder="0"
+        />
+      </div>
+    ))}
+  </div>
+  <div className="text-center mt-6">
+    <a href="https://instagram.com/trenydkids.2020" target="_blank" rel="noopener noreferrer"
+      className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-display px-8 py-3 rounded-full hover:opacity-90 transition-all hover:scale-105 shadow-md">
+      📸 Follow @trendykids.2020
+    </a>
+  </div>
+</section>
   <div className="bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-coral/10 rounded-3xl p-8 text-center">
     <div className="text-4xl mb-3">📸</div>
     <h2 className="font-display text-3xl text-charcoal mb-2">Follow Us on Instagram</h2>
