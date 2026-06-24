@@ -365,9 +365,10 @@ export default function ProductPage() {
             </div>
 
             <button onClick={() => setShowSizeChart(true)}
-              className="text-center text-sm text-coral hover:underline mb-6 block w-full">
-              📏 View Size Chart
-            </button>
+  className="text-center text-sm text-coral hover:underline mb-4 block w-full">
+  📏 View Size Chart
+</button>
+<SizeRecommender />
 
             {/* Description */}
             {product.body_html && (
@@ -437,10 +438,9 @@ export default function ProductPage() {
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowSizeChart(false)} />
           <div className="relative bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
             <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
-              <h2 className="font-display text-2xl text-charcoal">📏 Size Chart</h2>
-              <button onClick={() => setShowSizeChart(false)}
-			  <SizeRecommender />
-                className="w-9 h-9 rounded-full bg-gray-100 hover:bg-coral hover:text-white transition-colors flex items-center justify-center">
+<h2 className="font-display text-2xl text-charcoal">📏 Size Chart</h2>
+<button onClick={() => setShowSizeChart(false)}
+  className="w-9 h-9 rounded-full bg-gray-100 hover:bg-coral hover:text-white transition-colors flex items-center justify-center">justify-center">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
