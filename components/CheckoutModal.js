@@ -1,7 +1,12 @@
 'use client'
+
 import { useState } from 'react'
+import emailjs from '@emailjs/browser''
 
 const WHATSAPP_NUMBER = '923360677340'
+const EMAILJS_SERVICE  = 'service_9p08wct'
+const EMAILJS_TEMPLATE = 'template_gyanmsp'
+const EMAILJS_KEY      = 'G3OmrUP2PwOat-o1W'
 
 const cities = [
   // Major Cities
@@ -189,10 +194,29 @@ async function applyCoupon() {
       const data = await res.json()
 
       if (data.success) {
+        // Send confirmation email
+        try {
+          const orderItems = isCart
+            ? cartItems.map(i => i.title + ' x' + i.quantity + ' = PKR ' + (i.price * i.quantity).toLocaleString()).join('\n')
+            : (product?.title || '') + ' x1 = PKR ' + price.toLocaleString()
+
+          await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
+            customer_name:  form.name,
+            customer_email: form.email,
+            phone:          '+92' + form.phone,
+            address:        form.address,
+            city:           form.city,
+            order_items:    orderItems,
+            subtotal:       'PKR ' + price.toLocaleString(),
+            shipping:       'PKR ' + shipping.toLocaleString(),
+            total:          'PKR ' + total.toLocaleString(),
+          }, EMAILJS_KEY)
+        } catch (emailErr) {
+          console.log('Email error:', emailErr)
+        }
+
         setLoading(false)
-        setStep(2)
-        
-      } else {
+        setStep(2) else {
         setLoading(false)
         alert('Error: ' + (data.error || 'Something went wrong. Please try again.'))
       }
