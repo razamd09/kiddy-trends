@@ -5,7 +5,6 @@ import { useState, useEffect } from 'react'
 import ProductCard from '../components/ProductCard'
 import RewardsChecker from '../components/RewardsChecker'
 
-
 const STORE_DOMAIN = 'the-kiddy-trends.myshopify.com'
 
 const categories = [

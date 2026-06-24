@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useCart } from '../context/CartContext'
 import SearchBar from './SearchBar'
+import RewardsNavChecker from './RewardsNavChecker'
 
 const links = [
   { href: '/',               label: 'Home' },
@@ -42,6 +43,7 @@ export default function Navbar() {
 
           {/* Cart + mobile toggle */}
           <div className="flex items-center gap-3">
+  <RewardsNavChecker />
   <SearchBar />
             <button onClick={() => setCartOpen(true)}
               className="relative p-2 rounded-full hover:bg-coral/10 transition-colors">
