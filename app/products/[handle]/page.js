@@ -2,9 +2,9 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import ProductCard from '../../components/ProductCard'
-import { useCart } from '../../context/CartContext'
-import CheckoutModal from '../../components/CheckoutModal'
+import ProductCard from '../../../components/ProductCard'
+import { useCart } from '../../../context/CartContext'
+import CheckoutModal from '../../../components/CheckoutModal'
 
 const STORE_DOMAIN = 'the-kiddy-trends.myshopify.com'
 

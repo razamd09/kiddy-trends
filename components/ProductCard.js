@@ -39,7 +39,27 @@ export default function ProductCard({ product }) {
 <div className="bg-white rounded-3xl overflow-hidden card-hover shadow-sm border border-gray-100 flex flex-col">
         {/* Image */}
 {/* Image */}
-<a href={'/products/' + product.handle} className="block relative bg-white" style={{paddingBottom:'100%'}}>          {image ? (
+
+
+<a href={'/products/' + product.handle} className="block relative bg-white" style={{paddingBottom:'100%'}}>
+  {image ? (
+    <div className="absolute inset-0 bg-white flex items-center justify-center p-3">
+      <img src={image} alt={product.title}
+        className="w-full h-full object-contain mix-blend-multiply" loading="lazy" />
+    </div>
+  ) : (
+    <div className="absolute inset-0 flex items-center justify-center text-5xl bg-white">👕</div>
+  )}
+  {isOnSale && !isSoldOut && (
+    <span className="absolute top-2 left-2 bg-coral text-white text-xs px-2 py-1 rounded-full font-bold z-10">SALE</span>
+  )}
+  {isSoldOut && (
+    <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
+      <span className="bg-white text-charcoal font-display text-sm px-3 py-1 rounded-full">Sold Out</span>
+    </div>
+  )}
+</a>
+         {image ? (
             <div className="absolute inset-0 bg-white flex items-center justify-center p-3">
               <img src={image} alt={product.title}
                 className="w-full h-full object-contain mix-blend-multiply" loading="lazy" />
