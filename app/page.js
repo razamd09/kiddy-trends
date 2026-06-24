@@ -104,7 +104,32 @@ export default function Home() {
           </div>
         </div>
       </section>
-
+{/* SOCIAL PROOF BAR */}
+<section className="bg-charcoal py-3">
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="flex flex-wrap items-center justify-center gap-6 text-white text-sm">
+      <div className="flex items-center gap-2">
+        <span className="text-sunny font-bold text-lg">🛍️ 1,200+</span>
+        <span className="text-gray-300">Happy Customers</span>
+      </div>
+      <div className="hidden sm:block w-px h-4 bg-gray-600" />
+      <div className="flex items-center gap-2">
+        <span className="text-sunny font-bold text-lg">⭐ 4.8/5</span>
+        <span className="text-gray-300">Average Rating</span>
+      </div>
+      <div className="hidden sm:block w-px h-4 bg-gray-600" />
+      <div className="flex items-center gap-2">
+        <span className="text-sunny font-bold text-lg">📦 3-5</span>
+        <span className="text-gray-300">Days Delivery</span>
+      </div>
+      <div className="hidden sm:block w-px h-4 bg-gray-600" />
+      <div className="flex items-center gap-2">
+        <span className="text-sunny font-bold text-lg">🔄 100%</span>
+        <span className="text-gray-300">Exchange Guarantee</span>
+      </div>
+    </div>
+  </div>
+</section>
       {/* PROMO BANNER */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
         <div className="bg-charcoal rounded-3xl px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -227,6 +252,35 @@ title={'TikTok video ' + id}
 <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
   <RewardsChecker />
 </section>
+{/* INSTAGRAM */}
+<section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+  <div className="bg-gradient-to-r from-purple-500/10 via-pink-500/10 to-coral/10 rounded-3xl p-8 text-center">
+    <div className="text-4xl mb-3">📸</div>
+    <h2 className="font-display text-3xl text-charcoal mb-2">Follow Us on Instagram</h2>
+    <p className="text-gray-500 mb-2">See our latest collections, styling ideas & happy customers!</p>
+    <p className="text-coral font-bold text-lg mb-5">@trenydkids.2020</p>
+    <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-6">
+      {[
+        'https://images.unsplash.com/photo-1503944583220-79d8926ad5e2?w=200&h=200&fit=crop',
+        'https://images.unsplash.com/photo-1471286174890-9c112ffca5b4?w=200&h=200&fit=crop',
+        'https://images.unsplash.com/photo-1504439468489-c8920d796a29?w=200&h=200&fit=crop',
+        'https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=200&h=200&fit=crop',
+        'https://images.unsplash.com/photo-1519689680058-324335c77eba?w=200&h=200&fit=crop',
+        'https://images.unsplash.com/photo-1543702233-b09e5c9fa60e?w=200&h=200&fit=crop',
+      ].map((src, i) => (
+        <a key={i} href="https://instagram.com/trenydkids.2020" target="_blank" rel="noopener noreferrer"
+          className="aspect-square rounded-2xl overflow-hidden hover:opacity-80 transition-opacity">
+          <img src={src} alt={'Instagram post ' + (i+1)} className="w-full h-full object-cover" loading="lazy" />
+        </a>
+      ))}
+    </div>
+    <a href="https://instagram.com/trenydkids.2020" target="_blank" rel="noopener noreferrer"
+      className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-display px-8 py-3 rounded-full hover:opacity-90 transition-all hover:scale-105 shadow-md">
+      📸 Follow @trenydkids.2020
+    </a>
+  </div>
+</section>
+
       {/* NEWSLETTER */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="bg-sunny rounded-[2rem] p-10 md:p-16 flex flex-col md:flex-row items-center justify-between gap-6">

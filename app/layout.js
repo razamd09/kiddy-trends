@@ -5,6 +5,7 @@ import Footer from '../components/Footer'
 import CartDrawer from '../components/CartDrawer'
 import Script from 'next/script'
 import RewardsPopup from '../components/RewardsPopup'
+import LiveNotifications from '../components/LiveNotifications'
 
 export const metadata = {
   title: 'Kiddy Trends – Fun Fashion for Little Ones',
@@ -84,10 +85,11 @@ export default function RootLayout({ children }) {
             gtag('config', 'G-RWMHQN9PL4');
           `}
         </Script>
-
-        <CartProvider>
+<CartProvider>
   <RewardsPopup />
-  <Navbar />          <CartDrawer />
+  <LiveNotifications />
+  <Navbar />
+  <CartDrawer />
           <main>{children}</main>
           <Footer />
           <a href="https://wa.me/923360677340" target="_blank" rel="noopener noreferrer"
