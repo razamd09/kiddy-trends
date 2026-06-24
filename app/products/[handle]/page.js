@@ -45,8 +45,9 @@ export default function ProductPage() {
         const filtered = (data.products || [])
           .filter(p => p.id !== product.id && (
             (p.product_type || '').toLowerCase() === type ||
-            (p.tags || []).some(t => (product.tags || []).includes(t))
-          ))
+(typeof p.tags === 'string' ? p.tags.split(',') : p.tags || []).some(t =>
+  (typeof product.tags === 'string' ? product.tags.split(',') : product.tags || []).includes(t)
+)          ))
           .slice(0, 4)
         setRelated(filtered)
       } catch {}
@@ -219,13 +220,15 @@ export default function ProductPage() {
               </div>
             )}
 
-            {product.tags?.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {product.tags.slice(0, 6).map(tag => (
-                  <span key={tag} className="bg-cream text-gray-500 text-xs px-3 py-1 rounded-full">{tag}</span>
-                ))}
-              </div>
-            )}
+            {product.tags && (
+  <div className="mt-4 flex flex-wrap gap-2">
+    {(typeof product.tags === 'string' ? product.tags.split(',') : product.tags)
+      .slice(0, 6).map(tag => (
+        <span key={tag} className="bg-cream text-gray-500 text-xs px-3 py-1 rounded-full">{tag.trim()}</span>
+      ))
+    }
+  </div>
+)}
           </div>
         </div>
 
