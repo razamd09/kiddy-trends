@@ -128,8 +128,8 @@ export default function RewardsSection({ onRewardsChange }) {
             <div className="bg-mint/20 rounded-xl p-3 mb-3">
               <p className="text-sm font-semibold text-charcoal">Create Rewards Account</p>
               <p className="text-xs text-gray-500 mt-0.5">
-                User ID <strong className="text-coral">"{userIdInput}"</strong> is available! 🎉
-              </p>
+  WOOW!! 🎉 You are eligible for Rewards Discounts!
+</p>
               <p className="text-xs text-gray-500 mt-1">
                 Earn <strong>10 pts per PKR 1,000</strong> spent. Redeem 10 pts = PKR 10 off!
               </p>

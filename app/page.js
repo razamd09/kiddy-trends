@@ -3,6 +3,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import ProductCard from '../components/ProductCard'
+import RewardsChecker from '../components/RewardsChecker'
+
 
 const STORE_DOMAIN = 'the-kiddy-trends.myshopify.com'
 
@@ -221,7 +223,10 @@ export default function Home() {
     ))}
   </div>
 </section>
-
+{/* REWARDS CHECKER */}
+<section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
+  <RewardsChecker />
+</section>
       {/* NEWSLETTER */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="bg-sunny rounded-[2rem] p-10 md:p-16 flex flex-col md:flex-row items-center justify-between gap-6">
