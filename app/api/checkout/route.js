@@ -1,3 +1,5 @@
+import { createClient } from '@supabase/supabase-js'
+
 export async function POST(request) {
   try {
     const { cartItems, customer } = await request.json()
@@ -67,6 +69,32 @@ export async function POST(request) {
     )
 
     const completeData = await completeRes.json()
+
+    // Save to Supabase
+    try {
+      const supabase = createClient(
+          process.env.NEXT_PUBLIC_SUPABASE_URL,
+          process.env.SUPABASE_SERVICE_KEY
+      )
+      await supabase.from('orders').insert([{
+        shopify_order_id:  String(completeData.draft_order?.order_id || ''),
+        customer_name:     customer.name,
+        customer_phone:    customer.phone,
+        customer_whatsapp: customer.whatsapp || customer.phone,
+        customer_email:    customer.email || '',
+        customer_city:     customer.city,
+        customer_address:  customer.address,
+        items:             cartItems,
+        subtotal:          cartItems.reduce((s, i) => s + (parseFloat(i.price || 0) * i.quantity), 0),
+        shipping:          250,
+        discount:          0,
+        total:             cartItems.reduce((s, i) => s + (parseFloat(i.price || 0) * i.quantity), 0) + 250,
+        status:            'pending',
+        notes:             customer.notes || '',
+      }])
+    } catch (e) {
+      console.log('Supabase order save error:', e)
+    }
 
     return Response.json({
       success:   true,
