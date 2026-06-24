@@ -1,4 +1,3 @@
-const isSoldOut    = !selectedVariant?.available
 'use client'
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
@@ -13,14 +12,13 @@ export default function ProductPage() {
   const { handle } = useParams()
   const { addToCart, cart } = useCart()
 
-  const [product, setProduct]               = useState(null)
-  const [related, setRelated]               = useState([])
-  const [loading, setLoading]               = useState(true)
+  const [product, setProduct]                 = useState(null)
+  const [related, setRelated]                 = useState([])
+  const [loading, setLoading]                 = useState(true)
   const [selectedVariant, setSelectedVariant] = useState(null)
-  const [selectedImage, setSelectedImage]   = useState(0)
-const isSoldOut = !selectedVariant?.available && selectedVariant?.inventory_management === 'shopify'
-  const [added, setAdded]                   = useState(false)
-  const [showCheckout, setShowCheckout]     = useState(false)
+  const [selectedImage, setSelectedImage]     = useState(0)
+  const [added, setAdded]                     = useState(false)
+  const [showCheckout, setShowCheckout]       = useState(false)
 
   useEffect(() => {
     async function fetchProduct() {
@@ -44,12 +42,18 @@ const isSoldOut = !selectedVariant?.available && selectedVariant?.inventory_mana
         const res  = await fetch('https://' + STORE_DOMAIN + '/products.json?limit=250')
         const data = await res.json()
         const type = (product.product_type || '').toLowerCase()
+        const productTags = typeof product.tags === 'string'
+          ? product.tags.split(',').map(t => t.trim())
+          : (product.tags || [])
         const filtered = (data.products || [])
-          .filter(p => p.id !== product.id && (
-            (p.product_type || '').toLowerCase() === type ||
-(typeof p.tags === 'string' ? p.tags.split(',') : p.tags || []).some(t =>
-  (typeof product.tags === 'string' ? product.tags.split(',') : product.tags || []).includes(t)
-)          ))
+          .filter(p => {
+            if (p.id === product.id) return false
+            const pTags = typeof p.tags === 'string'
+              ? p.tags.split(',').map(t => t.trim())
+              : (p.tags || [])
+            return (p.product_type || '').toLowerCase() === type ||
+              pTags.some(t => productTags.includes(t))
+          })
           .slice(0, 4)
         setRelated(filtered)
       } catch {}
@@ -60,9 +64,7 @@ const isSoldOut = !selectedVariant?.available && selectedVariant?.inventory_mana
   const price        = parseFloat(selectedVariant?.price || 0)
   const comparePrice = parseFloat(selectedVariant?.compare_at_price || 0)
   const isOnSale     = comparePrice > price
-  const isSoldOut = selectedVariant
-  ? (selectedVariant.available === false && selectedVariant.inventory_quantity === 0)
-  : false
+  const isSoldOut    = !selectedVariant?.available && selectedVariant?.inventory_management === 'shopify'
   const inCart       = cart.find(i => i.variantId === selectedVariant?.id)?.quantity || 0
   const isMaxed      = inCart >= 2
 
@@ -98,6 +100,10 @@ const isSoldOut = !selectedVariant?.available && selectedVariant?.inventory_mana
     </div>
   )
 
+  const productTags = typeof product.tags === 'string'
+    ? product.tags.split(',').map(t => t.trim()).filter(Boolean)
+    : (product.tags || [])
+
   return (
     <>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -111,7 +117,6 @@ const isSoldOut = !selectedVariant?.available && selectedVariant?.inventory_mana
           <span className="text-charcoal font-semibold truncate max-w-xs">{product.title}</span>
         </nav>
 
-        {/* Product section */}
         <div className="grid md:grid-cols-2 gap-10 mb-16">
 
           {/* Images */}
@@ -128,7 +133,7 @@ const isSoldOut = !selectedVariant?.available && selectedVariant?.inventory_mana
               <div className="flex gap-3 flex-wrap">
                 {product.images.map((img, i) => (
                   <button key={i} onClick={() => setSelectedImage(i)}
-                    className={`w-16 h-16 rounded-2xl overflow-hidden border-2 transition-all ${selectedImage === i ? 'border-coral scale-105' : 'border-gray-100 hover:border-coral/40'}`}>
+                    className={'w-16 h-16 rounded-2xl overflow-hidden border-2 transition-all ' + (selectedImage === i ? 'border-coral scale-105' : 'border-gray-100 hover:border-coral/40')}>
                     <img src={img.src} alt={product.title + ' ' + (i+1)}
                       className="w-full h-full object-contain mix-blend-multiply p-1" />
                   </button>
@@ -162,11 +167,11 @@ const isSoldOut = !selectedVariant?.available && selectedVariant?.inventory_mana
                 <div className="flex flex-wrap gap-2">
                   {product.variants.map(v => (
                     <button key={v.id} onClick={() => setSelectedVariant(v)} disabled={!v.available}
-                      className={`px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all ${
+                      className={'px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all ' + (
                         selectedVariant?.id === v.id ? 'border-coral bg-coral text-white'
                         : !v.available ? 'border-gray-100 text-gray-300 cursor-not-allowed line-through'
                         : 'border-gray-200 text-charcoal hover:border-coral'
-                      }`}>
+                      )}>
                       {v.title}
                     </button>
                   ))}
@@ -195,19 +200,19 @@ const isSoldOut = !selectedVariant?.available && selectedVariant?.inventory_mana
 
             <div className="flex gap-3 mb-4">
               <button onClick={handleAddToCart} disabled={isSoldOut || isMaxed}
-                className={`flex-1 py-4 rounded-2xl font-display text-base border-2 transition-all ${
+                className={'flex-1 py-4 rounded-2xl font-display text-base border-2 transition-all ' + (
                   isSoldOut ? 'border-gray-200 text-gray-300 cursor-not-allowed'
                   : isMaxed ? 'border-orange-200 text-orange-300 cursor-not-allowed'
                   : added ? 'border-mint bg-mint text-white'
                   : 'border-charcoal text-charcoal hover:bg-charcoal hover:text-white'
-                }`}>
+                )}>
                 {isSoldOut ? 'Sold Out' : isMaxed ? 'Max Qty Reached' : added ? '✓ Added!' : '+ Add to Cart'}
               </button>
               <button onClick={() => !isSoldOut && setShowCheckout(true)} disabled={isSoldOut}
-                className={`flex-1 py-4 rounded-2xl font-display text-base transition-all ${
+                className={'flex-1 py-4 rounded-2xl font-display text-base transition-all ' + (
                   isSoldOut ? 'bg-gray-100 text-gray-300 cursor-not-allowed'
                   : 'bg-coral text-white hover:bg-opacity-90 hover:scale-[1.02]'
-                }`}>
+                )}>
                 Buy Now
               </button>
             </div>
@@ -224,15 +229,13 @@ const isSoldOut = !selectedVariant?.available && selectedVariant?.inventory_mana
               </div>
             )}
 
-            {product.tags && (
-  <div className="mt-4 flex flex-wrap gap-2">
-    {(typeof product.tags === 'string' ? product.tags.split(',') : product.tags)
-      .slice(0, 6).map(tag => (
-        <span key={tag} className="bg-cream text-gray-500 text-xs px-3 py-1 rounded-full">{tag.trim()}</span>
-      ))
-    }
-  </div>
-)}
+            {productTags.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {productTags.slice(0, 6).map(tag => (
+                  <span key={tag} className="bg-cream text-gray-500 text-xs px-3 py-1 rounded-full">{tag}</span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
