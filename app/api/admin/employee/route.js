@@ -15,22 +15,39 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-    const body = await request.json()
-    const { data, error } = await supabase
-        .from('employees')
-        .insert([{
-            name:        body.name,
-            employee_id: body.employee_id,
-            email:       body.email || '',
-            phone:       body.phone || '',
-            role:        body.role || 'employee',
-            password:    body.password,
-            is_active:   true,
-        }])
-        .select()
-        .single()
-    if (error) return Response.json({ error: error.message }, { status: 500 })
-    return Response.json({ success: true, employee: data })
+    try {
+        const body = await request.json()
+
+        // Check if employee_id already exists
+        const { data: existing } = await supabase
+            .from('employees')
+            .select('id')
+            .eq('employee_id', body.employee_id)
+            .single()
+
+        if (existing) {
+            return Response.json({ error: 'Employee ID already exists' }, { status: 400 })
+        }
+
+        const { data, error } = await supabase
+            .from('employees')
+            .insert([{
+                name:        body.name,
+                employee_id: body.employee_id,
+                email:       body.email || '',
+                phone:       body.phone || '',
+                role:        body.role || 'employee',
+                password:    body.password,
+                is_active:   true,
+            }])
+            .select()
+            .single()
+
+        if (error) return Response.json({ error: error.message }, { status: 500 })
+        return Response.json({ success: true, employee: data })
+    } catch (e) {
+        return Response.json({ error: e.message }, { status: 500 })
+    }
 }
 
 export async function PUT(request) {
