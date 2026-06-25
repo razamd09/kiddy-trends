@@ -82,7 +82,9 @@ export default function Footer() {
                 ['/collections', 'Collections'],
                 ['/about', 'About Us'],
                 ['/refund-policy', 'Refund Policy'],
-                ['/size-chart', 'Size Chart'],
+                ['/size-chart',    'Size Chart'],
+                ['/feedback',      '💝 Share Feedback'],
+                ['/order-tracking','Track Order'],
               ].map(([href, label]) => (
                 <li key={href}>
                   <Link href={href} className="hover:text-coral transition-colors">
@@ -161,6 +163,8 @@ export default function Footer() {
           <div className="flex gap-4">
             <Link href="/refund-policy" className="hover:text-coral transition-colors">Refund Policy</Link>
             <Link href="/size-chart" className="hover:text-coral transition-colors">Size Chart</Link>
+            <Link href="/feedback" className="hover:text-coral transition-colors">Feedback</Link>
+            <a href="/employee" className="hover:text-coral transition-colors">Staff Login</a>
           </div>
         </div>
       </div>

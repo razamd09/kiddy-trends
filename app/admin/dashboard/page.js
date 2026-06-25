@@ -96,6 +96,7 @@ export default function AdminDashboard() {
                         { label: 'Employees',       href: '/admin/employees',  icon: '👥', color: 'bg-skyblue text-white' },
                         { label: 'Attendance',      href: '/admin/attendance', icon: '📅', color: 'bg-mint text-white' },
                         { label: 'Customers',       href: '/admin/customers',  icon: '💝', color: 'bg-lavender text-white' },
+                        { label: 'Feedback', href: '/admin/feedback', icon: '💝', color: 'bg-pink-400 text-white' },
                         { label: 'View Website',    href: '/',                 icon: '🌐', color: 'bg-sunny text-charcoal' },
                     ].map((link, i) => (
                         <Link key={i} href={link.href}

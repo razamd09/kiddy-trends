@@ -1,4 +1,4 @@
-'use client'
+  'use client'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
@@ -26,9 +26,10 @@ export default function Home() {
         const data = await res.json()
         const all  = data.products || []
         // 2026 products always first
-        const new2026 = all.filter(p => (p.title || '').includes('2026'))
-        const others  = all.filter(p => !(p.title || '').includes('2026'))
-        setTrending([...new2026, ...others].slice(0, 8))
+        const summerNew = all.filter(p => (p.title || '').toLowerCase().includes('summer new arrival 2026'))
+        const other2026 = all.filter(p => (p.title || '').includes('2026') && !(p.title || '').toLowerCase().includes('summer new arrival 2026'))
+        const rest      = all.filter(p => !(p.title || '').includes('2026'))
+        setTrending([...summerNew, ...other2026, ...rest].slice(0, 8))
         setLoadingTrending(false)
       } catch { setLoadingTrending(false) }
     }

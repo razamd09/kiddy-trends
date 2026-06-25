@@ -13,6 +13,7 @@ const links = [
   { href: '/refund-policy',   label: 'Refund Policy' },
   { href: '/size-chart',      label: 'Size Chart' },
   { href: '/order-tracking',  label: 'Track Order' },
+  { href: '/feedback',        label: '💝 Feedback' },
 ]
 
 export default function Navbar() {

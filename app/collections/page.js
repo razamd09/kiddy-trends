@@ -130,11 +130,13 @@ export default function Collections() {
   if (sort === 'old')          filtered = [...filtered].sort((a,b) => new Date(a.created_at) - new Date(b.created_at))
   if (sort === 'new')          filtered = [...filtered].sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
   if (sort === 'best_selling') filtered = [...filtered].sort((a,b) => (b.variants?.[0]?.inventory_quantity || 0) - (a.variants?.[0]?.inventory_quantity || 0))
-  // Always show 2026 products first
+  // Priority sorting: "Summer New Arrival 2026" first, then other 2026, then rest
   filtered = [...filtered].sort((a, b) => {
-    const a2026 = (a.title || '').includes('2026') ? -1 : 0
-    const b2026 = (b.title || '').includes('2026') ? -1 : 0
-    return a2026 - b2026
+    const aTitle = (a.title || '').toLowerCase()
+    const bTitle = (b.title || '').toLowerCase()
+    const aPriority = aTitle.includes('summer new arrival 2026') ? 2 : aTitle.includes('2026') ? 1 : 0
+    const bPriority = bTitle.includes('summer new arrival 2026') ? 2 : bTitle.includes('2026') ? 1 : 0
+    return bPriority - aPriority
   })
 
   // Pagination
