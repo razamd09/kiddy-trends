@@ -22,12 +22,14 @@ export default function AdminLogin() {
       const data = await res.json()
       if (data.success) {
         localStorage.setItem('admin_token', data.token)
+        console.log('Login successful, redirecting to dashboard...')
         router.push('/admin/dashboard')
       } else {
-        setError('Invalid password. Please try again.')
+        setError(data.error || 'Invalid password. Please try again.')
       }
-    } catch {
-      setError('Something went wrong. Please try again.')
+    } catch (err) {
+      console.error('Login error:', err)
+      setError('Error: ' + (err.message || 'Something went wrong. Please try again.'))
     }
     setLoading(false)
   }
