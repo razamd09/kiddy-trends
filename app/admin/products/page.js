@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import ImageUploader from '@/components/ImageUploader'
 
 export default function AdminProducts() {
     const router = useRouter()
@@ -24,7 +25,7 @@ export default function AdminProducts() {
         product_type: '',
         tags: '',
         stock: '',
-        images: ''
+        images: []
     })
 
     const categories = ['Clothing', 'Bedding', 'Bags', 'Accessories', 'Footwear', 'Other']
@@ -56,7 +57,7 @@ export default function AdminProducts() {
             product_type: '',
             tags: '',
             stock: '',
-            images: ''
+            images: []
         })
         setEditingId(null)
     }
@@ -71,7 +72,10 @@ export default function AdminProducts() {
             product_type: product.product_type || '',
             tags: (product.tags || []).join(', '),
             stock: product.stock || '',
-            images: (product.images || []).map(img => img.src || img).join('\n')
+            images: (product.images || []).map(img => ({
+                url: typeof img === 'string' ? img : img.src,
+                path: typeof img === 'object' ? img.path : null
+            }))
         })
         setEditingId(product.id)
         setShowForm(true)
@@ -79,6 +83,10 @@ export default function AdminProducts() {
 
     async function handleSubmit(e) {
         e.preventDefault()
+        if (form.images.length === 0) {
+            alert('Please upload at least one image')
+            return
+        }
         setSubmitting(true)
 
         try {
@@ -91,7 +99,7 @@ export default function AdminProducts() {
                 product_type: form.product_type,
                 tags: form.tags.split(',').map(t => t.trim()).filter(t => t),
                 stock: parseInt(form.stock) || 0,
-                images: form.images.split('\n').map(url => url.trim()).filter(url => url).map(url => ({ src: url }))
+                images: form.images.map(img => ({ src: img.url }))
             }
 
             if (editingId) {
@@ -264,14 +272,10 @@ export default function AdminProducts() {
                             </div>
 
                             {/* Images */}
-                            <div>
-                                <label className="block font-semibold text-sm text-charcoal mb-1">Image URLs (one per line)</label>
-                                <textarea value={form.images}
-                                    onChange={e => setForm({...form, images: e.target.value})}
-                                    placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg"
-                                    rows={3}
-                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm resize-none font-mono text-xs" />
-                            </div>
+                            <ImageUploader 
+                                existingImages={form.images}
+                                onImagesChange={(images) => setForm({...form, images})}
+                            />
 
                             {/* Submit */}
                             <div className="flex gap-2 pt-4">
