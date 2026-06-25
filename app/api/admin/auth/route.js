@@ -11,7 +11,7 @@ export async function POST(request) {
     const { password } = await request.json()
 
     if (password !== ADMIN_PASSWORD) {
-        return Response.json({ error: 'Invalid password' }, { status: 401 })
+        return Response.json({ success: false, error: 'Invalid password' }, { status: 401 })
     }
 
     const token = Math.random().toString(36).substring(2) + Date.now().toString(36)
@@ -22,7 +22,14 @@ export async function POST(request) {
         expires_at: expiresAt.toISOString()
     }])
 
-    return Response.json({ success: true, token })
+    const response = Response.json({ success: true, token })
+    response.cookies.set('admin_token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 24 * 60 * 60 // 24 hours
+    })
+    return response
 }
 
 export async function GET(request) {
