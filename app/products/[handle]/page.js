@@ -315,10 +315,10 @@ export default function ProductPage() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {product.variants.map(v => (
-                    <button key={v.id} onClick={() => setSelectedVariant(v)} disabled={!v.available}
+                    <button key={v.id} onClick={() => setSelectedVariant(v)} disabled={!v.available && v.inventory_management === 'shopify'}
                       className={'px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all ' + (
                         selectedVariant?.id === v.id ? 'border-coral bg-coral text-white'
-                        : !v.available ? 'border-gray-100 text-gray-300 cursor-not-allowed line-through'
+                            : !v.available && v.inventory_management === 'shopify' ? 'border-gray-100 text-gray-300 cursor-not-allowed line-through'
                         : 'border-gray-200 text-charcoal hover:border-coral'
                       )}>
                       {v.title}
