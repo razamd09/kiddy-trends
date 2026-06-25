@@ -4,16 +4,14 @@ export async function POST(request) {
     try {
         const { cartItems, customer } = await request.json()
 
-        // Calculate totals
         const subtotal = cartItems.reduce((s, i) => s + (parseFloat(i.price || 0) * i.quantity), 0)
-        const shipping  = 250
-        const discount  = customer.discount || 0
-        const total     = subtotal + shipping - discount
+        const shipping = 250
+        const discount = customer.discount || 0
+        const total    = subtotal + shipping - discount
 
-        // Save directly to Supabase — no Shopify needed
         const supabase = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL,
-            process.env.SUPABASE_SERVICE_KEY
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
         )
 
         const { data: savedOrder, error } = await supabase
@@ -41,10 +39,18 @@ export async function POST(request) {
             return Response.json({ success: false, error: 'Failed to save order' }, { status: 500 })
         }
 
+        // Generate order number using real ID
+        const orderNumber = 'KT' + (100 + savedOrder.id)
+        await supabase
+            .from('orders')
+            .update({ order_number: orderNumber })
+            .eq('id', savedOrder.id)
+
         return Response.json({
-            success:   true,
-            orderId:   savedOrder.id,
-            orderName: '#KT-' + savedOrder.id,
+            success:     true,
+            orderId:     savedOrder.id,
+            orderName:   orderNumber,
+            orderNumber: orderNumber,
         })
 
     } catch (error) {
