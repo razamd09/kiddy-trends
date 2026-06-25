@@ -40,10 +40,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
     name:'', phone:'', whatsapp:'', sameAsPhone: true, email:'', address:'', city:'', notes:''
   })
   const [errors, setErrors]           = useState({})
-  const [coupon, setCoupon]           = useState('')
   const [discount, setDiscount]       = useState(null)
-  const [couponError, setCouponError] = useState('')
-  const [couponLoading, setCouponLoading] = useState(false)
   const [rewards, setRewards]         = useState({ userId: '', points: 0, redeemed: 0 })
   const [earnedPoints, setEarnedPoints] = useState(0)
   const [bonusAwarded, setBonusAwarded] = useState(false)
@@ -77,28 +74,6 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
     if (!form.city)           e.city    = 'Please select your city'
     setErrors(e)
     return Object.keys(e).length === 0
-  }
-
-  async function applyCoupon() {
-    if (!coupon.trim()) return
-    setCouponLoading(true)
-    setCouponError('')
-    setDiscount(null)
-    const validCodes = {
-
-      'WELCOME':  { type: 'percent',  value: 15,  label: '15% OFF' },
-      'FLAT100':  { type: 'fixed',    value: 100, label: 'PKR 100 OFF' },
-      'FLAT200':  { type: 'fixed',    value: 200, label: 'PKR 200 OFF' },
-      'FREESHIP': { type: 'shipping', value: 250, label: 'Free Shipping' },
-    }
-    const code = coupon.trim().toUpperCase()
-    if (validCodes[code]) {
-      setDiscount({ ...validCodes[code], code })
-      setCouponError('')
-    } else {
-      setCouponError('Invalid coupon code. Please try again.')
-    }
-    setCouponLoading(false)
   }
 
   function buildWhatsAppMessage() {
@@ -351,28 +326,6 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
 
               {/* Rewards */}
               <RewardsSection onRewardsChange={setRewards} />
-
-              {/* Coupon */}
-              <div>
-                <label className="block font-semibold text-sm text-charcoal mb-1">Discount Code (optional)</label>
-                <div className="flex gap-2">
-                  <input type="text" placeholder="Enter coupon code" value={coupon}
-                    onChange={e => { setCoupon(e.target.value.toUpperCase()); setDiscount(null); setCouponError('') }}
-                    className="flex-1 px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm font-bold tracking-wider" />
-                  <button type="button" onClick={applyCoupon} disabled={couponLoading || !coupon.trim()}
-                    className="px-5 py-3 rounded-2xl bg-charcoal text-white text-sm font-bold hover:bg-coral transition-colors disabled:opacity-50">
-                    {couponLoading ? '...' : 'Apply'}
-                  </button>
-                </div>
-                {couponError && <p className="text-red-400 text-xs mt-1">{couponError}</p>}
-                {discount && (
-                  <div className="flex items-center gap-2 mt-2 bg-mint/20 rounded-xl px-3 py-2">
-                    <span className="text-green-600 font-bold text-xs">✓ {discount.label} applied!</span>
-                    <button type="button" onClick={() => { setDiscount(null); setCoupon('') }}
-                      className="ml-auto text-gray-400 hover:text-coral text-xs">✕ Remove</button>
-                  </div>
-                )}
-              </div>
 
               {/* Notes */}
               <div>
