@@ -22,54 +22,99 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-    const body = await request.json()
+    try {
+        const body = await request.json()
 
-    const { data, error } = await supabase
-        .from('products')
-        .insert([{
-            title:         body.title,
-            description:   body.description,
-            price:         body.price,
-            compare_price: body.compare_price,
-            images:        body.images || [],
-            category:      body.category,
-            product_type:  body.product_type,
-            tags:          body.tags || [],
-            stock:         body.stock || 0,
-            is_active:     true,
-            source:        'custom',
-        }])
-        .select()
-        .single()
+        const { data, error } = await supabase
+            .from('products')
+            .insert([{
+                title:         body.title,
+                description:   body.description,
+                price:         parseFloat(body.price) || 0,
+                compare_price: body.compare_price ? parseFloat(body.compare_price) : null,
+                images:        Array.isArray(body.images) 
+                    ? body.images.map(img => typeof img === 'string' ? img : img.src)
+                    : (body.images || []),
+                category:      body.category,
+                product_type:  body.product_type,
+                tags:          Array.isArray(body.tags) ? body.tags : (body.tags || []),
+                variants:      body.variants || null,
+                stock:         parseInt(body.stock) || 0,
+                is_active:     true,
+                source:        'custom',
+                shopify_handle: body.shopify_handle || null,
+            }])
+            .select()
+            .single()
 
-    if (error) return Response.json({ error: error.message }, { status: 500 })
-    return Response.json({ success: true, product: data })
+        if (error) return Response.json({ error: error.message }, { status: 500 })
+        return Response.json({ success: true, product: data })
+    } catch (err) {
+        return Response.json({ error: err.message }, { status: 500 })
+    }
 }
 
 export async function PUT(request) {
-    const body = await request.json()
-    const { id, ...updates } = body
+    try {
+        const body = await request.json()
+        const { id, ...updates } = body
 
-    const { data, error } = await supabase
-        .from('products')
-        .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq('id', id)
-        .select()
-        .single()
+        const cleanUpdates = {
+            ...updates,
+            updated_at: new Date().toISOString()
+        }
 
-    if (error) return Response.json({ error: error.message }, { status: 500 })
-    return Response.json({ success: true, product: data })
+        if (updates.images) {
+            cleanUpdates.images = Array.isArray(updates.images)
+                ? updates.images.map(img => typeof img === 'string' ? img : img.src)
+                : []
+        }
+
+        if (updates.tags) {
+            cleanUpdates.tags = Array.isArray(updates.tags) ? updates.tags : []
+        }
+
+        if (updates.price) {
+            cleanUpdates.price = parseFloat(updates.price)
+        }
+
+        if (updates.compare_price) {
+            cleanUpdates.compare_price = parseFloat(updates.compare_price)
+        }
+
+        if (updates.stock) {
+            cleanUpdates.stock = parseInt(updates.stock)
+        }
+
+        const { data, error } = await supabase
+            .from('products')
+            .update(cleanUpdates)
+            .eq('id', id)
+            .select()
+            .single()
+
+        if (error) return Response.json({ error: error.message }, { status: 500 })
+        return Response.json({ success: true, product: data })
+    } catch (err) {
+        return Response.json({ error: err.message }, { status: 500 })
+    }
 }
 
 export async function DELETE(request) {
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
+    try {
+        const { searchParams } = new URL(request.url)
+        const id = searchParams.get('id')
 
-    const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', id)
+        if (!id) return Response.json({ error: 'Product ID required' }, { status: 400 })
 
-    if (error) return Response.json({ error: error.message }, { status: 500 })
-    return Response.json({ success: true })
+        const { error } = await supabase
+            .from('products')
+            .delete()
+            .eq('id', id)
+
+        if (error) return Response.json({ error: error.message }, { status: 500 })
+        return Response.json({ success: true })
+    } catch (err) {
+        return Response.json({ error: err.message }, { status: 500 })
+    }
 }
