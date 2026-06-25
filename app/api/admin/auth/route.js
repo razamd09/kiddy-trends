@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { NextResponse } from 'next/server'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -12,7 +13,7 @@ export async function POST(request) {
         const { password } = await request.json()
 
         if (password !== ADMIN_PASSWORD) {
-            return Response.json({ success: false, error: 'Invalid password' }, { status: 401 })
+            return NextResponse.json({ success: false, error: 'Invalid password' }, { status: 401 })
         }
 
         const token = Math.random().toString(36).substring(2) + Date.now().toString(36)
@@ -26,10 +27,9 @@ export async function POST(request) {
 
         if (error) {
             console.error('Supabase insert error:', error)
-            // Continue anyway - token still valid even if DB insert fails
         }
 
-        const response = Response.json({ success: true, token })
+        const response = NextResponse.json({ success: true, token })
         response.cookies.set('admin_token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
@@ -39,13 +39,13 @@ export async function POST(request) {
         return response
     } catch (err) {
         console.error('Auth API error:', err)
-        return Response.json({ success: false, error: err.message }, { status: 500 })
+        return NextResponse.json({ success: false, error: err.message }, { status: 500 })
     }
 }
 
 export async function GET(request) {
     const token = request.headers.get('x-admin-token')
-    if (!token) return Response.json({ valid: false })
+    if (!token) return NextResponse.json({ valid: false })
 
     const { data } = await supabase
         .from('admin_sessions')
@@ -54,5 +54,5 @@ export async function GET(request) {
         .gt('expires_at', new Date().toISOString())
         .single()
 
-    return Response.json({ valid: !!data })
+    return NextResponse.json({ valid: !!data })
 }
