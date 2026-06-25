@@ -3,34 +3,37 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-const statusColors = {
-    pending:    'bg-orange-100 text-orange-600',
-    processing: 'bg-blue-100 text-blue-600',
-    dispatched: 'bg-purple-100 text-purple-600',
-    delivered:  'bg-green-100 text-green-600',
-    cancelled:  'bg-red-100 text-red-600',
+const statusConfig = {
+    pending:    { color: 'bg-orange-100 text-orange-600 border-orange-200', icon: '⏳', label: 'Pending' },
+    processing: { color: 'bg-blue-100 text-blue-600 border-blue-200',       icon: '⚙️', label: 'Processing' },
+    dispatched: { color: 'bg-purple-100 text-purple-600 border-purple-200', icon: '🚚', label: 'Dispatched' },
+    delivered:  { color: 'bg-green-100 text-green-600 border-green-200',    icon: '✅', label: 'Delivered' },
+    cancelled:  { color: 'bg-red-100 text-red-500 border-red-200',          icon: '❌', label: 'Cancelled' },
 }
 
+const allStatuses = ['pending', 'processing', 'dispatched', 'delivered', 'cancelled']
+
 export default function AdminOrders() {
-    const [orders, setOrders]   = useState([])
-    const [loading, setLoading] = useState(true)
-    const [filter, setFilter]   = useState('all')
-    const [page, setPage]       = useState(1)
-    const [total, setTotal]     = useState(0)
+    const [orders, setOrders]     = useState([])
+    const [loading, setLoading]   = useState(true)
+    const [filter, setFilter]     = useState('all')
+    const [page, setPage]         = useState(1)
+    const [total, setTotal]       = useState(0)
     const [selected, setSelected] = useState(null)
+    const [updating, setUpdating] = useState(false)
     const router = useRouter()
 
     useEffect(() => {
         const token = localStorage.getItem('admin_token')
         if (!token) { router.push('/admin'); return }
-        fetchOrders(token)
+        fetchOrders()
     }, [filter, page])
 
-    async function fetchOrders(token) {
+    async function fetchOrders() {
         setLoading(true)
-        const t = token || localStorage.getItem('admin_token')
-        const res = await fetch('/api/admin/orders?page=' + page + '&status=' + filter, {
-            headers: { 'x-admin-token': t }
+        const token = localStorage.getItem('admin_token')
+        const res   = await fetch('/api/admin/orders?page=' + page + '&status=' + filter, {
+            headers: { 'x-admin-token': token }
         })
         const data = await res.json()
         setOrders(data.orders || [])
@@ -39,139 +42,252 @@ export default function AdminOrders() {
     }
 
     async function updateStatus(id, status) {
+        setUpdating(true)
         const token = localStorage.getItem('admin_token')
-        await fetch('/api/admin/orders', {
+        const res   = await fetch('/api/admin/orders', {
             method:  'PUT',
             headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
             body:    JSON.stringify({ id, status })
         })
-        fetchOrders()
-        if (selected?.id === id) setSelected({ ...selected, status })
+        const data = await res.json()
+        if (data.success) {
+            setSelected(prev => prev ? { ...prev, status } : null)
+            setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o))
+        }
+        setUpdating(false)
+    }
+
+    function getItems(order) {
+        try {
+            return typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || [])
+        } catch { return [] }
+    }
+
+    function buildWhatsAppMsg(order) {
+        const items    = getItems(order)
+        const itemText = items.map(i => '• ' + i.title + ' x' + i.quantity).join('\n')
+        const msg =
+            'Assalam o Alaikum ' + order.customer_name + '! 👋\n\n' +
+            'Your order from Kiddy Trends has been confirmed! 🎉\n\n' +
+            (itemText ? 'Items:\n' + itemText + '\n\n' : '') +
+            'Total: PKR ' + (order.total || 0).toLocaleString() + '\n' +
+            'Payment: Cash on Delivery\n\n' +
+            'Delivery to: ' + order.customer_address + ', ' + order.customer_city + '\n\n' +
+            'Expected delivery: 3-5 business days.\n\n' +
+            'Thank you for shopping with Kiddy Trends! 🛍️\nwww.thekiddytrends.com'
+        const phone = (order.customer_whatsapp || order.customer_phone || '').replace(/\D/g, '')
+        return 'https://wa.me/' + phone + '?text=' + encodeURIComponent(msg)
     }
 
     return (
         <div className="min-h-screen bg-cream">
-            <div className="bg-white shadow-sm px-6 py-4 flex items-center justify-between">
+            {/* Header */}
+            <div className="bg-white shadow-sm px-6 py-4 flex items-center justify-between sticky top-0 z-10">
                 <div className="flex items-center gap-3">
-                    <Link href="/admin/dashboard" className="text-gray-400 hover:text-coral">← Back</Link>
+                    <Link href="/admin/dashboard" className="text-gray-400 hover:text-coral text-sm">← Back</Link>
                     <h1 className="font-display text-xl text-charcoal">Orders</h1>
                     <span className="bg-coral/10 text-coral text-xs px-2 py-1 rounded-full font-bold">{total}</span>
                 </div>
+                <button onClick={fetchOrders} className="text-xs bg-cream px-3 py-1.5 rounded-full text-gray-500 hover:text-coral">
+                    🔄 Refresh
+                </button>
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
                 {/* Filter tabs */}
                 <div className="flex gap-2 flex-wrap mb-6">
-                    {['all','pending','processing','dispatched','delivered','cancelled'].map(s => (
+                    {['all', ...allStatuses].map(s => (
                         <button key={s} onClick={() => { setFilter(s); setPage(1) }}
-                                className={'px-4 py-2 rounded-full text-sm font-semibold transition-all ' + (filter === s ? 'bg-coral text-white' : 'bg-white text-charcoal hover:border-coral border-2 border-gray-100')}>
-                            {s.charAt(0).toUpperCase() + s.slice(1)}
+                                className={'px-4 py-2 rounded-full text-sm font-semibold transition-all ' +
+                                    (filter === s ? 'bg-coral text-white shadow-md' : 'bg-white text-charcoal border-2 border-gray-100 hover:border-coral')}>
+                            {s === 'all' ? '🛍️ All (' + total + ')' : (statusConfig[s]?.icon + ' ' + statusConfig[s]?.label)}
                         </button>
                     ))}
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
+                <div className="grid md:grid-cols-5 gap-4">
+
                     {/* Orders list */}
-                    <div className="space-y-3">
+                    <div className="md:col-span-2 space-y-3 max-h-[80vh] overflow-y-auto pr-1">
                         {loading ? (
                             [...Array(5)].map((_, i) => (
-                                <div key={i} className="bg-white rounded-2xl p-4 animate-pulse h-20" />
+                                <div key={i} className="bg-white rounded-2xl p-4 animate-pulse h-24" />
                             ))
                         ) : orders.length === 0 ? (
-                            <div className="text-center py-20 text-gray-400">
+                            <div className="text-center py-20 text-gray-400 bg-white rounded-2xl">
                                 <p className="text-4xl mb-2">📭</p>
                                 <p>No orders found</p>
                             </div>
                         ) : orders.map(order => (
-                            <div key={order.id}
-                                 onClick={() => setSelected(order)}
-                                 className={'bg-white rounded-2xl p-4 cursor-pointer hover:shadow-md transition-all border-2 ' + (selected?.id === order.id ? 'border-coral' : 'border-transparent')}>
-                                <div className="flex items-center justify-between mb-2">
+                            <div key={order.id} onClick={() => setSelected(order)}
+                                 className={'bg-white rounded-2xl p-4 cursor-pointer hover:shadow-md transition-all border-2 ' +
+                                     (selected?.id === order.id ? 'border-coral' : 'border-transparent')}>
+                                <div className="flex items-start justify-between mb-1">
                                     <p className="font-display text-base text-charcoal">{order.customer_name}</p>
-                                    <span className={'text-xs px-2 py-1 rounded-full font-bold ' + (statusColors[order.status] || 'bg-gray-100 text-gray-500')}>
-                    {order.status}
+                                    <span className={'text-xs px-2 py-1 rounded-full font-bold border ' +
+                                        (statusConfig[order.status]?.color || 'bg-gray-100 text-gray-500 border-gray-200')}>
+                    {statusConfig[order.status]?.icon} {statusConfig[order.status]?.label}
                   </span>
                                 </div>
+                                <p className="text-xs text-gray-400 mb-1">{order.customer_city} · {order.customer_phone}</p>
                                 <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-xs text-gray-400">{order.customer_city} · {order.customer_phone}</p>
-                                        <p className="text-xs text-gray-400">{new Date(order.created_at).toLocaleString()}</p>
-                                    </div>
-                                    <p className="font-bold text-coral">PKR {order.total?.toLocaleString()}</p>
+                                    <p className="text-xs text-gray-300">{new Date(order.created_at).toLocaleString('en-PK')}</p>
+                                    <p className="font-bold text-coral text-sm">PKR {(order.total || 0).toLocaleString()}</p>
                                 </div>
                             </div>
                         ))}
 
-                        {/* Pagination */}
                         {total > 20 && (
                             <div className="flex justify-center gap-2 mt-4">
                                 <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}
-                                        className="px-4 py-2 bg-white rounded-xl text-sm disabled:opacity-50">← Prev</button>
-                                <span className="px-4 py-2 bg-coral text-white rounded-xl text-sm">Page {page}</span>
+                                        className="px-4 py-2 bg-white rounded-xl text-sm disabled:opacity-50 border border-gray-100">← Prev</button>
+                                <span className="px-4 py-2 bg-coral text-white rounded-xl text-sm font-bold">Page {page}</span>
                                 <button onClick={() => setPage(p => p+1)} disabled={page * 20 >= total}
-                                        className="px-4 py-2 bg-white rounded-xl text-sm disabled:opacity-50">Next →</button>
+                                        className="px-4 py-2 bg-white rounded-xl text-sm disabled:opacity-50 border border-gray-100">Next →</button>
                             </div>
                         )}
                     </div>
 
                     {/* Order detail */}
-                    {selected && (
-                        <div className="bg-white rounded-2xl p-6 h-fit sticky top-4">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-display text-lg text-charcoal">Order Details</h3>
-                                <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-coral">✕</button>
+                    <div className="md:col-span-3">
+                        {!selected ? (
+                            <div className="bg-white rounded-2xl p-10 text-center text-gray-400 flex items-center justify-center min-h-[400px]">
+                                <div>
+                                    <p className="text-5xl mb-3">👈</p>
+                                    <p>Select an order to view details</p>
+                                </div>
                             </div>
+                        ) : (
+                            <div className="bg-white rounded-2xl p-6 space-y-4">
 
-                            <div className="space-y-3 mb-4">
-                                <div className="bg-cream rounded-xl p-3 space-y-2">
-                                    <p className="text-sm"><span className="font-semibold">Name:</span> {selected.customer_name}</p>
-                                    <p className="text-sm"><span className="font-semibold">Phone:</span> {selected.customer_phone}</p>
-                                    <p className="text-sm"><span className="font-semibold">WhatsApp:</span> {selected.customer_whatsapp}</p>
-                                    <p className="text-sm"><span className="font-semibold">City:</span> {selected.customer_city}</p>
-                                    <p className="text-sm"><span className="font-semibold">Address:</span> {selected.customer_address}</p>
-                                    {selected.customer_email && <p className="text-sm"><span className="font-semibold">Email:</span> {selected.customer_email}</p>}
+                                {/* Header */}
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="font-display text-xl text-charcoal">Order #{selected.id}</p>
+                                        <p className="text-xs text-gray-400">{new Date(selected.created_at).toLocaleString('en-PK')}</p>
+                                    </div>
+                                    <button onClick={() => setSelected(null)} className="text-gray-300 hover:text-coral text-xl">✕</button>
+                                </div>
+
+                                {/* Customer */}
+                                <div className="bg-cream rounded-2xl p-4">
+                                    <p className="font-display text-sm text-charcoal mb-3">👤 Customer Info</p>
+                                    <div className="grid grid-cols-2 gap-y-2 text-sm">
+                                        <div><span className="text-gray-400 text-xs">Name</span><br/><span className="font-semibold">{selected.customer_name}</span></div>
+                                        <div><span className="text-gray-400 text-xs">City</span><br/><span className="font-semibold">{selected.customer_city}</span></div>
+                                        <div><span className="text-gray-400 text-xs">Phone</span><br/><span className="font-semibold">{selected.customer_phone}</span></div>
+                                        <div><span className="text-gray-400 text-xs">WhatsApp</span><br/><span className="font-semibold">{selected.customer_whatsapp}</span></div>
+                                        {selected.customer_email && (
+                                            <div className="col-span-2"><span className="text-gray-400 text-xs">Email</span><br/><span className="font-semibold">{selected.customer_email}</span></div>
+                                        )}
+                                        <div className="col-span-2"><span className="text-gray-400 text-xs">Address</span><br/><span className="font-semibold">{selected.customer_address}</span></div>
+                                    </div>
                                 </div>
 
                                 {/* Items */}
-                                {selected.items && (
-                                    <div className="bg-cream rounded-xl p-3">
-                                        <p className="font-semibold text-sm mb-2">Items:</p>
-                                        {(typeof selected.items === 'string' ? JSON.parse(selected.items) : selected.items).map((item, i) => (
-                                            <div key={i} className="flex justify-between text-xs py-1">
-                                                <span>{item.title} x{item.quantity}</span>
-                                                <span className="font-bold">PKR {(item.price * item.quantity).toLocaleString()}</span>
+                                <div className="bg-cream rounded-2xl p-4">
+                                    <p className="font-display text-sm text-charcoal mb-3">📦 Items</p>
+                                    <div className="space-y-2">
+                                        {getItems(selected).length === 0 ? (
+                                            <p className="text-xs text-gray-400">No item details available</p>
+                                        ) : getItems(selected).map((item, i) => (
+                                            <div key={i} className="flex items-center justify-between bg-white rounded-xl px-3 py-2 text-sm">
+                                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                    {item.image && <img src={item.image} alt="" className="w-8 h-8 object-contain rounded-lg flex-shrink-0" />}
+                                                    <div className="min-w-0">
+                                                        <p className="font-semibold text-charcoal truncate text-xs">{item.title}</p>
+                                                        {item.variantTitle && <p className="text-xs text-gray-400">{item.variantTitle}</p>}
+                                                    </div>
+                                                </div>
+                                                <div className="text-right flex-shrink-0 ml-2">
+                                                    <p className="text-xs text-gray-400">x{item.quantity}</p>
+                                                    <p className="font-bold text-coral text-xs">PKR {(parseFloat(item.price || 0) * item.quantity).toLocaleString()}</p>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
+                                    <div className="border-t border-gray-100 mt-3 pt-3 space-y-1 text-sm">
+                                        <div className="flex justify-between text-gray-400">
+                                            <span>Subtotal</span>
+                                            <span>PKR {(selected.subtotal || 0).toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between text-gray-400">
+                                            <span>Shipping</span>
+                                            <span>PKR {(selected.shipping || 250).toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between font-display text-base pt-1 border-t border-gray-100">
+                                            <span>Total</span>
+                                            <span className="text-coral font-bold">PKR {(selected.total || 0).toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* WhatsApp button — only for pending */}
+                                {selected.status === 'pending' && (
+                                    <a href={buildWhatsAppMsg(selected)} target="_blank" rel="noopener noreferrer"
+                                       className="w-full bg-green-500 text-white font-display text-sm py-3 rounded-2xl flex items-center justify-center gap-2 hover:bg-green-600 transition-colors block text-center">
+                                        💬 Contact Customer on WhatsApp
+                                    </a>
                                 )}
 
-                                <div className="flex justify-between font-display text-base">
-                                    <span>Total</span>
-                                    <span className="text-coral">PKR {selected.total?.toLocaleString()}</span>
+                                {/* Status radio buttons */}
+                                <div className="bg-cream rounded-2xl p-4">
+                                    <p className="font-display text-sm text-charcoal mb-3">📋 Update Order Status</p>
+                                    <div className="space-y-2">
+                                        {allStatuses.map(s => (
+                                            <label key={s}
+                                                   className={'flex items-center gap-3 p-3 rounded-xl cursor-pointer border-2 transition-all ' +
+                                                       (selected.status === s
+                                                           ? 'border-coral bg-coral/5'
+                                                           : 'border-transparent bg-white hover:border-coral/30')}>
+                                                <input
+                                                    type="radio"
+                                                    name="status"
+                                                    value={s}
+                                                    checked={selected.status === s}
+                                                    onChange={() => updateStatus(selected.id, s)}
+                                                    disabled={updating}
+                                                    className="accent-coral w-4 h-4"
+                                                />
+                                                <div className="flex items-center gap-2 flex-1">
+                                                    <span className="text-lg">{statusConfig[s]?.icon}</span>
+                                                    <div>
+                                                        <p className={'font-semibold text-sm ' +
+                                                            (selected.status === s ? 'text-coral' : 'text-charcoal')}>
+                                                            {statusConfig[s]?.label}
+                                                        </p>
+                                                        <p className="text-xs text-gray-400">
+                                                            {s === 'pending'    && 'Order received, awaiting confirmation'}
+                                                            {s === 'processing' && 'Order confirmed, preparing to ship'}
+                                                            {s === 'dispatched' && 'Order shipped, on the way'}
+                                                            {s === 'delivered'  && 'Order delivered to customer'}
+                                                            {s === 'cancelled'  && 'Order cancelled'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                {selected.status === s && (
+                                                    <span className="text-coral font-bold text-xs ml-auto">● Current</span>
+                                                )}
+                                            </label>
+                                        ))}
+                                    </div>
+                                    {updating && (
+                                        <p className="text-xs text-coral text-center mt-2 animate-pulse">Updating status...</p>
+                                    )}
                                 </div>
-                            </div>
 
-                            {/* Status update */}
-                            <div>
-                                <p className="font-semibold text-sm text-charcoal mb-2">Update Status:</p>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {['pending','processing','dispatched','delivered','cancelled'].map(s => (
-                                        <button key={s} onClick={() => updateStatus(selected.id, s)}
-                                                className={'py-2 rounded-xl text-xs font-bold transition-all ' + (selected.status === s ? 'bg-coral text-white' : 'bg-cream text-charcoal hover:bg-coral/20')}>
-                                            {s.charAt(0).toUpperCase() + s.slice(1)}
-                                        </button>
-                                    ))}
-                                </div>
+                                {/* Notes */}
+                                {selected.notes && (
+                                    <div className="bg-sunny/20 rounded-2xl p-3">
+                                        <p className="text-xs text-gray-500">
+                                            <span className="font-semibold">Notes:</span> {selected.notes}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
-
-                            {/* WhatsApp customer */}
-                            <a href={'https://wa.me/' + selected.customer_whatsapp?.replace(/\D/g,'')}
-                               target="_blank" rel="noopener noreferrer"
-                               className="mt-4 w-full bg-green-500 text-white font-display text-sm py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-green-600 transition-colors">
-                                💬 WhatsApp Customer
-                            </a>
-                        </div>
-                    )}
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

@@ -10,7 +10,7 @@ export default function RewardsSection({ onRewardsChange }) {
   const [error, setError]           = useState('')
   const [redeemPoints, setRedeemPoints] = useState(0)
   const [newUserName, setNewUserName]   = useState('')
-  const [newUserPhone, setNewUserPhone] = useState('')
+
   const [registerError, setRegisterError] = useState('')
 
   async function handleLookup() {
@@ -33,8 +33,8 @@ export default function RewardsSection({ onRewardsChange }) {
   }
 
   async function handleRegister() {
-    if (!newUserName.trim() || !newUserPhone.trim()) {
-      setRegisterError('Name and phone are required')
+    if (!newUserName.trim()) {
+      setRegisterError('Name is required')
       return
     }
     setLoading(true)
@@ -43,10 +43,10 @@ export default function RewardsSection({ onRewardsChange }) {
       const res  = await fetch('/api/rewards', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
+        body: JSON.stringify({
           userId: userIdInput.trim(),
           name:   newUserName.trim(),
-          phone:  newUserPhone.trim(),
+          phone:  '',
         })
       })
       const data = await res.json()
@@ -138,10 +138,7 @@ export default function RewardsSection({ onRewardsChange }) {
               <input type="text" placeholder="Your full name"
                 value={newUserName} onChange={e => setNewUserName(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm bg-cream" />
-              <input type="tel" placeholder="Your phone number"
-                value={newUserPhone} onChange={e => setNewUserPhone(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm bg-cream" />
-            </div>
+              </div>
             {registerError && <p className="text-red-400 text-xs mt-1">{registerError}</p>}
             <div className="flex gap-2 mt-3">
               <button onClick={() => setMode('login')}
