@@ -60,7 +60,7 @@ export default function FlashSaleBanner() {
           </div>
         </div>
         <div className="bg-sunny text-charcoal font-display text-sm px-4 py-1.5 rounded-full">
-          Code: <strong>KIDDY20</strong>
+          Flash Sale Now Live!
         </div>
         <Link href="/collections"
           className="bg-coral text-white font-display text-sm px-5 py-2 rounded-full hover:bg-opacity-90 transition-all hover:scale-105">

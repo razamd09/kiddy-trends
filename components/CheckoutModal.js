@@ -86,7 +86,6 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
     setDiscount(null)
     const validCodes = {
 
-      'KIDDY20':  { type: 'percent',  value: 20,  label: '20% OFF' },
       'WELCOME':  { type: 'percent',  value: 15,  label: '15% OFF' },
       'FLAT100':  { type: 'fixed',    value: 100, label: 'PKR 100 OFF' },
       'FLAT200':  { type: 'fixed',    value: 200, label: 'PKR 200 OFF' },
