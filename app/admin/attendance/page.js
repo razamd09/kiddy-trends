@@ -4,23 +4,43 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 export default function AdminAttendance() {
-    const [attendance, setAttendance] = useState([])
-    const [employees, setEmployees]   = useState([])
-    const [loading, setLoading]       = useState(true)
-    const [period, setPeriod]         = useState('daily')
+    const [attendance, setAttendance]   = useState([])
+    const [employees, setEmployees]     = useState([])
+    const [loading, setLoading]         = useState(true)
+    const [verified, setVerified]       = useState(false)
+    const [period, setPeriod]           = useState('daily')
     const [selectedEmp, setSelectedEmp] = useState('all')
-    const [date, setDate]             = useState(new Date().toISOString().split('T')[0])
+    const [date, setDate]               = useState(new Date().toISOString().split('T')[0])
     const router = useRouter()
 
     useEffect(() => {
-        const token = localStorage.getItem('admin_token')
-        if (!token) { router.push('/admin'); return }
-        fetchEmployees()
-        fetchAttendance()
-    }, [period, selectedEmp, date])
+        async function verify() {
+            const token = localStorage.getItem('admin_token')
+            if (!token) { router.push('/admin'); return }
+            try {
+                const res  = await fetch('/api/admin/auth', { headers: { 'x-admin-token': token } })
+                const data = await res.json()
+                if (!data.valid) {
+                    localStorage.removeItem('admin_token')
+                    router.push('/admin')
+                } else {
+                    setVerified(true)
+                    fetchEmployees(token)
+                    fetchAttendance()
+                }
+            } catch {
+                router.push('/admin')
+            }
+        }
+        verify()
+    }, [])
 
-    async function fetchEmployees() {
-        const token = localStorage.getItem('admin_token')
+    useEffect(() => {
+        if (verified) fetchAttendance()
+    }, [verified, period, selectedEmp, date])
+
+    async function fetchEmployees(t) {
+        const token = t || localStorage.getItem('admin_token')
         const res   = await fetch('/api/admin/employees', { headers: { 'x-admin-token': token } })
         const data  = await res.json()
         setEmployees(data.employees || [])
@@ -43,9 +63,20 @@ export default function AdminAttendance() {
         return h + 'h ' + m + 'm'
     }
 
-    const totalHours   = attendance.reduce((s, a) => s + (a.duration_minutes || 0), 0)
-    const presentCount = attendance.filter(a => a.time_in).length
+    function logout() {
+        localStorage.removeItem('admin_token')
+        router.push('/admin')
+    }
+
+    const totalHours     = attendance.reduce((s, a) => s + (a.duration_minutes || 0), 0)
+    const presentCount   = attendance.filter(a => a.time_in).length
     const completedCount = attendance.filter(a => a.time_out).length
+
+    if (!verified) return (
+        <div className="min-h-screen bg-cream flex items-center justify-center">
+            <p className="font-display text-2xl text-charcoal animate-pulse">Verifying...</p>
+        </div>
+    )
 
     return (
         <div className="min-h-screen bg-cream">
@@ -54,14 +85,14 @@ export default function AdminAttendance() {
                     <Link href="/admin/dashboard" className="text-gray-400 hover:text-coral text-sm">← Back</Link>
                     <h1 className="font-display text-xl text-charcoal">Attendance</h1>
                 </div>
+                <button onClick={logout} className="text-sm text-gray-400 hover:text-coral">Logout →</button>
             </div>
 
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
                 {/* Filters */}
                 <div className="bg-white rounded-2xl p-4 mb-6 flex flex-wrap gap-3 items-center">
-                    {/* Period */}
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                         {['daily','weekly','monthly','yearly'].map(p => (
                             <button key={p} onClick={() => setPeriod(p)}
                                     className={'px-4 py-2 rounded-full text-sm font-semibold transition-all ' +
@@ -70,12 +101,8 @@ export default function AdminAttendance() {
                             </button>
                         ))}
                     </div>
-
-                    {/* Date */}
                     <input type="date" value={date} onChange={e => setDate(e.target.value)}
                            className="px-4 py-2 rounded-full border-2 border-gray-100 focus:border-coral focus:outline-none text-sm bg-cream" />
-
-                    {/* Employee filter */}
                     <select value={selectedEmp} onChange={e => setSelectedEmp(e.target.value)}
                             className="px-4 py-2 rounded-full border-2 border-gray-100 focus:border-coral focus:outline-none text-sm bg-cream">
                         <option value="all">All Employees</option>
@@ -83,8 +110,8 @@ export default function AdminAttendance() {
                             <option key={emp.employee_id} value={emp.employee_id}>{emp.name}</option>
                         ))}
                     </select>
-
-                    <button onClick={fetchAttendance} className="px-4 py-2 bg-coral text-white rounded-full text-sm font-semibold hover:bg-opacity-90">
+                    <button onClick={fetchAttendance}
+                            className="px-4 py-2 bg-coral text-white rounded-full text-sm font-semibold hover:bg-opacity-90">
                         🔍 Search
                     </button>
                 </div>
@@ -92,9 +119,9 @@ export default function AdminAttendance() {
                 {/* Summary cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     {[
-                        { label: 'Total Records', value: attendance.length,   icon: '📋', color: 'bg-skyblue/20' },
-                        { label: 'Present',       value: presentCount,        icon: '✅', color: 'bg-green-50' },
-                        { label: 'Completed',     value: completedCount,      icon: '🎯', color: 'bg-mint/20' },
+                        { label: 'Total Records', value: attendance.length,        icon: '📋', color: 'bg-skyblue/20' },
+                        { label: 'Present',       value: presentCount,             icon: '✅', color: 'bg-green-50' },
+                        { label: 'Completed',     value: completedCount,           icon: '🎯', color: 'bg-mint/20' },
                         { label: 'Total Hours',   value: formatDuration(totalHours), icon: '⏱️', color: 'bg-sunny/20' },
                     ].map((stat, i) => (
                         <div key={i} className={'rounded-2xl p-4 ' + stat.color}>
@@ -107,11 +134,12 @@ export default function AdminAttendance() {
 
                 {/* Attendance table */}
                 <div className="bg-white rounded-2xl overflow-hidden">
-                    <div className="p-4 border-b border-gray-100">
+                    <div className="p-4 border-b border-gray-100 flex items-center justify-between">
                         <p className="font-display text-lg text-charcoal">
                             Attendance Records
                             <span className="text-sm font-body text-gray-400 ml-2">({attendance.length} records)</span>
                         </p>
+                        <button onClick={fetchAttendance} className="text-xs text-gray-400 hover:text-coral">🔄 Refresh</button>
                     </div>
 
                     {loading ? (
@@ -122,6 +150,7 @@ export default function AdminAttendance() {
                         <div className="p-12 text-center text-gray-400">
                             <p className="text-4xl mb-2">📅</p>
                             <p>No attendance records found</p>
+                            <p className="text-xs mt-1">Try changing the date or period filter</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">

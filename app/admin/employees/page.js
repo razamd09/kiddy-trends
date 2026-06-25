@@ -6,6 +6,7 @@ import Link from 'next/link'
 export default function AdminEmployees() {
     const [employees, setEmployees] = useState([])
     const [loading, setLoading]     = useState(true)
+    const [verified, setVerified]   = useState(false)
     const [showForm, setShowForm]   = useState(false)
     const [editing, setEditing]     = useState(null)
     const [form, setForm]           = useState({ name: '', employee_id: '', email: '', phone: '', role: 'employee', password: '' })
@@ -14,13 +15,28 @@ export default function AdminEmployees() {
     const router = useRouter()
 
     useEffect(() => {
-        const token = localStorage.getItem('admin_token')
-        if (!token) { router.push('/admin'); return }
-        fetchEmployees()
+        async function verify() {
+            const token = localStorage.getItem('admin_token')
+            if (!token) { router.push('/admin'); return }
+            try {
+                const res  = await fetch('/api/admin/auth', { headers: { 'x-admin-token': token } })
+                const data = await res.json()
+                if (!data.valid) {
+                    localStorage.removeItem('admin_token')
+                    router.push('/admin')
+                } else {
+                    setVerified(true)
+                    fetchEmployees(token)
+                }
+            } catch {
+                router.push('/admin')
+            }
+        }
+        verify()
     }, [])
 
-    async function fetchEmployees() {
-        const token = localStorage.getItem('admin_token')
+    async function fetchEmployees(t) {
+        const token = t || localStorage.getItem('admin_token')
         const res   = await fetch('/api/admin/employees', { headers: { 'x-admin-token': token } })
         const data  = await res.json()
         setEmployees(data.employees || [])
@@ -34,11 +50,10 @@ export default function AdminEmployees() {
         }
         setSaving(true)
         setError('')
-        const token = localStorage.getItem('admin_token')
+        const token  = localStorage.getItem('admin_token')
         const method = editing ? 'PUT' : 'POST'
         const body   = editing ? { id: editing.id, ...form } : form
-
-        const res  = await fetch('/api/admin/employees', {
+        const res    = await fetch('/api/admin/employees', {
             method,
             headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
             body:    JSON.stringify(body)
@@ -71,6 +86,17 @@ export default function AdminEmployees() {
         setShowForm(true)
     }
 
+    function logout() {
+        localStorage.removeItem('admin_token')
+        router.push('/admin')
+    }
+
+    if (!verified) return (
+        <div className="min-h-screen bg-cream flex items-center justify-center">
+            <p className="font-display text-2xl text-charcoal animate-pulse">Verifying...</p>
+        </div>
+    )
+
     return (
         <div className="min-h-screen bg-cream">
             <div className="bg-white shadow-sm px-6 py-4 flex items-center justify-between sticky top-0 z-10">
@@ -79,10 +105,13 @@ export default function AdminEmployees() {
                     <h1 className="font-display text-xl text-charcoal">Employees</h1>
                     <span className="bg-coral/10 text-coral text-xs px-2 py-1 rounded-full font-bold">{employees.length}</span>
                 </div>
-                <button onClick={() => { setShowForm(true); setEditing(null); setForm({ name: '', employee_id: '', email: '', phone: '', role: 'employee', password: '' }) }}
-                        className="bg-coral text-white font-display text-sm px-5 py-2 rounded-full hover:bg-opacity-90">
-                    + Add Employee
-                </button>
+                <div className="flex items-center gap-3">
+                    <button onClick={() => { setShowForm(true); setEditing(null); setForm({ name: '', employee_id: '', email: '', phone: '', role: 'employee', password: '' }) }}
+                            className="bg-coral text-white font-display text-sm px-5 py-2 rounded-full hover:bg-opacity-90">
+                        + Add Employee
+                    </button>
+                    <button onClick={logout} className="text-sm text-gray-400 hover:text-coral">Logout →</button>
+                </div>
             </div>
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

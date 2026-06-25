@@ -16,6 +16,7 @@ const allStatuses = ['pending', 'processing', 'dispatched', 'delivered', 'cancel
 export default function AdminOrders() {
     const [orders, setOrders]     = useState([])
     const [loading, setLoading]   = useState(true)
+    const [verified, setVerified] = useState(false)
     const [filter, setFilter]     = useState('all')
     const [page, setPage]         = useState(1)
     const [total, setTotal]       = useState(0)
@@ -24,10 +25,28 @@ export default function AdminOrders() {
     const router = useRouter()
 
     useEffect(() => {
-        const token = localStorage.getItem('admin_token')
-        if (!token) { router.push('/admin'); return }
-        fetchOrders()
-    }, [filter, page])
+        async function verify() {
+            const token = localStorage.getItem('admin_token')
+            if (!token) { router.push('/admin'); return }
+            try {
+                const res  = await fetch('/api/admin/auth', { headers: { 'x-admin-token': token } })
+                const data = await res.json()
+                if (!data.valid) {
+                    localStorage.removeItem('admin_token')
+                    router.push('/admin')
+                } else {
+                    setVerified(true)
+                }
+            } catch {
+                router.push('/admin')
+            }
+        }
+        verify()
+    }, [])
+
+    useEffect(() => {
+        if (verified) fetchOrders()
+    }, [verified, filter, page])
 
     async function fetchOrders() {
         setLoading(true)
@@ -79,6 +98,17 @@ export default function AdminOrders() {
         return 'https://wa.me/' + phone + '?text=' + encodeURIComponent(msg)
     }
 
+    function logout() {
+        localStorage.removeItem('admin_token')
+        router.push('/admin')
+    }
+
+    if (!verified) return (
+        <div className="min-h-screen bg-cream flex items-center justify-center">
+            <p className="font-display text-2xl text-charcoal animate-pulse">Verifying...</p>
+        </div>
+    )
+
     return (
         <div className="min-h-screen bg-cream">
             {/* Header */}
@@ -88,9 +118,14 @@ export default function AdminOrders() {
                     <h1 className="font-display text-xl text-charcoal">Orders</h1>
                     <span className="bg-coral/10 text-coral text-xs px-2 py-1 rounded-full font-bold">{total}</span>
                 </div>
-                <button onClick={fetchOrders} className="text-xs bg-cream px-3 py-1.5 rounded-full text-gray-500 hover:text-coral">
-                    🔄 Refresh
-                </button>
+                <div className="flex items-center gap-3">
+                    <button onClick={fetchOrders} className="text-xs bg-cream px-3 py-1.5 rounded-full text-gray-500 hover:text-coral">
+                        🔄 Refresh
+                    </button>
+                    <button onClick={logout} className="text-xs text-gray-400 hover:text-coral">
+                        Logout →
+                    </button>
+                </div>
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -223,7 +258,7 @@ export default function AdminOrders() {
                                     </div>
                                 </div>
 
-                                {/* WhatsApp button — only for pending */}
+                                {/* WhatsApp — only for pending */}
                                 {selected.status === 'pending' && (
                                     <a href={buildWhatsAppMsg(selected)} target="_blank" rel="noopener noreferrer"
                                        className="w-full bg-green-500 text-white font-display text-sm py-3 rounded-2xl flex items-center justify-center gap-2 hover:bg-green-600 transition-colors block text-center">
@@ -238,23 +273,16 @@ export default function AdminOrders() {
                                         {allStatuses.map(s => (
                                             <label key={s}
                                                    className={'flex items-center gap-3 p-3 rounded-xl cursor-pointer border-2 transition-all ' +
-                                                       (selected.status === s
-                                                           ? 'border-coral bg-coral/5'
-                                                           : 'border-transparent bg-white hover:border-coral/30')}>
-                                                <input
-                                                    type="radio"
-                                                    name="status"
-                                                    value={s}
-                                                    checked={selected.status === s}
-                                                    onChange={() => updateStatus(selected.id, s)}
-                                                    disabled={updating}
-                                                    className="accent-coral w-4 h-4"
-                                                />
+                                                       (selected.status === s ? 'border-coral bg-coral/5' : 'border-transparent bg-white hover:border-coral/30')}>
+                                                <input type="radio" name="status" value={s}
+                                                       checked={selected.status === s}
+                                                       onChange={() => updateStatus(selected.id, s)}
+                                                       disabled={updating}
+                                                       className="accent-coral w-4 h-4" />
                                                 <div className="flex items-center gap-2 flex-1">
                                                     <span className="text-lg">{statusConfig[s]?.icon}</span>
                                                     <div>
-                                                        <p className={'font-semibold text-sm ' +
-                                                            (selected.status === s ? 'text-coral' : 'text-charcoal')}>
+                                                        <p className={'font-semibold text-sm ' + (selected.status === s ? 'text-coral' : 'text-charcoal')}>
                                                             {statusConfig[s]?.label}
                                                         </p>
                                                         <p className="text-xs text-gray-400">

@@ -130,6 +130,12 @@ export default function Collections() {
   if (sort === 'old')          filtered = [...filtered].sort((a,b) => new Date(a.created_at) - new Date(b.created_at))
   if (sort === 'new')          filtered = [...filtered].sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
   if (sort === 'best_selling') filtered = [...filtered].sort((a,b) => (b.variants?.[0]?.inventory_quantity || 0) - (a.variants?.[0]?.inventory_quantity || 0))
+  // Always show 2026 products first
+  filtered = [...filtered].sort((a, b) => {
+    const a2026 = (a.title || '').includes('2026') ? -1 : 0
+    const b2026 = (b.title || '').includes('2026') ? -1 : 0
+    return a2026 - b2026
+  })
 
   // Pagination
   const totalPages   = Math.ceil(filtered.length / ITEMS_PER_PAGE)
