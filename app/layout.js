@@ -6,6 +6,7 @@ import CartDrawer from '../components/CartDrawer'
 import Script from 'next/script'
 import RewardsPopup from '../components/RewardsPopup'
 import LiveNotifications from '../components/LiveNotifications'
+import BottomNav from '../components/BottomNav'
 
 export const metadata = {
   title: 'Kiddy Trends – Fun Fashion for Little Ones',
@@ -106,9 +107,9 @@ export default function RootLayout({ children }) {
         </div>
 
         <CartDrawer />
-        <main>{children}</main>
+        <main className="pb-16 md:pb-0">{children}</main>
         <Footer />
-
+        <BottomNav />
         {/* WhatsApp floating button */}
         <a href="https://wa.me/923360677340" target="_blank" rel="noopener noreferrer"
            className="fixed bottom-6 right-6 z-50 bg-green-500 hover:bg-green-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:scale-110 transition-all"

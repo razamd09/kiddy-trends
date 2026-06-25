@@ -13,17 +13,36 @@ const statusConfig = {
 
 const allStatuses = ['pending', 'processing', 'dispatched', 'delivered', 'cancelled']
 
+function playSound() {
+    try {
+        const ctx  = new (window.AudioContext || window.webkitAudioContext)()
+        const osc  = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.frequency.setValueAtTime(800, ctx.currentTime)
+        osc.frequency.setValueAtTime(1000, ctx.currentTime + 0.1)
+        osc.frequency.setValueAtTime(800, ctx.currentTime + 0.2)
+        gain.gain.setValueAtTime(0.3, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5)
+        osc.start(ctx.currentTime)
+        osc.stop(ctx.currentTime + 0.5)
+    } catch {}
+}
+
 export default function AdminOrders() {
-    const [orders, setOrders]     = useState([])
-    const [loading, setLoading]   = useState(true)
-    const [verified, setVerified] = useState(false)
-    const [filter, setFilter]     = useState('all')
-    const [page, setPage]         = useState(1)
-    const [total, setTotal]       = useState(0)
-    const [selected, setSelected] = useState(null)
-    const [updating, setUpdating] = useState(false)
+    const [orders, setOrders]               = useState([])
+    const [loading, setLoading]             = useState(true)
+    const [verified, setVerified]           = useState(false)
+    const [filter, setFilter]               = useState('all')
+    const [page, setPage]                   = useState(1)
+    const [total, setTotal]                 = useState(0)
+    const [selected, setSelected]           = useState(null)
+    const [updating, setUpdating]           = useState(false)
+    const [lastOrderCount, setLastOrderCount] = useState(0)
     const router = useRouter()
 
+    // Verify session
     useEffect(() => {
         async function verify() {
             const token = localStorage.getItem('admin_token')
@@ -37,16 +56,47 @@ export default function AdminOrders() {
                 } else {
                     setVerified(true)
                 }
-            } catch {
-                router.push('/admin')
-            }
+            } catch { router.push('/admin') }
         }
         verify()
     }, [])
 
+    // Fetch orders when verified
     useEffect(() => {
         if (verified) fetchOrders()
     }, [verified, filter, page])
+
+    // Sound alert — check for new orders every 30s
+    useEffect(() => {
+        if (!verified) return
+        const interval = setInterval(async () => {
+            const token = localStorage.getItem('admin_token')
+            const res   = await fetch('/api/admin/orders?page=1&status=pending', {
+                headers: { 'x-admin-token': token }
+            })
+            const data  = await res.json()
+            const count = data.total || 0
+            if (lastOrderCount > 0 && count > lastOrderCount) {
+                playSound()
+                if (Notification.permission === 'granted') {
+                    new Notification('🛍️ New Order!', {
+                        body: 'You have a new pending order on Kiddy Trends',
+                        icon: '/logo.jpg'
+                    })
+                }
+                fetchOrders()
+            }
+            setLastOrderCount(count)
+        }, 30000)
+        return () => clearInterval(interval)
+    }, [verified, lastOrderCount])
+
+    // Request notification permission
+    useEffect(() => {
+        if (verified && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+            Notification.requestPermission()
+        }
+    }, [verified])
 
     async function fetchOrders() {
         setLoading(true)
@@ -119,8 +169,13 @@ export default function AdminOrders() {
                     <span className="bg-coral/10 text-coral text-xs px-2 py-1 rounded-full font-bold">{total}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button onClick={fetchOrders} className="text-xs bg-cream px-3 py-1.5 rounded-full text-gray-500 hover:text-coral">
+                    <button onClick={fetchOrders}
+                            className="text-xs bg-cream px-3 py-1.5 rounded-full text-gray-500 hover:text-coral">
                         🔄 Refresh
+                    </button>
+                    <button onClick={playSound}
+                            className="text-xs bg-cream px-3 py-1.5 rounded-full text-gray-500 hover:text-coral">
+                        🔔 Test Sound
                     </button>
                     <button onClick={logout} className="text-xs text-gray-400 hover:text-coral">
                         Logout →
@@ -159,7 +214,10 @@ export default function AdminOrders() {
                                  className={'bg-white rounded-2xl p-4 cursor-pointer hover:shadow-md transition-all border-2 ' +
                                      (selected?.id === order.id ? 'border-coral' : 'border-transparent')}>
                                 <div className="flex items-start justify-between mb-1">
-                                    <p className="font-display text-base text-charcoal">{order.customer_name}</p>
+                                    <div>
+                                        <p className="font-display text-base text-charcoal">{order.customer_name}</p>
+                                        {order.order_number && <p className="text-xs text-coral font-bold">{order.order_number}</p>}
+                                    </div>
                                     <span className={'text-xs px-2 py-1 rounded-full font-bold border ' +
                                         (statusConfig[order.status]?.color || 'bg-gray-100 text-gray-500 border-gray-200')}>
                     {statusConfig[order.status]?.icon} {statusConfig[order.status]?.label}
@@ -199,7 +257,9 @@ export default function AdminOrders() {
                                 {/* Header */}
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <p className="font-display text-xl text-charcoal">Order #{selected.id}</p>
+                                        <p className="font-display text-xl text-charcoal">
+                                            {selected.order_number || 'Order #' + selected.id}
+                                        </p>
                                         <p className="text-xs text-gray-400">{new Date(selected.created_at).toLocaleString('en-PK')}</p>
                                     </div>
                                     <button onClick={() => setSelected(null)} className="text-gray-300 hover:text-coral text-xl">✕</button>
@@ -244,12 +304,10 @@ export default function AdminOrders() {
                                     </div>
                                     <div className="border-t border-gray-100 mt-3 pt-3 space-y-1 text-sm">
                                         <div className="flex justify-between text-gray-400">
-                                            <span>Subtotal</span>
-                                            <span>PKR {(selected.subtotal || 0).toLocaleString()}</span>
+                                            <span>Subtotal</span><span>PKR {(selected.subtotal || 0).toLocaleString()}</span>
                                         </div>
                                         <div className="flex justify-between text-gray-400">
-                                            <span>Shipping</span>
-                                            <span>PKR {(selected.shipping || 250).toLocaleString()}</span>
+                                            <span>Shipping</span><span>PKR {(selected.shipping || 250).toLocaleString()}</span>
                                         </div>
                                         <div className="flex justify-between font-display text-base pt-1 border-t border-gray-100">
                                             <span>Total</span>

@@ -135,7 +135,12 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
       })
       const data = await res.json()
       if (data.success) {
-        // Send confirmation email
+        const params = new URLSearchParams({
+          order: data.orderNumber || data.orderName || '#' + data.orderId,
+          name:  formData.name,
+          total: String(total),
+        })
+        window.location.href = '/order-confirmation?' + params.toString()
         if (form.email.trim()) {
           try {
             const orderItems = isCart
