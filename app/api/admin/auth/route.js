@@ -8,28 +8,39 @@ const supabase = createClient(
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'kiddy@admin2024'
 
 export async function POST(request) {
-    const { password } = await request.json()
+    try {
+        const { password } = await request.json()
 
-    if (password !== ADMIN_PASSWORD) {
-        return Response.json({ success: false, error: 'Invalid password' }, { status: 401 })
+        if (password !== ADMIN_PASSWORD) {
+            return Response.json({ success: false, error: 'Invalid password' }, { status: 401 })
+        }
+
+        const token = Math.random().toString(36).substring(2) + Date.now().toString(36)
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+
+        // Try to insert, but don't fail if table doesn't exist
+        const { error } = await supabase.from('admin_sessions').insert([{
+            token,
+            expires_at: expiresAt.toISOString()
+        }])
+
+        if (error) {
+            console.error('Supabase insert error:', error)
+            // Continue anyway - token still valid even if DB insert fails
+        }
+
+        const response = Response.json({ success: true, token })
+        response.cookies.set('admin_token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 24 * 60 * 60
+        })
+        return response
+    } catch (err) {
+        console.error('Auth API error:', err)
+        return Response.json({ success: false, error: err.message }, { status: 500 })
     }
-
-    const token = Math.random().toString(36).substring(2) + Date.now().toString(36)
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
-
-    await supabase.from('admin_sessions').insert([{
-        token,
-        expires_at: expiresAt.toISOString()
-    }])
-
-    const response = Response.json({ success: true, token })
-    response.cookies.set('admin_token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 24 * 60 * 60 // 24 hours
-    })
-    return response
 }
 
 export async function GET(request) {
