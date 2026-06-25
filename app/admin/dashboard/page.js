@@ -71,10 +71,10 @@ export default function AdminDashboard() {
                 {/* Quick Links */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                     {[
-                        { label: 'Manage Orders',   href: '/admin/orders',   icon: '📦', color: 'bg-coral text-white' },
-                        { label: 'Manage Products', href: '/admin/products', icon: '👕', color: 'bg-charcoal text-white' },
-                        { label: 'Customers',       href: '/admin/customers',icon: '👥', color: 'bg-skyblue text-white' },
-                        { label: 'View Website',    href: '/',               icon: '🌐', color: 'bg-mint text-white' },
+                        { label: 'Manage Orders',   href: '/admin/orders',       icon: '📦', color: 'bg-coral text-white' },
+                        { label: 'Manage Products', href: '/admin/products',     icon: '👕', color: 'bg-charcoal text-white' },
+                        { label: 'Collections',     href: '/admin/collections',  icon: '🏷️', color: 'bg-skyblue text-white' },
+                        { label: 'View Website',    href: '/',                   icon: '🌐', color: 'bg-mint text-white' },
                     ].map((link, i) => (
                         <Link key={i} href={link.href}
                               className={'rounded-2xl p-5 text-center font-display text-base hover:opacity-90 transition-opacity ' + link.color}>
