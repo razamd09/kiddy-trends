@@ -182,7 +182,7 @@ export default function RewardsSection({ onRewardsChange }) {
             </div>
 
             {/* Redeem */}
-            {userData.points > 0 && redeemPoints === 0 && (
+            {userData.points >= 10 && redeemPoints === 0 && (
               <button onClick={() => handleRedeem(userData.points)}
                 className="w-full py-2.5 rounded-xl bg-mint text-charcoal text-sm font-bold hover:bg-opacity-80 transition-colors">
                 Redeem {userData.points} pts (PKR {userData.points} OFF) 🎁
@@ -195,6 +195,12 @@ export default function RewardsSection({ onRewardsChange }) {
                 <button onClick={handleRemoveRedeem}
                   className="ml-auto text-gray-400 hover:text-coral text-xs">✕ Remove</button>
               </div>
+            )}
+
+            {userData.points > 0 && userData.points < 10 && redeemPoints === 0 && (
+              <p className="text-xs text-gray-500 text-center py-2">
+                Collect at least <strong>10 points</strong> to redeem discount.
+              </p>
             )}
 
             {userData.points === 0 && (

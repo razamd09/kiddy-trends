@@ -7,6 +7,10 @@ export default function AdminRewardsPage() {
     const [verified, setVerified] = useState(false)
     const [loading, setLoading] = useState(true)
     const [users, setUsers] = useState([])
+    const [historyOpen, setHistoryOpen] = useState(false)
+    const [historyLoading, setHistoryLoading] = useState(false)
+    const [historyUser, setHistoryUser] = useState(null)
+    const [historyRows, setHistoryRows] = useState([])
     const router = useRouter()
 
     useEffect(() => {
@@ -38,6 +42,25 @@ export default function AdminRewardsPage() {
     function logout() {
         localStorage.removeItem('admin_token')
         router.push('/admin')
+    }
+
+    async function openHistory(user) {
+        const token = localStorage.getItem('admin_token')
+        if (!token) return
+        setHistoryOpen(true)
+        setHistoryLoading(true)
+        setHistoryUser(user)
+        setHistoryRows([])
+        try {
+            const res = await fetch('/api/admin/rewards/history?userId=' + encodeURIComponent(user.user_id), {
+                headers: { 'x-admin-token': token }
+            })
+            const data = await res.json()
+            setHistoryRows(data.history || [])
+        } catch {
+            setHistoryRows([])
+        }
+        setHistoryLoading(false)
     }
 
     if (!verified) return (
@@ -99,6 +122,7 @@ export default function AdminRewardsPage() {
                                         <th className="text-left px-4 py-3 font-semibold">Redeemed</th>
                                         <th className="text-left px-4 py-3 font-semibold">Available</th>
                                         <th className="text-left px-4 py-3 font-semibold">Date</th>
+                                        <th className="text-left px-4 py-3 font-semibold">Details</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -114,6 +138,14 @@ export default function AdminRewardsPage() {
                                             <td className="px-4 py-3 text-gray-500">
                                                 {u.last_activity_at ? new Date(u.last_activity_at).toLocaleString('en-PK') : '-'}
                                             </td>
+                                            <td className="px-4 py-3">
+                                                <button
+                                                    onClick={() => openHistory(u)}
+                                                    className="px-3 py-1.5 rounded-xl bg-cream text-charcoal text-xs font-semibold hover:bg-sunny/40"
+                                                >
+                                                    View
+                                                </button>
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -122,6 +154,45 @@ export default function AdminRewardsPage() {
                     )}
                 </div>
             </div>
+
+            {historyOpen && (
+                <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden shadow-2xl">
+                        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                            <div>
+                                <p className="font-display text-lg text-charcoal">Rewards History</p>
+                                <p className="text-xs text-gray-400">{historyUser?.name || historyUser?.user_id} ({historyUser?.user_id})</p>
+                            </div>
+                            <button onClick={() => setHistoryOpen(false)} className="text-gray-400 hover:text-coral text-xl">✕</button>
+                        </div>
+                        <div className="p-4 overflow-y-auto max-h-[70vh]">
+                            {historyLoading ? (
+                                <p className="text-gray-400">Loading...</p>
+                            ) : historyRows.length === 0 ? (
+                                <p className="text-gray-400 text-sm">No rewards activity found for this user.</p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {historyRows.map((r) => (
+                                        <div key={r.id} className="bg-cream rounded-xl p-3 text-sm">
+                                            <div className="flex items-center justify-between">
+                                                <p className="font-semibold text-charcoal">{r.order_number}</p>
+                                                <p className="text-xs text-gray-400">{new Date(r.created_at).toLocaleString('en-PK')}</p>
+                                            </div>
+                                            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-2 text-xs">
+                                                <div><span className="text-gray-400">Total</span><br/><span className="font-semibold">PKR {r.total.toLocaleString()}</span></div>
+                                                <div><span className="text-gray-400">Discount</span><br/><span className="font-semibold">PKR {r.discount.toLocaleString()}</span></div>
+                                                <div><span className="text-gray-400">Redeemed</span><br/><span className="font-semibold text-coral">{r.redeemed_points} pts</span></div>
+                                                <div><span className="text-gray-400">Earned</span><br/><span className="font-semibold text-green-600">{r.earned_points} pts</span></div>
+                                                <div><span className="text-gray-400">Balance</span><br/><span className="font-semibold">{r.balance_points ?? '-'} pts</span></div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

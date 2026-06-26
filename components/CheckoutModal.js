@@ -136,6 +136,9 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
             city:     form.city,
             notes:    form.notes,
             discount: discount?.type !== 'shipping' ? discountAmount : 0,
+            order_subtotal: Number(price || 0),
+            order_shipping: Number(shipping || 0),
+            order_total: Number(total || 0),
             rewards: rewards.userId ? { userId: rewards.userId, redeem: rewards.redeemed || 0 } : null,
             payment:  'cod',
           }
