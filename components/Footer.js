@@ -24,7 +24,7 @@ const socials = [
   },
   {
     name: 'TikTok',
-    href: 'https://tiktok.com/@kiddy.trends',
+    href: 'https://www.tiktok.com/@kiddy.trends?is_from_webapp=1&sender_device=pc',
     color: 'hover:bg-black',
     icon: (
       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -140,7 +140,7 @@ export default function Footer() {
                 </a>
               </li>
               <li>
-                <a href="https://tiktok.com/@kiddy.trends" target="_blank" rel="noopener noreferrer"
+                <a href="https://www.tiktok.com/@kiddy.trends?is_from_webapp=1&sender_device=pc" target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-2 hover:text-coral transition-colors">
                   <span className="text-lg">🎵</span>
                   <span>@kiddy.trends</span>

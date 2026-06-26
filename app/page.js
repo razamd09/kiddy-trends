@@ -131,7 +131,7 @@ export default function Home() {
           <div className="text-center mb-10">
             <h2 className="section-title mb-3">Watch Us on TikTok 🎵</h2>
             <p className="text-gray-500 text-lg">See our latest collections in action!</p>
-            <a href="https://tiktok.com/@kiddy.trends" target="_blank" rel="noopener noreferrer"
+            <a href="https://www.tiktok.com/@kiddy.trends?is_from_webapp=1&sender_device=pc" target="_blank" rel="noopener noreferrer"
                className="inline-block mt-3 bg-charcoal text-white font-display text-sm px-5 py-2 rounded-full hover:bg-coral transition-colors">
               Follow @kiddy.trends ➔
             </a>
