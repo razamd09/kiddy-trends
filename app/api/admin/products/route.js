@@ -32,7 +32,10 @@ export async function GET(request) {
     if (error) {
         return Response.json({ success: false, error: error.message }, { status: 500 })
     }
-    return Response.json({ success: true, products: data || [], total: count || 0 })
+    
+    const response = Response.json({ success: true, products: data || [], total: count || 0 })
+    response.headers.set('Cache-Control', 'no-store, max-age=0')
+    return response
 }
 
 export async function POST(request) {

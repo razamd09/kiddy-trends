@@ -41,10 +41,34 @@ export default function Home() {
   useEffect(() => {
     async function fetchMyProducts() {
       try {
-        const res = await fetch('/api/admin/products?page=1')
+        const res = await fetch('/api/admin/products?page=1', {
+          cache: 'no-store',
+          headers: { 'pragma': 'no-cache', 'cache-control': 'no-cache' }
+        })
         const data = await res.json()
         if (data.success && data.products) {
-          setMyProducts(data.products.slice(0, 8))
+          // Transform database products to Shopify format for ProductCard
+          const transformed = data.products.map(p => ({
+            id: p.id,
+            handle: p.shopify_handle || p.id,
+            title: p.title,
+            product_type: p.product_type,
+            images: (p.images || []).map(img => ({
+              src: typeof img === 'string' ? img : img.src
+            })),
+            variants: [{
+              id: p.id,
+              title: 'Default Title',
+              price: p.price?.toString() || '0',
+              compare_at_price: p.compare_price?.toString() || '0',
+              available: (p.stock || 0) > 0,
+              inventory_management: 'shopify',
+              inventory_quantity: p.stock || 0
+            }],
+            tags: p.tags || [],
+            stock: p.stock || 0
+          }))
+          setMyProducts(transformed.slice(0, 8))
         }
         setLoadingMyProducts(false)
       } catch { setLoadingMyProducts(false) }
