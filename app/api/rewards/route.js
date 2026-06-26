@@ -5,7 +5,9 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 )
 
-const POINTS_PER_1000 = 10
+export const dynamic = 'force-dynamic'
+
+const POINTS_PER_1000 = 25
 const BONUS_THRESHOLD = 500
 const BONUS_POINTS    = 100
 
@@ -21,8 +23,10 @@ export async function GET(request) {
     .eq('user_id', userId)
     .single()
 
-  if (error || !data) return Response.json({ exists: false })
-  return Response.json({ exists: true, ...data })
+  if (error || !data) {
+    return Response.json({ exists: false }, { headers: { 'Cache-Control': 'no-store' } })
+  }
+  return Response.json({ exists: true, ...data }, { headers: { 'Cache-Control': 'no-store' } })
 }
 
 // POST — create user

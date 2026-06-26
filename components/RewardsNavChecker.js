@@ -14,7 +14,7 @@ export default function RewardsNavChecker() {
     setError('')
     setResult(null)
     try {
-      const res  = await fetch('/api/rewards?userId=' + userId.trim())
+      const res  = await fetch('/api/rewards?userId=' + userId.trim().toLowerCase(), { cache: 'no-store' })
       const data = await res.json()
       if (data.exists) {
         setResult(data)
@@ -73,7 +73,7 @@ export default function RewardsNavChecker() {
                     {loading ? 'Checking...' : 'Check My Points'}
                   </button>
                   <div className="flex justify-between mt-3 text-xs text-gray-400">
-                    <span>🛍️ 10 pts/PKR 1000</span>
+                    <span>🛍️ 25 pts/PKR 1000</span>
                     <span>💰 10 pts = PKR 10</span>
                   </div>
                 </>

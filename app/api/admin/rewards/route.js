@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
-const POINTS_PER_1000 = 10
+const POINTS_PER_1000 = 25
 const BONUS_POINTS = 100
 
 const supabase = createClient(

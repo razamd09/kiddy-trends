@@ -15,16 +15,17 @@ export default function RewardsSection({ onRewardsChange }) {
 
   async function handleLookup() {
     if (!userIdInput.trim()) return
+    const normalizedUserId = userIdInput.trim().toLowerCase()
     setLoading(true)
     setError('')
     try {
-      const res  = await fetch('/api/rewards?userId=' + userIdInput.trim())
+      const res  = await fetch('/api/rewards?userId=' + normalizedUserId, { cache: 'no-store' })
       const data = await res.json()
       if (data.exists) {
         setUserData(data)
-        setUserId(userIdInput.trim())
+        setUserId(normalizedUserId)
         setMode('loggedin')
-        onRewardsChange({ userId: userIdInput.trim(), points: data.points, redeemed: 0 })
+        onRewardsChange({ userId: normalizedUserId, points: data.points, redeemed: 0 })
       } else {
         setMode('register')
       }
@@ -40,11 +41,12 @@ export default function RewardsSection({ onRewardsChange }) {
     setLoading(true)
     setRegisterError('')
     try {
+      const normalizedUserId = userIdInput.trim().toLowerCase()
       const res  = await fetch('/api/rewards', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: userIdInput.trim(),
+          userId: normalizedUserId,
           name:   newUserName.trim(),
           phone:  '',
         })
@@ -54,9 +56,9 @@ export default function RewardsSection({ onRewardsChange }) {
         setRegisterError(data.error)
       } else {
         setUserData(data)
-        setUserId(userIdInput.trim())
+        setUserId(normalizedUserId)
         setMode('loggedin')
-        onRewardsChange({ userId: userIdInput.trim(), points: 0, redeemed: 0 })
+        onRewardsChange({ userId: normalizedUserId, points: 0, redeemed: 0 })
       }
     } catch { setRegisterError('Something went wrong. Please try again.') }
     setLoading(false)
@@ -131,7 +133,7 @@ export default function RewardsSection({ onRewardsChange }) {
   WOOW!! 🎉 You are eligible for Rewards Discounts!
 </p>
               <p className="text-xs text-gray-500 mt-1">
-                Earn <strong>10 pts per PKR 1,000</strong> spent. Redeem 10 pts = PKR 10 off!
+                Earn <strong>25 pts per PKR 1,000</strong> spent. Redeem 10 pts = PKR 10 off!
               </p>
             </div>
             <div className="space-y-2">
@@ -205,7 +207,7 @@ export default function RewardsSection({ onRewardsChange }) {
 
             {userData.points === 0 && (
               <p className="text-xs text-gray-400 text-center py-2">
-                No points yet. Earn 10 pts per PKR 1,000 spent!
+                No points yet. Earn 25 pts per PKR 1,000 spent!
               </p>
             )}
 

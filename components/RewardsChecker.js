@@ -13,7 +13,7 @@ export default function RewardsChecker() {
     setError('')
     setResult(null)
     try {
-      const res  = await fetch('/api/rewards?userId=' + userId.trim())
+      const res  = await fetch('/api/rewards?userId=' + userId.trim().toLowerCase(), { cache: 'no-store' })
       const data = await res.json()
       if (data.exists) {
         setResult(data)
@@ -31,7 +31,7 @@ export default function RewardsChecker() {
         <h2 className="font-display text-3xl text-charcoal mb-2">Check Your Reward Points!</h2>
         <p className="text-gray-600 mb-6">
           Enter your Rewards ID to see your points balance and discounts available.
-          Earn <strong>10 pts</strong> for every <strong>PKR 1,000</strong> spent!
+          Earn <strong>25 pts</strong> for every <strong>PKR 1,000</strong> spent!
         </p>
 
         {/* Search field with flashing badge */}
@@ -101,7 +101,7 @@ export default function RewardsChecker() {
         {/* Info pills */}
         {!result && !error && (
           <div className="flex flex-wrap justify-center gap-3 mt-4">
-            <span className="bg-white text-charcoal text-xs px-4 py-2 rounded-full font-semibold shadow-sm">🛍️ 10 pts per PKR 1,000</span>
+            <span className="bg-white text-charcoal text-xs px-4 py-2 rounded-full font-semibold shadow-sm">🛍️ 25 pts per PKR 1,000</span>
             <span className="bg-white text-charcoal text-xs px-4 py-2 rounded-full font-semibold shadow-sm">💰 10 pts = PKR 10 OFF</span>
             <span className="bg-white text-charcoal text-xs px-4 py-2 rounded-full font-semibold shadow-sm">🎁 500 pts = Bonus 100 pts</span>
           </div>

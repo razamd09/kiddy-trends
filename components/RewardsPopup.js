@@ -62,7 +62,7 @@ export default function RewardsPopup() {
               <span className="text-2xl">⭐</span>
               <div>
                 <p className="font-display text-sm text-charcoal">Step 2 — Earn Points</p>
-                <p className="text-xs text-gray-500">Get 10 pts for every PKR 1,000 spent</p>
+                <p className="text-xs text-gray-500">Get 25 pts for every PKR 1,000 spent</p>
               </div>
             </div>
             <div className="flex items-center gap-3 bg-cream rounded-2xl px-4 py-3">
