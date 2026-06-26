@@ -33,6 +33,17 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000)
 
+## Order Email Notification
+
+When an order is placed, the backend sends a notification email via EmailJS.
+
+Set these environment variables in Vercel:
+
+- `ORDER_NOTIFICATION_EMAIL` (default: `thekiddytrends@gmail.com`)
+- `EMAILJS_SERVICE_ID`
+- `EMAILJS_TEMPLATE_ID`
+- `EMAILJS_PUBLIC_KEY`
+
 ## To Add Your Logo
 Your logo is already saved at `public/logo.jpg` and used across the site.
 

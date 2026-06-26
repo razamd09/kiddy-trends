@@ -1,12 +1,6 @@
 'use client'
 import { useState } from 'react'
-import emailjs from '@emailjs/browser'
 import RewardsSection from './RewardsSection'
-
-const WHATSAPP_NUMBER  = '923360677340'
-const EMAILJS_SERVICE  = 'service_9p08wct'
-const EMAILJS_TEMPLATE = 'template_gyanmsp'
-const EMAILJS_KEY      = 'G3OmrUP2PwOat-o1W'
 
 const cities = [
   'Karachi','Lahore','Islamabad','Rawalpindi','Faisalabad',
@@ -133,32 +127,23 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
           }
         })
       })
-      const data = await res.json()
+      let data
+      try {
+        data = await res.json()
+      } catch {
+        throw new Error('Invalid response from checkout API')
+      }
+
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || 'Checkout failed. Please try again.')
+      }
+
       if (data.success) {
         const params = new URLSearchParams({
           order: data.orderNumber || data.orderName || '#' + data.orderId,
-          name:  formData.name,
+          name:  form.name,
           total: String(total),
         })
-        window.location.href = '/order-confirmation?' + params.toString()
-        if (form.email.trim()) {
-          try {
-            const orderItems = isCart
-              ? cartItems.map(i => i.title + ' x' + i.quantity + ' = PKR ' + (i.price * i.quantity).toLocaleString()).join('\n')
-              : (product?.title || '') + ' x1 = PKR ' + price.toLocaleString()
-            await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
-              customer_name:  form.name,
-              customer_email: form.email,
-              phone:          '+92' + form.phone,
-              address:        form.address,
-              city:           form.city,
-              order_items:    orderItems,
-              subtotal:       'PKR ' + price.toLocaleString(),
-              shipping:       'PKR ' + shipping.toLocaleString(),
-              total:          'PKR ' + total.toLocaleString(),
-            }, EMAILJS_KEY)
-          } catch (emailErr) { console.log('Email error:', emailErr) }
-        }
 
         // Add reward points
         if (rewards.userId) {
@@ -176,15 +161,12 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
           } catch (e) { console.log('Rewards error:', e) }
         }
 
-        setLoading(false)
-        setStep(2)
-      } else {
-        setLoading(false)
-        alert('Error: ' + (data.error || 'Something went wrong. Please try again.'))
+        window.location.href = '/order-confirmation?' + params.toString()
+        return
       }
     } catch (err) {
       setLoading(false)
-      alert('Something went wrong. Please try again.')
+      alert(err?.message || 'Something went wrong. Please try again.')
     }
   }
 
