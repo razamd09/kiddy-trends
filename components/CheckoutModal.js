@@ -1,6 +1,16 @@
 'use client'
 import { useState } from 'react'
+import emailjs from '@emailjs/browser'
 import RewardsSection from './RewardsSection'
+
+const EMAILJS_SERVICE_ID =
+  process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || 'service_9p08wct'
+const EMAILJS_TEMPLATE_ID =
+  process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || 'template_gyanmsp'
+const EMAILJS_PUBLIC_KEY =
+  process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || 'G3OmrUP2PwOat-o1W'
+const ORDER_NOTIFICATION_EMAIL =
+  process.env.NEXT_PUBLIC_ORDER_NOTIFICATION_EMAIL || 'thekiddytrends@gmail.com'
 
 const cities = [
   'Karachi','Lahore','Islamabad','Rawalpindi','Faisalabad',
@@ -99,6 +109,47 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
     )
   }
 
+  async function sendAdminOrderEmail(orderNumber, itemsForEmail) {
+    if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) return
+
+    const orderItemsText = (itemsForEmail || [])
+      .map((item, idx) => {
+        const qty = item.quantity || 1
+        const title = item.title || ('Variant ' + (item.variantId || 'N/A'))
+        const lineTotal = Number(item.price || 0) * qty
+        return (idx + 1) + '. ' + title + ' x' + qty + ' = PKR ' + lineTotal.toLocaleString()
+      })
+      .join('\n')
+
+    await emailjs.send(
+      EMAILJS_SERVICE_ID,
+      EMAILJS_TEMPLATE_ID,
+      {
+        to_email: ORDER_NOTIFICATION_EMAIL,
+        recipient_email: ORDER_NOTIFICATION_EMAIL,
+        email: ORDER_NOTIFICATION_EMAIL,
+        customer_email: ORDER_NOTIFICATION_EMAIL,
+        buyer_email: form.email || '',
+        to_name: 'Kiddy Trends Admin',
+        from_name: 'Website Order Bot',
+        reply_to: form.email || ORDER_NOTIFICATION_EMAIL,
+        subject: 'New website order received - ' + orderNumber,
+        customer_name: form.name || 'N/A',
+        phone: '+92' + form.phone,
+        address: form.address || '',
+        city: form.city || '',
+        order_number: orderNumber,
+        order_items: orderItemsText,
+        subtotal: 'PKR ' + Number(price || 0).toLocaleString(),
+        shipping: 'PKR ' + Number(shipping || 0).toLocaleString(),
+        discount: 'PKR ' + Number((discount?.type !== 'shipping' ? discountAmount : 0) + (rewards.redeemed || 0)).toLocaleString(),
+        total: 'PKR ' + Number(total || 0).toLocaleString(),
+        message: 'We have received an order from website.',
+      },
+      EMAILJS_PUBLIC_KEY
+    )
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     if (!validate()) return
@@ -156,9 +207,17 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
       }
 
       if (data.success) {
+        const orderNumber = data.orderNumber || data.orderName || ('#' + data.orderId)
+        try {
+          await Promise.race([
+            sendAdminOrderEmail(orderNumber, items),
+            new Promise((resolve) => setTimeout(resolve, 2500)),
+          ])
+        } catch {}
+
         const rewardsData = data.rewards || {}
         const params = new URLSearchParams({
-          order: data.orderNumber || data.orderName || '#' + data.orderId,
+          order: orderNumber,
           name:  form.name,
           total: String(Number(data.total ?? total)),
           points: String(Number(rewardsData.availablePoints || 0)),
