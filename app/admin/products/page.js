@@ -208,9 +208,15 @@ export default function AdminProducts() {
                 headers: { 'x-admin-token': token || '' },
                 body: formData,
             })
-            const data = await res.json()
+            let data = null
+            try {
+                data = await res.json()
+            } catch {
+                const text = await res.text()
+                data = { success: false, error: text || ('Import failed (' + res.status + ')') }
+            }
             if (!res.ok || !data.success) {
-                setImportSummary({ error: data.error || 'Import failed' })
+                setImportSummary({ error: data.error || ('Import failed (' + res.status + ')') })
             } else {
                 setImportSummary(data.summary)
                 setImportFile(null)
@@ -259,15 +265,18 @@ export default function AdminProducts() {
                     body: formData
                 })
                 const data = await res.json()
-                if (data.success) {
+                if (res.ok && data.success) {
                     const currentImages = form.images ? form.images.split('\n').filter(Boolean) : []
                     setForm({
                         ...form,
                         images: [...currentImages, data.url].join('\n')
                     })
+                } else {
+                    alert('Image upload failed: ' + (data.error || ('HTTP ' + res.status)))
                 }
             } catch (err) {
                 console.error('Upload failed:', err.message)
+                alert('Image upload failed: ' + err.message)
             }
         }
     }

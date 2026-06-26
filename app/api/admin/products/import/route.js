@@ -187,6 +187,37 @@ function mergeRowsByHandle(rows) {
     return Array.from(byHandle.values()).filter(p => p.shopify_handle && p.title)
 }
 
+function chunkArray(values, chunkSize) {
+    const chunks = []
+    for (let i = 0; i < values.length; i += chunkSize) {
+        chunks.push(values.slice(i, i + chunkSize))
+    }
+    return chunks
+}
+
+async function fetchExistingProductsByHandles(handles) {
+    const uniqueHandles = Array.from(new Set(handles.filter(Boolean)))
+    if (uniqueHandles.length === 0) return []
+
+    const results = []
+    const chunks = chunkArray(uniqueHandles, 100)
+
+    for (const chunk of chunks) {
+        const { data, error } = await supabase
+            .from('products')
+            .select('id, shopify_handle, images')
+            .in('shopify_handle', chunk)
+
+        if (error) {
+            throw new Error(error.message)
+        }
+
+        if (data?.length) results.push(...data)
+    }
+
+    return results
+}
+
 export async function POST(request) {
     try {
         const formData = await request.formData()
@@ -209,14 +240,7 @@ export async function POST(request) {
         }
 
         const handles = mapped.map(p => p.shopify_handle)
-        const { data: existing, error: existingError } = await supabase
-            .from('products')
-            .select('id, shopify_handle, images')
-            .in('shopify_handle', handles)
-
-        if (existingError) {
-            return Response.json({ success: false, error: existingError.message }, { status: 500 })
-        }
+        const existing = await fetchExistingProductsByHandles(handles)
 
         const existingMap = new Map((existing || []).map(p => [p.shopify_handle, p]))
         const errors = []
