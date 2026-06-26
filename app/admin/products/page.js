@@ -14,6 +14,9 @@ export default function AdminProducts() {
     const [searchTerm, setSearchTerm] = useState('')
     const [submitting, setSubmitting] = useState(false)
     const [deleteConfirm, setDeleteConfirm] = useState(null)
+    const [importFile, setImportFile] = useState(null)
+    const [importing, setImporting] = useState(false)
+    const [importSummary, setImportSummary] = useState(null)
     const [form, setForm] = useState({
         title: '', description: '', price: '', compare_price: '',
         category: '', product_type: '', tags: '', stock: '', images: ''
@@ -138,6 +141,39 @@ export default function AdminProducts() {
         }
     }
 
+    async function handleImportCsv() {
+        if (!importFile) {
+            setImportSummary({ error: 'Please select a CSV file first' })
+            return
+        }
+
+        setImporting(true)
+        setImportSummary(null)
+        const token = localStorage.getItem('admin_token')
+        try {
+            const formData = new FormData()
+            formData.append('file', importFile)
+
+            const res = await fetch('/api/admin/products/import', {
+                method: 'POST',
+                headers: { 'x-admin-token': token || '' },
+                body: formData,
+            })
+            const data = await res.json()
+            if (!res.ok || !data.success) {
+                setImportSummary({ error: data.error || 'Import failed' })
+            } else {
+                setImportSummary(data.summary)
+                setImportFile(null)
+                setPage(1)
+                fetchProducts()
+            }
+        } catch (err) {
+            setImportSummary({ error: err.message || 'Import failed' })
+        }
+        setImporting(false)
+    }
+
     function logout() {
         localStorage.removeItem('admin_token')
         router.push('/admin')
@@ -171,6 +207,53 @@ export default function AdminProducts() {
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {!showForm && (
+                    <div className="bg-white rounded-2xl p-4 shadow-sm mb-6 border border-gray-100">
+                        <div className="flex flex-col md:flex-row md:items-end gap-3">
+                            <div className="flex-1">
+                                <label className="block font-semibold text-sm text-charcoal mb-1">Import Shopify CSV</label>
+                                <input
+                                    type="file"
+                                    accept=".csv,text/csv"
+                                    onChange={e => {
+                                        setImportSummary(null)
+                                        setImportFile(e.target.files?.[0] || null)
+                                    }}
+                                    className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 text-sm"
+                                />
+                                <p className="text-xs text-gray-400 mt-1">Upload full Shopify product export CSV. Existing handles are updated; new ones are created.</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleImportCsv}
+                                disabled={importing || !importFile}
+                                className="px-5 py-2.5 bg-charcoal text-white font-display text-sm rounded-xl hover:bg-coral disabled:opacity-50"
+                            >
+                                {importing ? 'Importing...' : 'Import CSV'}
+                            </button>
+                        </div>
+
+                        {importSummary?.error && (
+                            <p className="text-sm text-red-500 mt-3">{importSummary.error}</p>
+                        )}
+                        {importSummary && !importSummary.error && (
+                            <div className="mt-3 text-xs text-gray-600 bg-cream rounded-xl p-3">
+                                <span className="font-semibold text-charcoal">Rows:</span> {importSummary.totalRows} ·{' '}
+                                <span className="font-semibold text-charcoal">Valid:</span> {importSummary.validProducts} ·{' '}
+                                <span className="font-semibold text-green-600">Inserted:</span> {importSummary.inserted} ·{' '}
+                                <span className="font-semibold text-blue-600">Updated:</span> {importSummary.updated} ·{' '}
+                                <span className="font-semibold text-red-500">Failed:</span> {importSummary.failed}
+                                {importSummary.errors?.length > 0 && (
+                                    <div className="mt-2 space-y-1 text-red-500">
+                                        {importSummary.errors.slice(0, 5).map((e, i) => (
+                                            <p key={i}>• {e.handle}: {e.error}</p>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {showForm ? (
                     <div className="bg-white rounded-2xl p-6 shadow-sm">
