@@ -73,9 +73,29 @@ export async function PUT(request) {
         const body = await request.json()
         const { id, ...updates } = body
 
+        if (!id) {
+            return Response.json({ success: false, error: 'Product ID is required' }, { status: 400 })
+        }
+
         const cleanUpdates = {
             ...updates,
             updated_at: new Date().toISOString()
+        }
+
+        if (updates.title !== undefined) {
+            cleanUpdates.title = String(updates.title || '').trim()
+        }
+
+        if (updates.category !== undefined) {
+            cleanUpdates.category = String(updates.category || '').trim()
+        }
+
+        if (updates.description !== undefined) {
+            cleanUpdates.description = String(updates.description || '').trim()
+        }
+
+        if (updates.product_type !== undefined) {
+            cleanUpdates.product_type = String(updates.product_type || '').trim()
         }
 
         if (updates.images) {
@@ -88,16 +108,16 @@ export async function PUT(request) {
             cleanUpdates.tags = Array.isArray(updates.tags) ? updates.tags : []
         }
 
-        if (updates.price) {
-            cleanUpdates.price = parseFloat(updates.price)
+        if (updates.price !== undefined) {
+            cleanUpdates.price = parseFloat(updates.price) || 0
         }
 
-        if (updates.compare_price) {
-            cleanUpdates.compare_price = parseFloat(updates.compare_price)
+        if (updates.compare_price !== undefined) {
+            cleanUpdates.compare_price = updates.compare_price ? parseFloat(updates.compare_price) : null
         }
 
-        if (updates.stock) {
-            cleanUpdates.stock = parseInt(updates.stock)
+        if (updates.stock !== undefined) {
+            cleanUpdates.stock = parseInt(updates.stock) || 0
         }
 
         const { data, error } = await supabase
@@ -107,10 +127,10 @@ export async function PUT(request) {
             .select()
             .single()
 
-        if (error) return Response.json({ error: error.message }, { status: 500 })
+        if (error) return Response.json({ success: false, error: error.message }, { status: 500 })
         return Response.json({ success: true, product: data })
     } catch (err) {
-        return Response.json({ error: err.message }, { status: 500 })
+        return Response.json({ success: false, error: err.message }, { status: 500 })
     }
 }
 

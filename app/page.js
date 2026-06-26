@@ -22,14 +22,28 @@ export default function Home() {
   useEffect(() => {
     async function fetchTrending() {
       try {
-        const res  = await fetch('https://' + STORE_DOMAIN + '/products.json?limit=250', { next: { revalidate: 300 } })
+        // First try to fetch from our Supabase database for imported products
+        const res = await fetch('/api/admin/products?page=1', { next: { revalidate: 300 } })
         const data = await res.json()
-        const all  = data.products || []
-        // 2026 products always first
-        const summerNew = all.filter(p => (p.title || '').toLowerCase().includes('summer new arrival 2026'))
-        const other2026 = all.filter(p => (p.title || '').includes('2026') && !(p.title || '').toLowerCase().includes('summer new arrival 2026'))
-        const rest      = all.filter(p => !(p.title || '').includes('2026'))
-        setTrending([...summerNew, ...other2026, ...rest].slice(0, 8))
+        
+        if (data.success && data.products && data.products.length > 0) {
+          // Use database products if available
+          const dbProducts = data.products
+          // Sort with 2026 products first
+          const summerNew = dbProducts.filter(p => (p.title || '').toLowerCase().includes('summer new arrival 2026'))
+          const other2026 = dbProducts.filter(p => (p.title || '').includes('2026') && !(p.title || '').toLowerCase().includes('summer new arrival 2026'))
+          const rest = dbProducts.filter(p => !(p.title || '').includes('2026'))
+          setTrending([...summerNew, ...other2026, ...rest].slice(0, 8))
+        } else {
+          // Fallback to Shopify API if no database products
+          const shopifyRes = await fetch('https://' + STORE_DOMAIN + '/products.json?limit=250', { next: { revalidate: 300 } })
+          const shopifyData = await shopifyRes.json()
+          const all = shopifyData.products || []
+          const summerNew = all.filter(p => (p.title || '').toLowerCase().includes('summer new arrival 2026'))
+          const other2026 = all.filter(p => (p.title || '').includes('2026') && !(p.title || '').toLowerCase().includes('summer new arrival 2026'))
+          const rest = all.filter(p => !(p.title || '').includes('2026'))
+          setTrending([...summerNew, ...other2026, ...rest].slice(0, 8))
+        }
         setLoadingTrending(false)
       } catch { setLoadingTrending(false) }
     }
