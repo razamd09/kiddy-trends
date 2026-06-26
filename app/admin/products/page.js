@@ -24,11 +24,15 @@ export default function AdminProducts() {
     const [loadingCdnStatus, setLoadingCdnStatus] = useState(false)
     const [form, setForm] = useState({
         title: '', description: '', price: '', compare_price: '',
-        category: '', product_type: '', tags: '', stock: '', images: ''
+        category: '', product_type: '', tags: '', stock: ''
     })
+    const [formImages, setFormImages] = useState([])   // [{url, rotating}]
+    const [formVariants, setFormVariants] = useState([]) // [{option1_name,option1_value,option2_name,option2_value,price,stock,sku}]
+    const [rotatingIdx, setRotatingIdx] = useState(null)
     const router = useRouter()
 
-    const categories = ['Clothing', 'Bedding', 'Bags', 'Accessories', 'Footwear', 'Other']
+    const categories = ['Clothing', 'Bedding', 'Bags', 'Accessories', 'Footwear', 'Toys', 'Shoes', 'Other']
+    const COMMON_SIZES = ['0-3M','3-6M','6-9M','9-12M','1-2Y','2-3Y','3-4Y','4-5Y','5-6Y','6-7Y','7-8Y','8-9Y','9-10Y','10-11Y','11-12Y','XS','S','M','L','XL']
 
     function normalizeImages(images) {
         if (Array.isArray(images)) {
@@ -186,22 +190,43 @@ export default function AdminProducts() {
     }
 
     function resetForm() {
-        setForm({ title: '', description: '', price: '', compare_price: '', category: '', product_type: '', tags: '', stock: '', images: '' })
+        setForm({ title: '', description: '', price: '', compare_price: '', category: '', product_type: '', tags: '', stock: '' })
+        setFormImages([])
+        setFormVariants([])
         setEditingId(null)
     }
 
     function openEdit(product) {
-        const normalizedImages = normalizeImages(product.images)
+        const imgs = normalizeImages(product.images)
+        setFormImages(imgs.map(url => ({ url })))
+
+        // Parse variants from DB format
+        let variants = []
+        const raw = product.variants
+        if (Array.isArray(raw) && raw.length > 0) {
+            variants = raw.map(v => ({
+                option1_name:  v.option1_name  || 'Size',
+                option1_value: v.option1_value || '',
+                option2_name:  v.option2_name  || '',
+                option2_value: v.option2_value || '',
+                option3_name:  v.option3_name  || '',
+                option3_value: v.option3_value || '',
+                price:         v.price         !== undefined ? String(v.price) : String(product.price || ''),
+                stock:         v.inventory_qty !== undefined ? String(v.inventory_qty) : String(v.stock || ''),
+                sku:           v.sku           || '',
+            }))
+        }
+        setFormVariants(variants)
+
         setForm({
-            title:         product.title || '',
-            description:   product.description || '',
-            price:         product.price || '',
+            title:         product.title         || '',
+            description:   product.description   || '',
+            price:         product.price         || '',
             compare_price: product.compare_price || '',
-            category:      product.category || '',
-            product_type:  product.product_type || '',
+            category:      product.category      || '',
+            product_type:  product.product_type  || '',
             tags:          (product.tags || []).join(', '),
-            stock:         product.stock || '',
-            images:        normalizedImages.join('\n'),
+            stock:         product.stock         || '',
         })
         setEditingId(product.id)
         setShowForm(true)
@@ -211,6 +236,24 @@ export default function AdminProducts() {
         e.preventDefault()
         setSubmitting(true)
         const token   = localStorage.getItem('admin_token')
+
+        // Compute total stock: sum of variant stocks if variants exist, else form.stock
+        const totalStock = formVariants.length > 0
+            ? formVariants.reduce((sum, v) => sum + (parseInt(v.stock) || 0), 0)
+            : parseInt(form.stock) || 0
+
+        const variants = formVariants.map(v => ({
+            option1_name:  v.option1_name,
+            option1_value: v.option1_value,
+            option2_name:  v.option2_name,
+            option2_value: v.option2_value,
+            option3_name:  v.option3_name  || '',
+            option3_value: v.option3_value || '',
+            price:         parseFloat(v.price) || parseFloat(form.price) || 0,
+            inventory_qty: parseInt(v.stock) || 0,
+            sku:           v.sku || '',
+        }))
+
         const payload = {
             title:         form.title,
             description:   form.description,
@@ -219,8 +262,9 @@ export default function AdminProducts() {
             category:      form.category,
             product_type:  form.product_type,
             tags:          form.tags.split(',').map(t => t.trim()).filter(Boolean),
-            stock:         parseInt(form.stock) || 0,
-            images:        form.images.split('\n').map(s => s.trim()).filter(Boolean),
+            stock:         totalStock,
+            images:        formImages.map(img => img.url),
+            variants:      variants.length > 0 ? variants : null,
         }
 
         const method = editingId ? 'PUT' : 'POST'
@@ -403,19 +447,83 @@ export default function AdminProducts() {
                 })
                 const data = await readApiJson(res)
                 if (res.ok && data.success) {
-                    const currentImages = form.images ? form.images.split('\n').filter(Boolean) : []
-                    setForm({
-                        ...form,
-                        images: [...currentImages, data.url].join('\n')
-                    })
+                    setFormImages(prev => [...prev, { url: data.url }])
                 } else {
                     alert('Image upload failed: ' + (data.error || ('HTTP ' + res.status)))
                 }
             } catch (err) {
-                console.error('Upload failed:', err.message)
                 alert('Image upload failed: ' + err.message)
             }
         }
+    }
+
+    async function handleRotateImage(idx, degrees) {
+        const imgObj = formImages[idx]
+        if (!imgObj) return
+        setRotatingIdx(idx)
+        const token = localStorage.getItem('admin_token')
+        try {
+            const res = await fetch('/api/admin/rotate-image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+                body: JSON.stringify({ url: imgObj.url, degrees })
+            })
+            const data = await readApiJson(res)
+            if (data.success && data.url) {
+                setFormImages(prev => prev.map((img, i) => i === idx ? { url: data.url } : img))
+            } else {
+                alert('Rotation failed: ' + (data.error || 'Unknown'))
+            }
+        } catch (err) {
+            alert('Rotation failed: ' + err.message)
+        }
+        setRotatingIdx(null)
+    }
+
+    function removeFormImage(idx) {
+        setFormImages(prev => prev.filter((_, i) => i !== idx))
+    }
+
+    function moveFormImage(idx, dir) {
+        setFormImages(prev => {
+            const next = [...prev]
+            const swap = idx + dir
+            if (swap < 0 || swap >= next.length) return next
+            ;[next[idx], next[swap]] = [next[swap], next[idx]]
+            return next
+        })
+    }
+
+    function addVariant() {
+        const opt1Name = formVariants.length > 0 ? formVariants[0].option1_name : 'Size'
+        setFormVariants(prev => [...prev, {
+            option1_name: opt1Name, option1_value: '',
+            option2_name: '', option2_value: '',
+            option3_name: '', option3_value: '',
+            price: form.price || '', stock: '', sku: ''
+        }])
+    }
+
+    function updateVariant(idx, field, value) {
+        setFormVariants(prev => prev.map((v, i) => i === idx ? { ...v, [field]: value } : v))
+    }
+
+    function removeVariant(idx) {
+        setFormVariants(prev => prev.filter((_, i) => i !== idx))
+    }
+
+    function addSizeVariants(sizes) {
+        const opt1Name = formVariants.length > 0 ? formVariants[0].option1_name : 'Size'
+        const existingValues = new Set(formVariants.map(v => v.option1_value))
+        const newVariants = sizes
+            .filter(s => !existingValues.has(s))
+            .map(s => ({
+                option1_name: opt1Name, option1_value: s,
+                option2_name: '', option2_value: '',
+                option3_name: '', option3_value: '',
+                price: form.price || '', stock: '', sku: ''
+            }))
+        setFormVariants(prev => [...prev, ...newVariants])
     }
 
     function logout() {
@@ -446,6 +554,12 @@ export default function AdminProducts() {
                             className="px-5 py-2 bg-coral text-white font-display text-sm rounded-full hover:bg-opacity-90">
                         {showForm ? '← Back' : '+ Add Product'}
                     </button>
+                    {!showForm && (
+                        <Link href="/admin/products/bulk-images"
+                              className="px-4 py-2 bg-purple-600 text-white font-display text-sm rounded-full hover:bg-purple-700">
+                            🖼️ Bulk Images
+                        </Link>
+                    )}
                     <button onClick={logout} className="text-sm text-gray-400 hover:text-coral">Logout →</button>
                 </div>
             </div>
@@ -583,85 +697,253 @@ export default function AdminProducts() {
                         <h2 className="font-display text-xl text-charcoal mb-6">
                             {editingId ? 'Edit Product' : 'Add New Product'}
                         </h2>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block font-semibold text-sm text-charcoal mb-1">Product Title *</label>
-                                    <input type="text" required value={form.title}
-                                           onChange={e => setForm({...form, title: e.target.value})}
-                                           placeholder="e.g. Kids Summer T-Shirt 2026"
-                                           className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm" />
-                                </div>
-                                <div>
-                                    <label className="block font-semibold text-sm text-charcoal mb-1">Category *</label>
-                                    <select required value={form.category}
-                                            onChange={e => setForm({...form, category: e.target.value})}
-                                            className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm">
-                                        <option value="">Select category</option>
-                                        {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block font-semibold text-sm text-charcoal mb-1">Price (PKR) *</label>
-                                    <input type="number" required value={form.price}
-                                           onChange={e => setForm({...form, price: e.target.value})}
-                                           placeholder="1999"
-                                           className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm" />
-                                </div>
-                                <div>
-                                    <label className="block font-semibold text-sm text-charcoal mb-1">Compare Price (PKR)</label>
-                                    <input type="number" value={form.compare_price}
-                                           onChange={e => setForm({...form, compare_price: e.target.value})}
-                                           placeholder="2999 (optional)"
-                                           className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm" />
-                                </div>
-                                <div>
-                                    <label className="block font-semibold text-sm text-charcoal mb-1">Stock *</label>
-                                    <input type="number" required value={form.stock}
-                                           onChange={e => setForm({...form, stock: e.target.value})}
-                                           placeholder="10"
-                                           className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm" />
-                                </div>
-                                <div>
-                                    <label className="block font-semibold text-sm text-charcoal mb-1">Product Type</label>
-                                    <input type="text" value={form.product_type}
-                                           onChange={e => setForm({...form, product_type: e.target.value})}
-                                           placeholder="e.g. T-Shirt"
-                                           className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm" />
+                        <form onSubmit={handleSubmit} className="space-y-6">
+
+                            {/* ── Basic Info ── */}
+                            <div>
+                                <h3 className="font-semibold text-sm text-charcoal mb-3 flex items-center gap-2">
+                                    <span className="w-6 h-6 bg-coral/10 text-coral rounded-full text-xs flex items-center justify-center font-bold">1</span>
+                                    Basic Info
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="md:col-span-2">
+                                        <label className="block font-semibold text-xs text-charcoal mb-1">Product Title *</label>
+                                        <input type="text" required value={form.title}
+                                               onChange={e => setForm({...form, title: e.target.value})}
+                                               placeholder="e.g. Kids Summer T-Shirt 2026"
+                                               className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm" />
+                                    </div>
+                                    <div>
+                                        <label className="block font-semibold text-xs text-charcoal mb-1">Category *</label>
+                                        <select required value={form.category}
+                                                onChange={e => setForm({...form, category: e.target.value})}
+                                                className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm">
+                                            <option value="">Select category</option>
+                                            {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block font-semibold text-xs text-charcoal mb-1">Product Type</label>
+                                        <input type="text" value={form.product_type}
+                                               onChange={e => setForm({...form, product_type: e.target.value})}
+                                               placeholder="e.g. T-Shirt, Pajama Set"
+                                               className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm" />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block font-semibold text-xs text-charcoal mb-1">Description</label>
+                                        <textarea value={form.description}
+                                                  onChange={e => setForm({...form, description: e.target.value})}
+                                                  placeholder="Product description..."
+                                                  rows={3}
+                                                  className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm resize-none" />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block font-semibold text-xs text-charcoal mb-1">Tags (comma separated)</label>
+                                        <input type="text" value={form.tags}
+                                               onChange={e => setForm({...form, tags: e.target.value})}
+                                               placeholder="boy, summer, 4-5 year, new arrival 2026"
+                                               className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm" />
+                                    </div>
                                 </div>
                             </div>
 
+                            {/* ── Pricing & Stock ── */}
                             <div>
-                                <label className="block font-semibold text-sm text-charcoal mb-1">Description</label>
-                                <textarea value={form.description}
-                                          onChange={e => setForm({...form, description: e.target.value})}
-                                          placeholder="Product description..."
-                                          rows={3}
-                                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm resize-none" />
-                            </div>
-
-                            <div>
-                                <label className="block font-semibold text-sm text-charcoal mb-1">Tags (comma separated)</label>
-                                <input type="text" value={form.tags}
-                                       onChange={e => setForm({...form, tags: e.target.value})}
-                                       placeholder="boy, summer, 4-5 year, new arrival 2026"
-                                       className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm" />
-                            </div>
-
-                            <div>
-                                <label className="block font-semibold text-sm text-charcoal mb-1">Product Images</label>
-                                <div className="flex gap-2 mb-2">
-                                    <input type="file" multiple accept="image/*"
-                                           onChange={handleImageUpload}
-                                           className="flex-1 px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm" />
-                                    <span className="text-xs text-gray-400 px-2 py-3">Upload to CDN →</span>
+                                <h3 className="font-semibold text-sm text-charcoal mb-3 flex items-center gap-2">
+                                    <span className="w-6 h-6 bg-coral/10 text-coral rounded-full text-xs flex items-center justify-center font-bold">2</span>
+                                    Pricing & Stock
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="block font-semibold text-xs text-charcoal mb-1">Price (PKR) *</label>
+                                        <input type="number" required value={form.price}
+                                               onChange={e => setForm({...form, price: e.target.value})}
+                                               placeholder="1999"
+                                               className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm" />
+                                    </div>
+                                    <div>
+                                        <label className="block font-semibold text-xs text-charcoal mb-1">Compare Price (PKR)</label>
+                                        <input type="number" value={form.compare_price}
+                                               onChange={e => setForm({...form, compare_price: e.target.value})}
+                                               placeholder="2999 (optional)"
+                                               className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm" />
+                                    </div>
+                                    <div>
+                                        <label className="block font-semibold text-xs text-charcoal mb-1">
+                                            {formVariants.length > 0 ? 'Total Stock (auto-calculated)' : 'Stock *'}
+                                        </label>
+                                        {formVariants.length > 0 ? (
+                                            <div className="px-4 py-3 rounded-xl border-2 border-gray-100 text-sm font-bold text-green-600 bg-gray-50">
+                                                {formVariants.reduce((sum, v) => sum + (parseInt(v.stock) || 0), 0)} units
+                                            </div>
+                                        ) : (
+                                            <input type="number" required value={form.stock}
+                                                   onChange={e => setForm({...form, stock: e.target.value})}
+                                                   placeholder="10"
+                                                   className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm" />
+                                        )}
+                                    </div>
                                 </div>
-                                <textarea value={form.images}
-                                          onChange={e => setForm({...form, images: e.target.value})}
-                                          placeholder={'https://cdn.supabase.co/...\nhttps://cdn.supabase.co/...'}
-                                          rows={4}
-                                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm resize-none font-mono text-xs" />
-                                <p className="text-xs text-gray-400 mt-1">Upload images above (auto-optimized) or paste URLs — one per line</p>
+                            </div>
+
+                            {/* ── Variants / Sizes ── */}
+                            <div>
+                                <h3 className="font-semibold text-sm text-charcoal mb-1 flex items-center gap-2">
+                                    <span className="w-6 h-6 bg-coral/10 text-coral rounded-full text-xs flex items-center justify-center font-bold">3</span>
+                                    Variants &amp; Sizes
+                                    <span className="text-xs text-gray-400 font-normal ml-1">({formVariants.length} variant{formVariants.length !== 1 ? 's' : ''})</span>
+                                </h3>
+                                <p className="text-xs text-gray-400 mb-3">Add size/color variants. Each can have its own stock and price override.</p>
+
+                                {/* Quick size add */}
+                                <div className="mb-3 p-3 bg-cream rounded-xl">
+                                    <p className="text-xs font-semibold text-charcoal mb-2">Quick add sizes:</p>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {COMMON_SIZES.map(s => {
+                                            const already = formVariants.some(v => v.option1_value === s)
+                                            return (
+                                                <button
+                                                    key={s}
+                                                    type="button"
+                                                    onClick={() => !already && addSizeVariants([s])}
+                                                    className={`px-2 py-1 text-xs rounded-lg border font-semibold transition-colors ${already ? 'bg-coral/20 border-coral text-coral' : 'bg-white border-gray-200 text-gray-500 hover:border-coral hover:text-coral'}`}
+                                                >
+                                                    {already ? '✓ ' : ''}{s}
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+
+                                {formVariants.length > 0 && (
+                                    <div className="overflow-x-auto mb-3">
+                                        <table className="w-full text-xs border-collapse">
+                                            <thead>
+                                                <tr className="bg-cream">
+                                                    <th className="px-3 py-2 text-left font-semibold text-charcoal">Option (e.g. Size)</th>
+                                                    <th className="px-3 py-2 text-left font-semibold text-charcoal">Value</th>
+                                                    <th className="px-3 py-2 text-left font-semibold text-charcoal">Option2</th>
+                                                    <th className="px-3 py-2 text-left font-semibold text-charcoal">Value2</th>
+                                                    <th className="px-3 py-2 text-left font-semibold text-charcoal">Price</th>
+                                                    <th className="px-3 py-2 text-left font-semibold text-charcoal">Stock</th>
+                                                    <th className="px-3 py-2 text-left font-semibold text-charcoal">SKU</th>
+                                                    <th className="px-3 py-2"></th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {formVariants.map((v, i) => (
+                                                    <tr key={i} className="border-b border-gray-100">
+                                                        <td className="px-2 py-1.5">
+                                                            <input value={v.option1_name} onChange={e => updateVariant(i, 'option1_name', e.target.value)}
+                                                                   placeholder="Size"
+                                                                   className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs focus:border-coral focus:outline-none" />
+                                                        </td>
+                                                        <td className="px-2 py-1.5">
+                                                            <input value={v.option1_value} onChange={e => updateVariant(i, 'option1_value', e.target.value)}
+                                                                   placeholder="e.g. 2-3Y"
+                                                                   className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs focus:border-coral focus:outline-none" />
+                                                        </td>
+                                                        <td className="px-2 py-1.5">
+                                                            <input value={v.option2_name} onChange={e => updateVariant(i, 'option2_name', e.target.value)}
+                                                                   placeholder="Color"
+                                                                   className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs focus:border-coral focus:outline-none" />
+                                                        </td>
+                                                        <td className="px-2 py-1.5">
+                                                            <input value={v.option2_value} onChange={e => updateVariant(i, 'option2_value', e.target.value)}
+                                                                   placeholder="e.g. Red"
+                                                                   className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs focus:border-coral focus:outline-none" />
+                                                        </td>
+                                                        <td className="px-2 py-1.5">
+                                                            <input type="number" value={v.price} onChange={e => updateVariant(i, 'price', e.target.value)}
+                                                                   placeholder={form.price || '—'}
+                                                                   className="w-20 px-2 py-1.5 rounded-lg border border-gray-200 text-xs focus:border-coral focus:outline-none" />
+                                                        </td>
+                                                        <td className="px-2 py-1.5">
+                                                            <input type="number" value={v.stock} onChange={e => updateVariant(i, 'stock', e.target.value)}
+                                                                   placeholder="0"
+                                                                   className="w-16 px-2 py-1.5 rounded-lg border border-gray-200 text-xs focus:border-coral focus:outline-none" />
+                                                        </td>
+                                                        <td className="px-2 py-1.5">
+                                                            <input value={v.sku} onChange={e => updateVariant(i, 'sku', e.target.value)}
+                                                                   placeholder="SKU-001"
+                                                                   className="w-24 px-2 py-1.5 rounded-lg border border-gray-200 text-xs focus:border-coral focus:outline-none" />
+                                                        </td>
+                                                        <td className="px-2 py-1.5">
+                                                            <button type="button" onClick={() => removeVariant(i)}
+                                                                    className="text-red-400 hover:text-red-600 font-bold text-sm">✕</button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+
+                                <button type="button" onClick={addVariant}
+                                        className="px-4 py-2 text-xs bg-charcoal/10 text-charcoal rounded-xl hover:bg-charcoal/20 font-semibold">
+                                    + Add Variant Row
+                                </button>
+                            </div>
+
+                            {/* ── Images ── */}
+                            <div>
+                                <h3 className="font-semibold text-sm text-charcoal mb-3 flex items-center gap-2">
+                                    <span className="w-6 h-6 bg-coral/10 text-coral rounded-full text-xs flex items-center justify-center font-bold">4</span>
+                                    Product Images
+                                    <span className="text-xs text-gray-400 font-normal ml-1">({formImages.length} image{formImages.length !== 1 ? 's' : ''})</span>
+                                </h3>
+
+                                {/* Image thumbnails grid */}
+                                {formImages.length > 0 && (
+                                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 mb-4">
+                                        {formImages.map((imgObj, idx) => (
+                                            <div key={idx} className="relative group aspect-square">
+                                                <img
+                                                    src={imgObj.url}
+                                                    alt={`Image ${idx + 1}`}
+                                                    className={`w-full h-full object-cover rounded-xl border-2 ${idx === 0 ? 'border-coral' : 'border-gray-100'} transition-opacity ${rotatingIdx === idx ? 'opacity-50' : ''}`}
+                                                    onError={e => e.target.style.opacity = '0.2'}
+                                                />
+                                                {idx === 0 && (
+                                                    <span className="absolute top-1 left-1 bg-coral text-white text-xs px-1.5 py-0.5 rounded-md font-bold">Main</span>
+                                                )}
+                                                {rotatingIdx === idx && (
+                                                    <div className="absolute inset-0 rounded-xl bg-black/30 flex items-center justify-center">
+                                                        <span className="text-white text-lg animate-spin">↻</span>
+                                                    </div>
+                                                )}
+                                                {/* Controls */}
+                                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex flex-col items-center justify-center gap-1 p-1">
+                                                    <div className="flex gap-1">
+                                                        <button type="button" onClick={() => handleRotateImage(idx, -90)} disabled={rotatingIdx !== null} title="Rotate Left"
+                                                                className="bg-white/90 text-charcoal text-xs px-2 py-1 rounded-lg hover:bg-white font-bold disabled:opacity-50">↺</button>
+                                                        <button type="button" onClick={() => handleRotateImage(idx, 90)} disabled={rotatingIdx !== null} title="Rotate Right"
+                                                                className="bg-white/90 text-charcoal text-xs px-2 py-1 rounded-lg hover:bg-white font-bold disabled:opacity-50">↻</button>
+                                                    </div>
+                                                    <div className="flex gap-1">
+                                                        {idx > 0 && <button type="button" onClick={() => moveFormImage(idx, -1)} title="Move left"
+                                                                className="bg-blue-500/90 text-white text-xs px-2 py-1 rounded-lg hover:bg-blue-500">←</button>}
+                                                        {idx < formImages.length - 1 && <button type="button" onClick={() => moveFormImage(idx, 1)} title="Move right"
+                                                                className="bg-blue-500/90 text-white text-xs px-2 py-1 rounded-lg hover:bg-blue-500">→</button>}
+                                                        <button type="button" onClick={() => removeFormImage(idx)} title="Remove"
+                                                                className="bg-red-500/90 text-white text-xs px-2 py-1 rounded-lg hover:bg-red-500">✕</button>
+                                                    </div>
+                                                    <a href="https://www.remove.bg/upload" target="_blank" rel="noreferrer"
+                                                       className="bg-purple-500/90 text-white text-xs px-2 py-0.5 rounded-lg hover:bg-purple-500 mt-0.5">Remove BG ↗</a>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Upload */}
+                                <div className="flex gap-2 items-center mb-2">
+                                    <label className="flex-1 cursor-pointer px-4 py-3 rounded-xl border-2 border-dashed border-gray-200 hover:border-coral text-sm text-gray-400 hover:text-coral text-center transition-colors">
+                                        + Upload Images (auto-optimize to WebP)
+                                        <input type="file" multiple accept="image/*" onChange={handleImageUpload} className="hidden" />
+                                    </label>
+                                </div>
+                                <p className="text-xs text-gray-400">First image is the main/thumbnail · Hover image to rotate, reorder, or remove background</p>
                             </div>
 
                             <div className="flex gap-3 pt-2">
@@ -707,6 +989,7 @@ export default function AdminProducts() {
                                                 <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Product</th>
                                                 <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Category</th>
                                                 <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Price</th>
+                                                <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Variants</th>
                                                 <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Stock</th>
                                                 <th className="px-4 py-3 text-center font-semibold text-sm text-charcoal">Actions</th>
                                             </tr>
@@ -731,6 +1014,22 @@ export default function AdminProducts() {
                                                     </td>
                                                     <td className="px-4 py-3 text-sm text-gray-500">{product.category}</td>
                                                     <td className="px-4 py-3 text-sm font-semibold text-coral">PKR {product.price?.toLocaleString()}</td>
+                                                    <td className="px-4 py-3 text-sm">
+                                                        {Array.isArray(product.variants) && product.variants.length > 0 ? (
+                                                            <div className="flex flex-wrap gap-1 max-w-[140px]">
+                                                                {product.variants.slice(0, 5).map((v, i) => (
+                                                                    <span key={i} className="px-1.5 py-0.5 bg-skyblue/20 text-charcoal text-xs rounded font-medium">
+                                                                        {v.option1_value || v.title || '?'}
+                                                                    </span>
+                                                                ))}
+                                                                {product.variants.length > 5 && (
+                                                                    <span className="text-xs text-gray-400">+{product.variants.length - 5}</span>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-gray-300 text-xs">—</span>
+                                                        )}
+                                                    </td>
                                                     <td className="px-4 py-3 text-sm">
                               <span className={product.stock > 0 ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
                                 {product.stock}
