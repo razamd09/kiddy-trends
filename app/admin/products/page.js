@@ -58,6 +58,70 @@ export default function AdminProducts() {
         return []
     }
 
+    function parseCsvText(text) {
+        const rows = []
+        let row = []
+        let value = ''
+        let inQuotes = false
+
+        for (let i = 0; i < text.length; i++) {
+            const ch = text[i]
+            const next = text[i + 1]
+
+            if (ch === '"') {
+                if (inQuotes && next === '"') {
+                    value += '"'
+                    i++
+                } else {
+                    inQuotes = !inQuotes
+                }
+                continue
+            }
+
+            if (ch === ',' && !inQuotes) {
+                row.push(value)
+                value = ''
+                continue
+            }
+
+            if ((ch === '\n' || ch === '\r') && !inQuotes) {
+                if (ch === '\r' && next === '\n') i++
+                row.push(value)
+                rows.push(row)
+                row = []
+                value = ''
+                continue
+            }
+
+            value += ch
+        }
+
+        if (value.length > 0 || row.length > 0) {
+            row.push(value)
+            rows.push(row)
+        }
+
+        if (rows.length === 0) return []
+        const headers = rows[0].map(h => String(h || '').trim())
+        const dataRows = rows.slice(1).filter(r => r.some(c => String(c || '').trim() !== ''))
+
+        return dataRows.map(r => {
+            const obj = {}
+            for (let i = 0; i < headers.length; i++) {
+                obj[headers[i]] = r[i] ?? ''
+            }
+            return obj
+        })
+    }
+
+    function chunkArray(values, chunkSize) {
+        const chunks = []
+        for (let i = 0; i < values.length; i += chunkSize) {
+            chunks.push(values.slice(i, i + chunkSize))
+        }
+        return chunks
+    }
+
     useEffect(() => {
         async function verify() {
             const token = localStorage.getItem('admin_token')
@@ -200,6 +264,67 @@ export default function AdminProducts() {
         setImportSummary(null)
         const token = localStorage.getItem('admin_token')
         try {
+            if (importFile.size > 3500000) {
+                const csvText = await importFile.text()
+                const parsedRows = parseCsvText(csvText)
+                if (parsedRows.length === 0) {
+                    setImportSummary({ error: 'CSV is empty or invalid' })
+                    setImporting(false)
+                    return
+                }
+
+                const chunks = chunkArray(parsedRows, 120)
+                const aggregate = {
+                    totalRows: parsedRows.length,
+                    validProducts: 0,
+                    inserted: 0,
+                    updated: 0,
+                    failed: 0,
+                    errors: [],
+                }
+
+                for (const chunk of chunks) {
+                    const chunkRes = await fetch('/api/admin/products/import/chunk', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-admin-token': token || ''
+                        },
+                        body: JSON.stringify({ rows: chunk }),
+                    })
+
+                    let chunkData = null
+                    try {
+                        chunkData = await chunkRes.json()
+                    } catch {
+                        const text = await chunkRes.text()
+                        chunkData = { success: false, error: text || ('Chunk import failed (' + chunkRes.status + ')') }
+                    }
+
+                    if (!chunkRes.ok || !chunkData.success) {
+                        setImportSummary({ error: chunkData.error || ('Chunk import failed (' + chunkRes.status + ')') })
+                        setImporting(false)
+                        return
+                    }
+
+                    const s = chunkData.summary || {}
+                    aggregate.validProducts += s.validProducts || 0
+                    aggregate.inserted += s.inserted || 0
+                    aggregate.updated += s.updated || 0
+                    aggregate.failed += s.failed || 0
+                    if (Array.isArray(s.errors) && s.errors.length > 0) {
+                        aggregate.errors.push(...s.errors.slice(0, 20))
+                    }
+                }
+
+                setImportSummary(aggregate)
+                setImportFile(null)
+                setPage(1)
+                fetchProducts()
+                setImporting(false)
+                return
+            }
+
             const formData = new FormData()
             formData.append('file', importFile)
 
