@@ -20,6 +20,8 @@ export default function AdminProducts() {
     const [loadError, setLoadError] = useState('')
     const [syncing, setSyncing] = useState(false)
     const [syncResult, setSyncResult] = useState(null)
+    const [cdnStatus, setCdnStatus] = useState(null)
+    const [loadingCdnStatus, setLoadingCdnStatus] = useState(false)
     const [form, setForm] = useState({
         title: '', description: '', price: '', compare_price: '',
         category: '', product_type: '', tags: '', stock: '', images: ''
@@ -367,11 +369,23 @@ export default function AdminProducts() {
             } else {
                 setSyncResult(data.results)
                 fetchProducts()
+                fetchCdnStatus()
             }
         } catch (err) {
             setSyncResult({ error: err.message || 'Sync failed' })
         }
         setSyncing(false)
+    }
+
+    async function fetchCdnStatus() {
+        setLoadingCdnStatus(true)
+        const token = localStorage.getItem('admin_token')
+        try {
+            const res = await fetch('/api/admin/cdn-status', { headers: { 'x-admin-token': token || '' } })
+            const data = await readApiJson(res)
+            if (data.success) setCdnStatus(data)
+        } catch {}
+        setLoadingCdnStatus(false)
     }
 
     async function handleImageUpload(e) {
@@ -486,32 +500,80 @@ export default function AdminProducts() {
                         <div className="mt-4 border-t pt-4">
                             <h3 className="font-semibold text-sm text-charcoal mb-3">🖼️ Image CDN Sync</h3>
                             <p className="text-xs text-gray-500 mb-3">Migrate all Shopify images to Supabase CDN for faster loading</p>
+
+                            {/* CDN Status Card */}
+                            {cdnStatus && (
+                                <div className="mb-3 bg-cream rounded-xl p-3 text-xs">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <span className="font-bold text-charcoal text-sm">CDN Status</span>
+                                        <span className={`px-2 py-0.5 rounded-full font-bold ${cdnStatus.stats.syncedPercent === 100 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                                            {cdnStatus.stats.syncedPercent}% synced
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <div className="bg-white rounded-lg p-2 text-center">
+                                            <p className="text-lg font-bold text-charcoal">{cdnStatus.stats.totalProducts}</p>
+                                            <p className="text-gray-500">Products</p>
+                                        </div>
+                                        <div className="bg-white rounded-lg p-2 text-center">
+                                            <p className="text-lg font-bold text-green-600">{cdnStatus.stats.supabaseImages}</p>
+                                            <p className="text-gray-500">On CDN ✅</p>
+                                        </div>
+                                        <div className="bg-white rounded-lg p-2 text-center">
+                                            <p className="text-lg font-bold text-orange-500">{cdnStatus.stats.shopifyImages}</p>
+                                            <p className="text-gray-500">Pending ⏳</p>
+                                        </div>
+                                    </div>
+                                    {cdnStatus.stats.noImages > 0 && (
+                                        <p className="mt-2 text-gray-400">{cdnStatus.stats.noImages} products have no images</p>
+                                    )}
+                                    {cdnStatus.stats.pendingSync > 0 && cdnStatus.pendingProducts?.length > 0 && (
+                                        <div className="mt-2">
+                                            <p className="font-semibold text-orange-600 mb-1">Still on Shopify CDN:</p>
+                                            {cdnStatus.pendingProducts.slice(0, 5).map((p, i) => (
+                                                <p key={i} className="text-gray-500 truncate">• {p.title}</p>
+                                            ))}
+                                            {cdnStatus.stats.pendingSync > 5 && (
+                                                <p className="text-gray-400">...and {cdnStatus.stats.pendingSync - 5} more</p>
+                                            )}
+                                        </div>
+                                    )}
+                                    {cdnStatus.stats.syncedPercent === 100 && (
+                                        <p className="mt-2 text-green-600 font-semibold">✅ All images are on your CDN!</p>
+                                    )}
+                                </div>
+                            )}
+
                             {syncResult && (
                                 <div className="mb-3 text-xs text-gray-600 bg-cream rounded-xl p-3">
                                     {syncResult.error ? (
                                         <p className="text-red-500 font-semibold">{syncResult.error}</p>
                                     ) : (
                                         <>
-                                            <span className="font-semibold text-charcoal">Sync Complete:</span> {syncResult.processed} migrated · {syncResult.failed} failed · {syncResult.skipped} skipped
-                                            {syncResult.errors?.length > 0 && (
-                                                <div className="mt-2 space-y-1 text-red-500">
-                                                    {syncResult.errors.slice(0, 3).map((e, i) => (
-                                                        <p key={i}>• {e.productId}: {e.error}</p>
-                                                    ))}
-                                                </div>
-                                            )}
+                                            <span className="font-semibold text-charcoal">Last Sync:</span> {syncResult.processed} migrated · {syncResult.failed} failed · {syncResult.skipped} skipped
                                         </>
                                     )}
                                 </div>
                             )}
-                            <button
-                                type="button"
-                                onClick={handleSyncImages}
-                                disabled={syncing}
-                                className="px-4 py-2.5 bg-purple-600 text-white font-display text-sm rounded-xl hover:bg-purple-700 disabled:opacity-50"
-                            >
-                                {syncing ? 'Syncing Images...' : 'Sync All Images to CDN'}
-                            </button>
+
+                            <div className="flex gap-2 flex-wrap">
+                                <button
+                                    type="button"
+                                    onClick={fetchCdnStatus}
+                                    disabled={loadingCdnStatus}
+                                    className="px-4 py-2.5 bg-blue-500 text-white font-display text-sm rounded-xl hover:bg-blue-600 disabled:opacity-50"
+                                >
+                                    {loadingCdnStatus ? 'Checking...' : '📊 Check CDN Status'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleSyncImages}
+                                    disabled={syncing}
+                                    className="px-4 py-2.5 bg-purple-600 text-white font-display text-sm rounded-xl hover:bg-purple-700 disabled:opacity-50"
+                                >
+                                    {syncing ? 'Syncing Images...' : 'Sync All Images to CDN'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
