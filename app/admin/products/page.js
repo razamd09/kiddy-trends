@@ -28,6 +28,36 @@ export default function AdminProducts() {
 
     const categories = ['Clothing', 'Bedding', 'Bags', 'Accessories', 'Footwear', 'Other']
 
+    function normalizeImages(images) {
+        if (Array.isArray(images)) {
+            return images
+                .map(img => typeof img === 'string' ? img : img?.src)
+                .filter(Boolean)
+        }
+
+        if (typeof images === 'string') {
+            const trimmed = images.trim()
+            if (!trimmed) return []
+
+            try {
+                const parsed = JSON.parse(trimmed)
+                if (Array.isArray(parsed)) {
+                    return parsed
+                        .map(img => typeof img === 'string' ? img : img?.src)
+                        .filter(Boolean)
+                }
+            } catch {}
+
+            if (trimmed.includes('\n')) {
+                return trimmed.split('\n').map(s => s.trim()).filter(Boolean)
+            }
+
+            return [trimmed]
+        }
+
+        return []
+    }
+
     useEffect(() => {
         async function verify() {
             const token = localStorage.getItem('admin_token')
@@ -64,7 +94,11 @@ export default function AdminProducts() {
                 setTotal(0)
                 setLoadError(data.error || 'Unable to load products')
             } else {
-                setProducts(data.products || [])
+                const normalizedProducts = (data.products || []).map(product => ({
+                    ...product,
+                    images: normalizeImages(product.images),
+                }))
+                setProducts(normalizedProducts)
                 setTotal(data.total || 0)
             }
         } catch (err) {
@@ -81,6 +115,7 @@ export default function AdminProducts() {
     }
 
     function openEdit(product) {
+        const normalizedImages = normalizeImages(product.images)
         setForm({
             title:         product.title || '',
             description:   product.description || '',
@@ -90,7 +125,7 @@ export default function AdminProducts() {
             product_type:  product.product_type || '',
             tags:          (product.tags || []).join(', '),
             stock:         product.stock || '',
-            images:        (product.images || []).join('\n'),
+            images:        normalizedImages.join('\n'),
         })
         setEditingId(product.id)
         setShowForm(true)
@@ -483,12 +518,14 @@ export default function AdminProducts() {
                                             </tr>
                                             </thead>
                                             <tbody>
-                                            {filtered.map(product => (
+                                            {filtered.map(product => {
+                                                const firstImage = normalizeImages(product.images)[0]
+                                                return (
                                                 <tr key={product.id} className="border-b border-gray-100 hover:bg-cream transition-colors">
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center gap-3">
-                                                            {product.images?.[0] && (
-                                                                <img src={typeof product.images[0] === 'string' ? product.images[0] : product.images[0].src}
+                                                            {firstImage && (
+                                                                <img src={firstImage}
                                                                      alt={product.title} className="w-10 h-10 object-cover rounded-lg"
                                                                      onError={e => e.target.style.display = 'none'} />
                                                             )}
@@ -518,7 +555,8 @@ export default function AdminProducts() {
                                                         </div>
                                                     </td>
                                                 </tr>
-                                            ))}
+                                                )
+                                            })}
                                             </tbody>
                                         </table>
                                     </div>
