@@ -87,10 +87,11 @@ function parseTags(value) {
 
 function mapShopifyRow(row) {
     const handle = cleanText(row['Handle'])
-    const title = cleanText(row['Title'])
-    if (!handle || !title) return null
+    if (!handle) return null
 
+    const title = cleanText(row['Title'])
     const image = cleanText(row['Image Src'])
+    const variantImage = cleanText(row['Variant Image'])
     const price = toNumber(row['Variant Price'], 0)
     const comparePrice = toNumber(row['Variant Compare At Price'], 0)
     const stock = toNumber(row['Variant Inventory Qty'], 0)
@@ -118,20 +119,72 @@ function mapShopifyRow(row) {
     }]
 
     return {
+        handle,
         title,
         description,
         price,
         compare_price: comparePrice > 0 ? comparePrice : null,
-        images: image ? [image] : [],
+        images: [image, variantImage].filter(Boolean),
         category,
         product_type: productType,
         tags: parseTags(row['Tags']),
         variants,
         stock,
         is_active: isActive,
-        source: 'shopify_csv',
-        shopify_handle: handle,
+        source: 'shopify_csv'
     }
+}
+
+function mergeRowsByHandle(rows) {
+    const byHandle = new Map()
+
+    for (const row of rows) {
+        const mapped = mapShopifyRow(row)
+        if (!mapped) continue
+
+        const existing = byHandle.get(mapped.handle)
+        if (!existing) {
+            byHandle.set(mapped.handle, {
+                title: mapped.title || mapped.handle,
+                description: mapped.description || '',
+                price: mapped.price || 0,
+                compare_price: mapped.compare_price || null,
+                images: [...mapped.images],
+                category: mapped.category || 'Uncategorized',
+                product_type: mapped.product_type || '',
+                tags: [...mapped.tags],
+                variants: [...mapped.variants],
+                stock: mapped.stock || 0,
+                is_active: mapped.is_active,
+                source: 'shopify_csv',
+                shopify_handle: mapped.handle,
+            })
+            continue
+        }
+
+        if (!existing.title && mapped.title) existing.title = mapped.title
+        if (!existing.description && mapped.description) existing.description = mapped.description
+        if (!existing.category && mapped.category) existing.category = mapped.category
+        if (!existing.product_type && mapped.product_type) existing.product_type = mapped.product_type
+
+        if (existing.price === 0 && mapped.price > 0) existing.price = mapped.price
+        if (!existing.compare_price && mapped.compare_price) existing.compare_price = mapped.compare_price
+
+        if (mapped.images.length > 0) {
+            existing.images = Array.from(new Set([...existing.images, ...mapped.images]))
+        }
+        if (mapped.tags.length > 0) {
+            existing.tags = Array.from(new Set([...existing.tags, ...mapped.tags]))
+        }
+        if (mapped.variants.length > 0) {
+            existing.variants.push(...mapped.variants)
+        }
+
+        existing.stock = (existing.stock || 0) + (mapped.stock || 0)
+        existing.is_active = existing.is_active || mapped.is_active
+    }
+
+    return Array.from(byHandle.values()).filter(p => p.shopify_handle && p.title)
 }
 
 export async function POST(request) {
@@ -149,9 +202,7 @@ export async function POST(request) {
             return Response.json({ success: false, error: 'CSV is empty or invalid' }, { status: 400 })
         }
 
-        const mapped = rows
-            .map(mapShopifyRow)
-            .filter(Boolean)
+        const mapped = mergeRowsByHandle(rows)
 
         if (mapped.length === 0) {
             return Response.json({ success: false, error: 'No valid product rows found' }, { status: 400 })
@@ -160,25 +211,29 @@ export async function POST(request) {
         const handles = mapped.map(p => p.shopify_handle)
         const { data: existing, error: existingError } = await supabase
             .from('products')
-            .select('id, shopify_handle')
+            .select('id, shopify_handle, images')
             .in('shopify_handle', handles)
 
         if (existingError) {
             return Response.json({ success: false, error: existingError.message }, { status: 500 })
         }
 
-        const existingMap = new Map((existing || []).map(p => [p.shopify_handle, p.id]))
+        const existingMap = new Map((existing || []).map(p => [p.shopify_handle, p]))
         const errors = []
         let inserted = 0
         let updated = 0
 
         for (const product of mapped) {
-            const existingId = existingMap.get(product.shopify_handle)
-            if (existingId) {
+            const existingRecord = existingMap.get(product.shopify_handle)
+            if (existingRecord) {
+                const safeImages = (product.images && product.images.length > 0)
+                    ? product.images
+                    : (Array.isArray(existingRecord.images) ? existingRecord.images : [])
+
                 const { error } = await supabase
                     .from('products')
-                    .update({ ...product, updated_at: new Date().toISOString() })
-                    .eq('id', existingId)
+                    .update({ ...product, images: safeImages, updated_at: new Date().toISOString() })
+                    .eq('id', existingRecord.id)
                 if (error) {
                     errors.push({ handle: product.shopify_handle, error: error.message })
                 } else {
