@@ -18,6 +18,8 @@ export default function AdminProducts() {
     const [importing, setImporting] = useState(false)
     const [importSummary, setImportSummary] = useState(null)
     const [loadError, setLoadError] = useState('')
+    const [syncing, setSyncing] = useState(false)
+    const [syncResult, setSyncResult] = useState(null)
     const [form, setForm] = useState({
         title: '', description: '', price: '', compare_price: '',
         category: '', product_type: '', tags: '', stock: '', images: ''
@@ -186,6 +188,55 @@ export default function AdminProducts() {
         setImporting(false)
     }
 
+    async function handleSyncImages() {
+        setSyncing(true)
+        setSyncResult(null)
+        const token = localStorage.getItem('admin_token')
+        try {
+            const res = await fetch('/api/admin/sync-images', {
+                method: 'POST',
+                headers: { 'x-admin-token': token || '' }
+            })
+            const data = await res.json()
+            if (!res.ok || !data.success) {
+                setSyncResult({ error: data.error || 'Sync failed' })
+            } else {
+                setSyncResult(data.results)
+                fetchProducts()
+            }
+        } catch (err) {
+            setSyncResult({ error: err.message || 'Sync failed' })
+        }
+        setSyncing(false)
+    }
+
+    async function handleImageUpload(e) {
+        const files = e.target.files
+        if (!files) return
+
+        for (const file of files) {
+            try {
+                const formData = new FormData()
+                formData.append('file', file)
+
+                const res = await fetch('/api/admin/upload-image', {
+                    method: 'POST',
+                    body: formData
+                })
+                const data = await res.json()
+                if (data.success) {
+                    const currentImages = form.images ? form.images.split('\n').filter(Boolean) : []
+                    setForm({
+                        ...form,
+                        images: [...currentImages, data.url].join('\n')
+                    })
+                }
+            } catch (err) {
+                console.error('Upload failed:', err.message)
+            }
+        }
+    }
+
     function logout() {
         localStorage.removeItem('admin_token')
         router.push('/admin')
@@ -264,6 +315,37 @@ export default function AdminProducts() {
                                 )}
                             </div>
                         )}
+                        
+                        <div className="mt-4 border-t pt-4">
+                            <h3 className="font-semibold text-sm text-charcoal mb-3">🖼️ Image CDN Sync</h3>
+                            <p className="text-xs text-gray-500 mb-3">Migrate all Shopify images to Supabase CDN for faster loading</p>
+                            {syncResult && (
+                                <div className="mb-3 text-xs text-gray-600 bg-cream rounded-xl p-3">
+                                    {syncResult.error ? (
+                                        <p className="text-red-500 font-semibold">{syncResult.error}</p>
+                                    ) : (
+                                        <>
+                                            <span className="font-semibold text-charcoal">Sync Complete:</span> {syncResult.processed} migrated · {syncResult.failed} failed · {syncResult.skipped} skipped
+                                            {syncResult.errors?.length > 0 && (
+                                                <div className="mt-2 space-y-1 text-red-500">
+                                                    {syncResult.errors.slice(0, 3).map((e, i) => (
+                                                        <p key={i}>• {e.productId}: {e.error}</p>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                            <button
+                                type="button"
+                                onClick={handleSyncImages}
+                                disabled={syncing}
+                                className="px-4 py-2.5 bg-purple-600 text-white font-display text-sm rounded-xl hover:bg-purple-700 disabled:opacity-50"
+                            >
+                                {syncing ? 'Syncing Images...' : 'Sync All Images to CDN'}
+                            </button>
+                        </div>
                     </div>
                 )}
 
@@ -338,13 +420,19 @@ export default function AdminProducts() {
                             </div>
 
                             <div>
-                                <label className="block font-semibold text-sm text-charcoal mb-1">Image URLs (one per line)</label>
+                                <label className="block font-semibold text-sm text-charcoal mb-1">Product Images</label>
+                                <div className="flex gap-2 mb-2">
+                                    <input type="file" multiple accept="image/*"
+                                           onChange={handleImageUpload}
+                                           className="flex-1 px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm" />
+                                    <span className="text-xs text-gray-400 px-2 py-3">Upload to CDN →</span>
+                                </div>
                                 <textarea value={form.images}
                                           onChange={e => setForm({...form, images: e.target.value})}
-                                          placeholder={'https://cdn.shopify.com/image1.jpg\nhttps://cdn.shopify.com/image2.jpg'}
+                                          placeholder={'https://cdn.supabase.co/...\nhttps://cdn.supabase.co/...'}
                                           rows={4}
                                           className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm resize-none font-mono text-xs" />
-                                <p className="text-xs text-gray-400 mt-1">Paste image URLs from Shopify or any image host — one per line</p>
+                                <p className="text-xs text-gray-400 mt-1">Upload images above (auto-optimized) or paste URLs — one per line</p>
                             </div>
 
                             <div className="flex gap-3 pt-2">
