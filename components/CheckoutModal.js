@@ -105,8 +105,22 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
     setLoading(true)
     try {
       const items    = isCart
-        ? cartItems.map(i => ({ variantId: i.variantId, quantity: i.quantity }))
-        : [{ variantId: variant?.id, quantity: 1 }]
+        ? cartItems.map(i => ({
+            variantId: i.variantId,
+            quantity: i.quantity,
+            price: Number(i.price || 0),
+            title: i.title || '',
+            variantTitle: i.variantTitle || '',
+            image: i.image || '',
+          }))
+        : [{
+            variantId: variant?.id,
+            quantity: 1,
+            price: Number(variant?.price || 0),
+            title: product?.title || '',
+            variantTitle: variant?.title !== 'Default Title' ? (variant?.title || '') : '',
+            image: image || '',
+          }]
       const waNumber = form.sameAsPhone ? form.phone : form.whatsapp
       const res = await fetch('/api/checkout', {
         method: 'POST',
@@ -143,7 +157,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
         const params = new URLSearchParams({
           order: data.orderNumber || data.orderName || '#' + data.orderId,
           name:  form.name,
-          total: String(total),
+          total: String(Number(data.total ?? total)),
           points: String(Number(rewardsData.availablePoints || 0)),
           earned: String(Number(rewardsData.earnedPoints || 0)),
           redeemed: String(Number(rewardsData.redeemedPoints || 0)),

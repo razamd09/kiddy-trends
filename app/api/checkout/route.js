@@ -33,8 +33,12 @@ async function sendOrderNotification({ orderNumber, customer, cartItems, subtota
         user_id: EMAILJS_PUBLIC_KEY,
         template_params: {
             to_email: ORDER_NOTIFICATION_EMAIL,
+            recipient_email: ORDER_NOTIFICATION_EMAIL,
+            email: ORDER_NOTIFICATION_EMAIL,
+            customer_email: ORDER_NOTIFICATION_EMAIL,
+            buyer_email: customer.email || '',
+            subject: 'New website order received - ' + orderNumber,
             customer_name: customer.name || 'N/A',
-            customer_email: customer.email || ORDER_NOTIFICATION_EMAIL,
             phone: customer.phone || '',
             address: customer.address || '',
             city: customer.city || '',
@@ -182,6 +186,7 @@ export async function POST(request) {
             orderId:     savedOrder.id,
             orderName:   orderNumber,
             orderNumber: orderNumber,
+            total,
             rewards: rewardsSummary,
         })
 
