@@ -122,13 +122,23 @@ export default function AdminProducts() {
         return chunks
     }
 
+    async function readApiJson(res) {
+        const text = await res.text()
+        if (!text) return {}
+        try {
+            return JSON.parse(text)
+        } catch {
+            return { success: false, error: text }
+        }
+    }
+
     useEffect(() => {
         async function verify() {
             const token = localStorage.getItem('admin_token')
             if (!token) { router.push('/admin'); return }
             try {
                 const res  = await fetch('/api/admin/auth', { headers: { 'x-admin-token': token } })
-                const data = await res.json()
+                const data = await readApiJson(res)
                 if (!data.valid) {
                     localStorage.removeItem('admin_token')
                     router.push('/admin')
@@ -152,7 +162,7 @@ export default function AdminProducts() {
         const token = localStorage.getItem('admin_token')
         try {
             const res  = await fetch('/api/admin/products?page=' + page, { headers: { 'x-admin-token': token } })
-            const data = await res.json()
+            const data = await readApiJson(res)
             if (!res.ok || data.error) {
                 setProducts([])
                 setTotal(0)
@@ -220,7 +230,7 @@ export default function AdminProducts() {
                 headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
                 body:    JSON.stringify(payload)
             })
-            const data = await res.json()
+            const data = await readApiJson(res)
             if (data.success) {
                 setShowForm(false)
                 resetForm()
@@ -242,7 +252,7 @@ export default function AdminProducts() {
                 method:  'DELETE',
                 headers: { 'x-admin-token': token }
             })
-            const data = await res.json()
+            const data = await readApiJson(res)
             if (data.success) {
                 setDeleteConfirm(null)
                 fetchProducts()
@@ -264,7 +274,7 @@ export default function AdminProducts() {
         setImportSummary(null)
         const token = localStorage.getItem('admin_token')
         try {
-            if (importFile.size > 3500000) {
+            if (importFile.size >= 0) {
                 const csvText = await importFile.text()
                 const parsedRows = parseCsvText(csvText)
                 if (parsedRows.length === 0) {
@@ -273,7 +283,7 @@ export default function AdminProducts() {
                     return
                 }
 
-                const chunks = chunkArray(parsedRows, 120)
+                const chunks = chunkArray(parsedRows, 25)
                 const aggregate = {
                     totalRows: parsedRows.length,
                     validProducts: 0,
@@ -293,13 +303,7 @@ export default function AdminProducts() {
                         body: JSON.stringify({ rows: chunk }),
                     })
 
-                    let chunkData = null
-                    try {
-                        chunkData = await chunkRes.json()
-                    } catch {
-                        const text = await chunkRes.text()
-                        chunkData = { success: false, error: text || ('Chunk import failed (' + chunkRes.status + ')') }
-                    }
+                    const chunkData = await readApiJson(chunkRes)
 
                     if (!chunkRes.ok || !chunkData.success) {
                         setImportSummary({ error: chunkData.error || ('Chunk import failed (' + chunkRes.status + ')') })
@@ -333,13 +337,7 @@ export default function AdminProducts() {
                 headers: { 'x-admin-token': token || '' },
                 body: formData,
             })
-            let data = null
-            try {
-                data = await res.json()
-            } catch {
-                const text = await res.text()
-                data = { success: false, error: text || ('Import failed (' + res.status + ')') }
-            }
+            const data = await readApiJson(res)
             if (!res.ok || !data.success) {
                 setImportSummary({ error: data.error || ('Import failed (' + res.status + ')') })
             } else {
@@ -363,7 +361,7 @@ export default function AdminProducts() {
                 method: 'POST',
                 headers: { 'x-admin-token': token || '' }
             })
-            const data = await res.json()
+            const data = await readApiJson(res)
             if (!res.ok || !data.success) {
                 setSyncResult({ error: data.error || 'Sync failed' })
             } else {
@@ -389,7 +387,7 @@ export default function AdminProducts() {
                     method: 'POST',
                     body: formData
                 })
-                const data = await res.json()
+                const data = await readApiJson(res)
                 if (res.ok && data.success) {
                     const currentImages = form.images ? form.images.split('\n').filter(Boolean) : []
                     setForm({
