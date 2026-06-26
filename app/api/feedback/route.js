@@ -5,6 +5,15 @@ const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
 
+function normalizePhone(value) {
+    let digits = String(value || '').replace(/\D/g, '')
+    if (digits.startsWith('92') && digits.length > 10) digits = digits.slice(2)
+    if (digits.startsWith('0') && digits.length > 10) digits = digits.slice(1)
+    if (!digits) return ''
+    if (digits.length !== 10) return null
+    return '+92' + digits
+}
+
 export async function GET() {
     const { data, error } = await supabase
         .from('feedback')
@@ -17,11 +26,15 @@ export async function GET() {
 export async function POST(request) {
     try {
         const body = await request.json()
+        const normalizedPhone = normalizePhone(body.customer_phone)
+        if (body.customer_phone && normalizedPhone === null) {
+            return Response.json({ error: 'Phone must be 10 digits' }, { status: 400 })
+        }
         const { data, error } = await supabase
             .from('feedback')
             .insert([{
                 customer_name:          body.customer_name || 'Anonymous',
-                customer_phone:         body.customer_phone || '',
+                customer_phone:         normalizedPhone || '',
                 overall_experience:     body.overall_experience,
                 representative_service: body.representative_service,
                 size_accuracy:          body.size_accuracy,

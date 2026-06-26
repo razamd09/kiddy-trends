@@ -49,6 +49,13 @@ export default function FeedbackPage() {
     const [submitted, setSubmitted]   = useState(false)
     const [error, setError]           = useState('')
 
+    function formatPhone(val) {
+        let digits = String(val || '').replace(/\D/g, '')
+        if (digits.startsWith('92') && digits.length > 10) digits = digits.slice(2)
+        if (digits.startsWith('0') && digits.length > 10) digits = digits.slice(1)
+        return digits.slice(0, 10)
+    }
+
     async function handleSubmit(e) {
         e.preventDefault()
         const unanswered = questions.filter(q => form[q.id] === 0)
@@ -56,13 +63,21 @@ export default function FeedbackPage() {
             setError('Please rate all questions before submitting')
             return
         }
+        if (form.customer_phone && form.customer_phone.length !== 10) {
+            setError('Enter a valid 10-digit phone number without leading 0')
+            return
+        }
         setSubmitting(true)
         setError('')
         try {
+            const payload = {
+                ...form,
+                customer_phone: form.customer_phone ? ('+92' + form.customer_phone) : '',
+            }
             const res  = await fetch('/api/feedback', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify(form)
+                body:    JSON.stringify(payload)
             })
             const data = await res.json()
             if (data.success) {
@@ -118,9 +133,14 @@ export default function FeedbackPage() {
                         </div>
                         <div>
                             <label className="block text-sm font-semibold text-charcoal mb-1">Phone Number</label>
-                            <input type="tel" placeholder="03001234567" value={form.customer_phone}
-                                   onChange={e => setForm({...form, customer_phone: e.target.value})}
-                                   className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm" />
+                            <div className="flex gap-2">
+                                <div className="bg-cream border-2 border-gray-100 rounded-2xl px-3 flex items-center text-sm font-bold text-charcoal flex-shrink-0">🇵🇰 +92</div>
+                                <input type="tel" placeholder="3360677340" value={form.customer_phone}
+                                       onChange={e => setForm({...form, customer_phone: formatPhone(e.target.value)})}
+                                       maxLength={10}
+                                       className="flex-1 px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm" />
+                            </div>
+                            <p className="text-xs text-gray-400 mt-1">Enter 10 digits without 0 (optional)</p>
                         </div>
                     </div>
                 </div>

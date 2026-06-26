@@ -5,6 +5,15 @@ const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
 
+function normalizePhone(value) {
+    let digits = String(value || '').replace(/\D/g, '')
+    if (digits.startsWith('92') && digits.length > 10) digits = digits.slice(2)
+    if (digits.startsWith('0') && digits.length > 10) digits = digits.slice(1)
+    if (!digits) return ''
+    if (digits.length !== 10) return null
+    return '+92' + digits
+}
+
 export async function GET(request) {
     const { data, error } = await supabase
         .from('employees')
@@ -17,13 +26,17 @@ export async function GET(request) {
 export async function POST(request) {
     try {
         const body = await request.json()
+        const normalizedPhone = normalizePhone(body.phone)
+        if (body.phone && normalizedPhone === null) {
+            return Response.json({ error: 'Phone must be 10 digits' }, { status: 400 })
+        }
         const { data, error } = await supabase
             .from('employees')
             .insert([{
                 name:        body.name,
                 employee_id: body.employee_id,
                 email:       body.email || '',
-                phone:       body.phone || '',
+                phone:       normalizedPhone || '',
                 role:        body.role || 'employee',
                 password:    body.password,
                 is_active:   true,
@@ -42,6 +55,13 @@ export async function PUT(request) {
         const body = await request.json()
         const { id, ...updates } = body
         if (updates.password === '') delete updates.password
+        if (Object.prototype.hasOwnProperty.call(updates, 'phone')) {
+            const normalizedPhone = normalizePhone(updates.phone)
+            if (updates.phone && normalizedPhone === null) {
+                return Response.json({ error: 'Phone must be 10 digits' }, { status: 400 })
+            }
+            updates.phone = normalizedPhone || ''
+        }
         const { data, error } = await supabase
             .from('employees')
             .update(updates)

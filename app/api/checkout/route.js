@@ -13,6 +13,17 @@ function toNumber(value) {
     return Number.isFinite(parsed) ? parsed : 0
 }
 
+function normalizePkPhoneDigits(value) {
+    let digits = String(value || '').replace(/\D/g, '')
+    if (digits.startsWith('92') && digits.length > 10) digits = digits.slice(2)
+    if (digits.startsWith('0') && digits.length > 10) digits = digits.slice(1)
+    return digits.slice(0, 10)
+}
+
+function buildPhoneVariants(phoneDigits) {
+    return ['+92' + phoneDigits, '92' + phoneDigits, '0' + phoneDigits, phoneDigits]
+}
+
 async function sendOrderNotification({ orderNumber, customer, cartItems, subtotal, shipping, discount, total }) {
     if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
         console.log('Order email skipped: missing EmailJS configuration')
@@ -64,6 +75,74 @@ async function sendOrderNotification({ orderNumber, customer, cartItems, subtota
     if (!res.ok) {
         const text = await res.text()
         throw new Error('EmailJS error: ' + text)
+    }
+}
+
+export async function GET(request) {
+    try {
+        const { searchParams } = new URL(request.url)
+        const phoneDigits = normalizePkPhoneDigits(searchParams.get('phone') || '')
+        if (phoneDigits.length !== 10) {
+            return Response.json({ exists: false, error: 'Valid 10-digit phone required' }, { status: 400 })
+        }
+
+        const supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL,
+            process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        )
+
+        const phoneVariants = buildPhoneVariants(phoneDigits)
+
+        const [phoneOrderRes, whatsappOrderRes, rewardsRes] = await Promise.all([
+            supabase
+                .from('orders')
+                .select('customer_name, customer_email, customer_phone, customer_whatsapp, customer_city, customer_address, created_at')
+                .in('customer_phone', phoneVariants)
+                .order('created_at', { ascending: false })
+                .limit(1),
+            supabase
+                .from('orders')
+                .select('customer_name, customer_email, customer_phone, customer_whatsapp, customer_city, customer_address, created_at')
+                .in('customer_whatsapp', phoneVariants)
+                .order('created_at', { ascending: false })
+                .limit(1),
+            supabase
+                .from('rewards')
+                .select('user_id, points, phone')
+                .in('phone', phoneVariants)
+                .limit(1),
+        ])
+
+        const orderCandidates = []
+        if (phoneOrderRes.data?.[0]) orderCandidates.push(phoneOrderRes.data[0])
+        if (whatsappOrderRes.data?.[0]) orderCandidates.push(whatsappOrderRes.data[0])
+        orderCandidates.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        const latest = orderCandidates[0]
+
+        if (!latest && !(rewardsRes.data?.[0])) {
+            return Response.json({ exists: false })
+        }
+
+        const rewardsUser = rewardsRes.data?.[0] || null
+
+        return Response.json({
+            exists: true,
+            customer: latest ? {
+                name: latest.customer_name || '',
+                email: latest.customer_email || '',
+                phone: latest.customer_phone || '',
+                whatsapp: latest.customer_whatsapp || '',
+                city: latest.customer_city || '',
+                address: latest.customer_address || '',
+            } : null,
+            rewards: rewardsUser ? {
+                user_id: rewardsUser.user_id,
+                points: Number(rewardsUser.points || 0),
+                phone: rewardsUser.phone || '',
+            } : null,
+        }, { headers: { 'Cache-Control': 'no-store' } })
+    } catch (error) {
+        return Response.json({ exists: false, error: error.message }, { status: 500 })
     }
 }
 

@@ -14,6 +14,13 @@ export default function AdminEmployees() {
     const [error, setError]         = useState('')
     const router = useRouter()
 
+    function formatPhone(val) {
+        let digits = String(val || '').replace(/\D/g, '')
+        if (digits.startsWith('92') && digits.length > 10) digits = digits.slice(2)
+        if (digits.startsWith('0') && digits.length > 10) digits = digits.slice(1)
+        return digits.slice(0, 10)
+    }
+
     useEffect(() => {
         async function verify() {
             const token = localStorage.getItem('admin_token')
@@ -48,11 +55,16 @@ export default function AdminEmployees() {
             setError('Name, Employee ID and Password are required')
             return
         }
+        if (form.phone && form.phone.length !== 10) {
+            setError('Phone must be 10 digits without leading 0')
+            return
+        }
         setSaving(true)
         setError('')
         const token  = localStorage.getItem('admin_token')
         const method = editing ? 'PUT' : 'POST'
-        const body   = editing ? { id: editing.id, ...form } : form
+        const normalizedForm = { ...form, phone: form.phone ? ('+92' + form.phone) : '' }
+        const body   = editing ? { id: editing.id, ...normalizedForm } : normalizedForm
         const res    = await fetch('/api/admin/employees', {
             method,
             headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
@@ -82,7 +94,7 @@ export default function AdminEmployees() {
 
     function handleEdit(emp) {
         setEditing(emp)
-        setForm({ name: emp.name, employee_id: emp.employee_id, email: emp.email || '', phone: emp.phone || '', role: emp.role, password: '' })
+        setForm({ name: emp.name, employee_id: emp.employee_id, email: emp.email || '', phone: formatPhone(emp.phone || ''), role: emp.role, password: '' })
         setShowForm(true)
     }
 
@@ -142,9 +154,13 @@ export default function AdminEmployees() {
                             </div>
                             <div>
                                 <label className="block text-sm font-semibold text-charcoal mb-1">Phone</label>
-                                <input type="tel" placeholder="03001234567" value={form.phone}
-                                       onChange={e => setForm({...form, phone: e.target.value})}
-                                       className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm" />
+                                <div className="flex gap-2">
+                                    <div className="bg-cream border-2 border-gray-100 rounded-2xl px-3 flex items-center text-sm font-bold text-charcoal flex-shrink-0">🇵🇰 +92</div>
+                                    <input type="tel" placeholder="3360677340" value={form.phone}
+                                           onChange={e => setForm({...form, phone: formatPhone(e.target.value)})}
+                                           maxLength={10}
+                                           className="flex-1 px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm" />
+                                </div>
                             </div>
                             <div>
                                 <label className="block text-sm font-semibold text-charcoal mb-1">Role</label>

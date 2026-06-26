@@ -40,6 +40,9 @@ const cities = [
 export default function CheckoutModal({ product, variant, onClose, isCart, cartItems, totalPrice: cartTotal }) {
   const [step, setStep]               = useState(1)
   const [loading, setLoading]         = useState(false)
+  const [phoneLookupLoading, setPhoneLookupLoading] = useState(false)
+  const [lastLookupPhone, setLastLookupPhone] = useState('')
+  const [autoFilledMessage, setAutoFilledMessage] = useState('')
   const [form, setForm]               = useState({
     name:'', phone:'', whatsapp:'', sameAsPhone: true, email:'', address:'', city:'', notes:''
   })
@@ -59,7 +62,12 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   const rewardsDiscount = rewards.redeemed || 0
   const total = price + shipping - (discount?.type !== 'shipping' ? discountAmount : 0) - rewardsDiscount
 
-  function formatPhone(val) { return val.replace(/\D/g, '').slice(0, 10) }
+  function formatPhone(val) {
+    let digits = String(val || '').replace(/\D/g, '')
+    if (digits.startsWith('92') && digits.length > 10) digits = digits.slice(2)
+    if (digits.startsWith('0') && digits.length > 10) digits = digits.slice(1)
+    return digits.slice(0, 10)
+  }
   function validatePhone(val) { return val.replace(/\D/g, '').length === 10 }
 
   function validate() {
@@ -76,6 +84,49 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
     if (!form.city)           e.city    = 'Please select your city'
     setErrors(e)
     return Object.keys(e).length === 0
+  }
+
+  async function lookupCustomerByPhone(phoneDigits) {
+    if (phoneDigits.length !== 10 || phoneDigits === lastLookupPhone) return
+    setPhoneLookupLoading(true)
+    setAutoFilledMessage('')
+    try {
+      const res = await fetch('/api/checkout?phone=' + phoneDigits, { cache: 'no-store' })
+      const data = await res.json()
+      if (data?.exists && data?.customer) {
+        const c = data.customer
+        const customerPhone = formatPhone(c.phone || phoneDigits)
+        const customerWhatsapp = formatPhone(c.whatsapp || customerPhone)
+        const sameAsPhone = !customerWhatsapp || customerWhatsapp === customerPhone
+        setForm(prev => ({
+          ...prev,
+          phone: customerPhone,
+          name: c.name || prev.name,
+          email: c.email || prev.email,
+          address: c.address || prev.address,
+          city: c.city || prev.city,
+          sameAsPhone,
+          whatsapp: sameAsPhone ? '' : customerWhatsapp,
+        }))
+        if (data?.rewards?.user_id) {
+          setRewards(prev => ({ ...prev, userId: data.rewards.user_id, points: Number(data.rewards.points || 0), redeemed: 0 }))
+          setAutoFilledMessage('Existing customer found. Details and rewards linked.')
+        } else {
+          setAutoFilledMessage('Existing customer found. Details auto-filled.')
+        }
+      }
+      setLastLookupPhone(phoneDigits)
+    } catch {}
+    setPhoneLookupLoading(false)
+  }
+
+  function handlePhoneInputChange(val) {
+    const digits = formatPhone(val)
+    if (digits !== form.phone) setAutoFilledMessage('')
+    setForm(prev => ({ ...prev, phone: digits }))
+    if (digits.length === 10) {
+      lookupCustomerByPhone(digits)
+    }
   }
 
   function buildWhatsAppMessage() {
@@ -291,6 +342,23 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Phone */}
+              <div>
+                <label className="block font-semibold text-sm text-charcoal mb-1">Phone Number *</label>
+                <div className="flex gap-2">
+                  <div className="bg-cream border-2 border-gray-100 rounded-2xl px-3 flex items-center text-sm font-bold text-charcoal flex-shrink-0">🇵🇰 +92</div>
+                  <input type="tel" placeholder="3360677340" value={form.phone}
+                    onChange={e => handlePhoneInputChange(e.target.value)}
+                    onBlur={e => lookupCustomerByPhone(formatPhone(e.target.value))}
+                    maxLength={10}
+                    className={'flex-1 px-4 py-3 rounded-2xl border-2 focus:outline-none text-sm ' + (errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-100 focus:border-coral bg-cream')} />
+                </div>
+                <p className="text-xs text-gray-400 mt-1">Enter 10 digits without 0 (e.g. 3360677340)</p>
+                {phoneLookupLoading && <p className="text-xs text-gray-400 mt-1">Checking existing customer...</p>}
+                {autoFilledMessage && <p className="text-xs text-green-600 mt-1">{autoFilledMessage}</p>}
+                {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone}</p>}
+              </div>
+
               {/* Name */}
               <div>
                 <label className="block font-semibold text-sm text-charcoal mb-1">Full Name *</label>
@@ -307,19 +375,6 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                   onChange={e => setForm({...form, email: e.target.value})}
                   className={'w-full px-4 py-3 rounded-2xl border-2 focus:outline-none text-sm ' + (errors.email ? 'border-red-300 bg-red-50' : 'border-gray-100 focus:border-coral bg-cream')} />
                 {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
-              </div>
-
-              {/* Phone */}
-              <div>
-                <label className="block font-semibold text-sm text-charcoal mb-1">Phone Number *</label>
-                <div className="flex gap-2">
-                  <div className="bg-cream border-2 border-gray-100 rounded-2xl px-3 flex items-center text-sm font-bold text-charcoal flex-shrink-0">🇵🇰 +92</div>
-                  <input type="tel" placeholder="3360677340" value={form.phone}
-                    onChange={e => setForm({...form, phone: formatPhone(e.target.value)})} maxLength={10}
-                    className={'flex-1 px-4 py-3 rounded-2xl border-2 focus:outline-none text-sm ' + (errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-100 focus:border-coral bg-cream')} />
-                </div>
-                <p className="text-xs text-gray-400 mt-1">Enter 10 digits without 0 (e.g. 3360677340)</p>
-                {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone}</p>}
               </div>
 
               {/* WhatsApp */}
