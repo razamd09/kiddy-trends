@@ -18,36 +18,38 @@ const categories = [
 export default function Home() {
   const [trending, setTrending]               = useState([])
   const [loadingTrending, setLoadingTrending] = useState(true)
+  const [myProducts, setMyProducts]           = useState([])
+  const [loadingMyProducts, setLoadingMyProducts] = useState(true)
 
   useEffect(() => {
     async function fetchTrending() {
       try {
-        // First try to fetch from our Supabase database for imported products
-        const res = await fetch('/api/admin/products?page=1', { next: { revalidate: 300 } })
+        const res  = await fetch('https://' + STORE_DOMAIN + '/products.json?limit=250', { next: { revalidate: 300 } })
         const data = await res.json()
-        
-        if (data.success && data.products && data.products.length > 0) {
-          // Use database products if available
-          const dbProducts = data.products
-          // Sort with 2026 products first
-          const summerNew = dbProducts.filter(p => (p.title || '').toLowerCase().includes('summer new arrival 2026'))
-          const other2026 = dbProducts.filter(p => (p.title || '').includes('2026') && !(p.title || '').toLowerCase().includes('summer new arrival 2026'))
-          const rest = dbProducts.filter(p => !(p.title || '').includes('2026'))
-          setTrending([...summerNew, ...other2026, ...rest].slice(0, 8))
-        } else {
-          // Fallback to Shopify API if no database products
-          const shopifyRes = await fetch('https://' + STORE_DOMAIN + '/products.json?limit=250', { next: { revalidate: 300 } })
-          const shopifyData = await shopifyRes.json()
-          const all = shopifyData.products || []
-          const summerNew = all.filter(p => (p.title || '').toLowerCase().includes('summer new arrival 2026'))
-          const other2026 = all.filter(p => (p.title || '').includes('2026') && !(p.title || '').toLowerCase().includes('summer new arrival 2026'))
-          const rest = all.filter(p => !(p.title || '').includes('2026'))
-          setTrending([...summerNew, ...other2026, ...rest].slice(0, 8))
-        }
+        const all  = data.products || []
+        // 2026 products always first
+        const summerNew = all.filter(p => (p.title || '').toLowerCase().includes('summer new arrival 2026'))
+        const other2026 = all.filter(p => (p.title || '').includes('2026') && !(p.title || '').toLowerCase().includes('summer new arrival 2026'))
+        const rest      = all.filter(p => !(p.title || '').includes('2026'))
+        setTrending([...summerNew, ...other2026, ...rest].slice(0, 8))
         setLoadingTrending(false)
       } catch { setLoadingTrending(false) }
     }
     fetchTrending()
+  }, [])
+
+  useEffect(() => {
+    async function fetchMyProducts() {
+      try {
+        const res = await fetch('/api/admin/products?page=1')
+        const data = await res.json()
+        if (data.success && data.products) {
+          setMyProducts(data.products.slice(0, 8))
+        }
+        setLoadingMyProducts(false)
+      } catch { setLoadingMyProducts(false) }
+    }
+    fetchMyProducts()
   }, [])
 
   return (
@@ -139,6 +141,38 @@ export default function Home() {
               </div>
           )}
         </section>
+
+        {/* MY PRODUCTS (TESTING) */}
+        {myProducts.length > 0 && (
+          <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between mb-10">
+              <h2 className="section-title">My Products 🧪</h2>
+              <Link href="/admin/products" className="text-coral font-semibold hover:underline">Manage →</Link>
+            </div>
+            {loadingMyProducts && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+                  {[...Array(4)].map((_, i) => (
+                      <div key={i} className="bg-gray-100 rounded-3xl overflow-hidden animate-pulse">
+                        <div className="h-48 bg-gray-200" />
+                        <div className="p-4 space-y-2">
+                          <div className="h-4 bg-gray-200 rounded w-3/4" />
+                          <div className="h-4 bg-gray-200 rounded w-1/2" />
+                          <div className="h-8 bg-gray-200 rounded-xl mt-3" />
+                        </div>
+                      </div>
+                  ))}
+                </div>
+            )}
+            {!loadingMyProducts && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+                  {myProducts.map(product => (
+                      <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+            )}
+            <p className="text-xs text-gray-400 mt-6 text-center">🧪 Testing section: All product management features are tested here first</p>
+          </section>
+        )}
 
         {/* TIKTOK VIDEOS */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">

@@ -102,22 +102,11 @@ export default function Collections() {
     }
     async function fetchAll() {
       try {
-        // First try to fetch from our database
-        const dbRes = await fetch('/api/admin/products?page=1')
-        const dbData = await dbRes.json()
-        
-        let all = []
-        if (dbData.success && dbData.products && dbData.products.length > 0) {
-          all = dbData.products
-        } else {
-          // Fallback to Shopify API
-          const [p1, p2] = await Promise.all([
-            fetch('https://' + STORE_DOMAIN + '/products.json?limit=250&page=1').then(r => r.json()),
-            fetch('https://' + STORE_DOMAIN + '/products.json?limit=250&page=2').then(r => r.json()),
-          ])
-          all = [...(p1.products || []), ...(p2.products || [])]
-        }
-        
+        const [p1, p2] = await Promise.all([
+          fetch('https://' + STORE_DOMAIN + '/products.json?limit=250&page=1').then(r => r.json()),
+          fetch('https://' + STORE_DOMAIN + '/products.json?limit=250&page=2').then(r => r.json()),
+        ])
+        const all = [...(p1.products || []), ...(p2.products || [])]
         cachedProducts = all
         cacheTime = Date.now()
         setProducts(all)
