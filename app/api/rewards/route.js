@@ -103,12 +103,12 @@ export async function PATCH(request) {
     .single()
 
   if (!user) return Response.json({ error: 'User not found' }, { status: 404 })
-  if (user.points < redeemPoints) return Response.json({ error: 'Not enough points' }, { status: 400 })
+  if (user.points <= 0 || redeemPoints <= 0) return Response.json({ error: 'No points to redeem' }, { status: 400 })
 
   const { data, error } = await supabase
     .from('rewards')
     .update({
-      points:     user.points - redeemPoints,
+      points:     0,
       updated_at: new Date().toISOString(),
     })
     .eq('user_id', id)
@@ -116,5 +116,5 @@ export async function PATCH(request) {
     .single()
 
   if (error) return Response.json({ error: error.message }, { status: 500 })
-  return Response.json({ success: true, discount: redeemPoints, ...data })
+  return Response.json({ success: true, discount: user.points, redeemedPoints: user.points, ...data })
 }

@@ -36,8 +36,6 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   const [errors, setErrors]           = useState({})
   const [discount, setDiscount]       = useState(null)
   const [rewards, setRewards]         = useState({ userId: '', points: 0, redeemed: 0 })
-  const [earnedPoints, setEarnedPoints] = useState(0)
-  const [bonusAwarded, setBonusAwarded] = useState(false)
 
   const price          = isCart ? cartTotal : parseFloat(variant?.price || 0)
   const comparePrice   = parseFloat(variant?.compare_at_price || 0)
@@ -123,6 +121,8 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
             address:  form.address,
             city:     form.city,
             notes:    form.notes,
+            discount: discount?.type !== 'shipping' ? discountAmount : 0,
+            rewards: rewards.userId ? { userId: rewards.userId, redeem: rewards.redeemed || 0 } : null,
             payment:  'cod',
           }
         })
@@ -139,27 +139,15 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
       }
 
       if (data.success) {
+        const rewardsData = data.rewards || {}
         const params = new URLSearchParams({
           order: data.orderNumber || data.orderName || '#' + data.orderId,
           name:  form.name,
           total: String(total),
+          points: String(Number(rewardsData.availablePoints || 0)),
+          earned: String(Number(rewardsData.earnedPoints || 0)),
+          redeemed: String(Number(rewardsData.redeemedPoints || 0)),
         })
-
-        // Add reward points
-        if (rewards.userId) {
-          try {
-            const rewardRes = await fetch('/api/rewards', {
-              method:  'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body:    JSON.stringify({ userId: rewards.userId, orderTotal: total })
-            })
-            const rewardData = await rewardRes.json()
-            if (rewardData.success) {
-              setEarnedPoints(rewardData.earned || 0)
-              setBonusAwarded(rewardData.bonus || false)
-            }
-          } catch (e) { console.log('Rewards error:', e) }
-        }
 
         window.location.href = '/order-confirmation?' + params.toString()
         return
@@ -368,22 +356,6 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
             <div className="text-7xl mb-4">🎉</div>
             <h3 className="font-display text-3xl text-charcoal mb-2">Order Confirmed!</h3>
             <p className="text-gray-500 mb-6">Thank you! Your order has been placed successfully.</p>
-
-            {/* Points earned notification */}
-            {earnedPoints > 0 && (
-              <div className="bg-sunny/30 rounded-2xl p-4 mb-4 text-left">
-                <p className="font-display text-base text-charcoal">⭐ You earned {earnedPoints} points!</p>
-                <p className="text-xs text-gray-500 mt-1">Keep shopping to earn more rewards.</p>
-              </div>
-            )}
-
-            {/* Bonus notification */}
-            {bonusAwarded && (
-              <div className="bg-mint/20 rounded-2xl p-4 mb-4 text-left border-2 border-mint">
-                <p className="font-display text-base text-charcoal">🎁 Bonus 100 Points!</p>
-                <p className="text-xs text-gray-500 mt-1">You hit 500 points! Kiddy Trends added 100 bonus points to your account!</p>
-              </div>
-            )}
 
             <div className="bg-cream rounded-2xl p-5 text-left mb-6 space-y-3">
               <div className="flex justify-between text-sm"><span className="text-gray-500">Name</span><span className="font-semibold">{form.name}</span></div>

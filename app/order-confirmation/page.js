@@ -10,6 +10,9 @@ function OrderConfirmationContent() {
     const orderNumber   = searchParams.get('order')
     const customerName  = searchParams.get('name')
     const total         = searchParams.get('total')
+    const points        = parseInt(searchParams.get('points') || '0')
+    const earned        = parseInt(searchParams.get('earned') || '0')
+    const redeemed      = parseInt(searchParams.get('redeemed') || '0')
     const [count, setCount] = useState(5)
 
     useEffect(() => {
@@ -46,6 +49,26 @@ function OrderConfirmationContent() {
                     <div className="flex justify-between">
                         <span className="text-gray-400">Payment</span>
                         <span className="font-semibold text-charcoal">Cash on Delivery</span>
+                    </div>
+                    {(earned > 0 || redeemed > 0) && (
+                        <>
+                            {redeemed > 0 && (
+                                <div className="flex justify-between">
+                                    <span className="text-gray-400">Points Redeemed</span>
+                                    <span className="font-semibold text-green-600">- {redeemed} pts</span>
+                                </div>
+                            )}
+                            {earned > 0 && (
+                                <div className="flex justify-between">
+                                    <span className="text-gray-400">Points Earned</span>
+                                    <span className="font-semibold text-green-600">+ {earned} pts</span>
+                                </div>
+                            )}
+                        </>
+                    )}
+                    <div className="flex justify-between">
+                        <span className="text-gray-400">Your Points</span>
+                        <span className="font-semibold text-charcoal">{points} pts</span>
                     </div>
                     <div className="flex justify-between">
                         <span className="text-gray-400">Total</span>

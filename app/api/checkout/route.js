@@ -4,6 +4,14 @@ const ORDER_NOTIFICATION_EMAIL = process.env.ORDER_NOTIFICATION_EMAIL || 'thekid
 const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_9p08wct'
 const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID || 'template_gyanmsp'
 const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY || process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || 'G3OmrUP2PwOat-o1W'
+const POINTS_PER_1000 = 10
+const BONUS_THRESHOLD = 500
+const BONUS_POINTS = 100
+
+function toNumber(value) {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : 0
+}
 
 async function sendOrderNotification({ orderNumber, customer, cartItems, subtotal, shipping, discount, total }) {
     if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
@@ -56,15 +64,72 @@ export async function POST(request) {
     try {
         const { cartItems, customer } = await request.json()
 
-        const subtotal = cartItems.reduce((s, i) => s + (parseFloat(i.price || 0) * i.quantity), 0)
+        const subtotal = (cartItems || []).reduce((s, i) => s + (parseFloat(i.price || 0) * (i.quantity || 1)), 0)
         const shipping = 250
-        const discount = customer.discount || 0
-        const total    = subtotal + shipping - discount
+        const promoDiscount = Math.max(0, toNumber(customer?.discount || 0))
+        const rewardsUserId = (customer?.rewards?.userId || '').toLowerCase().trim()
+        const redeemRequested = Math.max(0, toNumber(customer?.rewards?.redeem || 0))
 
         const supabase = createClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL,
             process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
         )
+
+        let rewardsSummary = null
+        let redeemedPoints = 0
+
+        if (rewardsUserId) {
+            const { data: rewardsUser, error: rewardsFetchError } = await supabase
+                .from('rewards')
+                .select('*')
+                .eq('user_id', rewardsUserId)
+                .single()
+
+            if (rewardsFetchError || !rewardsUser) {
+                return Response.json({ success: false, error: 'Rewards account not found' }, { status: 400 })
+            }
+
+            const currentPoints = Math.max(0, toNumber(rewardsUser.points))
+            redeemedPoints = redeemRequested > 0 ? currentPoints : 0
+
+            const payableAfterDiscount = Math.max(0, subtotal + shipping - promoDiscount - redeemedPoints)
+            const earnedPoints = Math.floor(payableAfterDiscount / 1000) * POINTS_PER_1000
+            const pointsAfterRedeem = redeemRequested > 0 ? 0 : currentPoints
+            const pointsBeforeBonus = pointsAfterRedeem + earnedPoints
+            const bonusAwarded = pointsBeforeBonus >= BONUS_THRESHOLD && !rewardsUser.bonus_notified
+            const finalPoints = pointsBeforeBonus + (bonusAwarded ? BONUS_POINTS : 0)
+            const totalSpent = Math.max(0, toNumber(rewardsUser.total_spent) + payableAfterDiscount)
+
+            const { error: rewardsUpdateError } = await supabase
+                .from('rewards')
+                .update({
+                    points: finalPoints,
+                    total_spent: totalSpent,
+                    bonus_notified: bonusAwarded ? true : !!rewardsUser.bonus_notified,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('user_id', rewardsUserId)
+
+            if (rewardsUpdateError) {
+                return Response.json({ success: false, error: rewardsUpdateError.message }, { status: 500 })
+            }
+
+            rewardsSummary = {
+                userId: rewardsUserId,
+                redeemedPoints,
+                earnedPoints,
+                availablePoints: finalPoints,
+                bonusAwarded,
+                calculatedAt: new Date().toISOString(),
+            }
+        }
+
+        const discount = promoDiscount + redeemedPoints
+        const total = Math.max(0, subtotal + shipping - discount)
+        const notesText = [
+            customer?.notes || '',
+            rewardsSummary ? ('[Rewards] ' + rewardsSummary.userId + ' redeemed ' + rewardsSummary.redeemedPoints + ' pts') : '',
+        ].filter(Boolean).join(' | ')
 
         const { data: savedOrder, error } = await supabase
             .from('orders')
@@ -81,7 +146,7 @@ export async function POST(request) {
                 discount,
                 total,
                 status:            'pending',
-                notes:             customer.notes || '',
+                notes:             notesText,
             }])
             .select()
             .single()
@@ -117,6 +182,7 @@ export async function POST(request) {
             orderId:     savedOrder.id,
             orderName:   orderNumber,
             orderNumber: orderNumber,
+            rewards: rewardsSummary,
         })
 
     } catch (error) {
