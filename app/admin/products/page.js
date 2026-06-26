@@ -17,6 +17,7 @@ export default function AdminProducts() {
     const [importFile, setImportFile] = useState(null)
     const [importing, setImporting] = useState(false)
     const [importSummary, setImportSummary] = useState(null)
+    const [loadError, setLoadError] = useState('')
     const [form, setForm] = useState({
         title: '', description: '', price: '', compare_price: '',
         category: '', product_type: '', tags: '', stock: '', images: ''
@@ -51,13 +52,24 @@ export default function AdminProducts() {
 
     async function fetchProducts() {
         setLoading(true)
+        setLoadError('')
         const token = localStorage.getItem('admin_token')
         try {
             const res  = await fetch('/api/admin/products?page=' + page, { headers: { 'x-admin-token': token } })
             const data = await res.json()
-            setProducts(data.products || [])
-            setTotal(data.total || 0)
-        } catch {}
+            if (!res.ok || data.error) {
+                setProducts([])
+                setTotal(0)
+                setLoadError(data.error || 'Unable to load products')
+            } else {
+                setProducts(data.products || [])
+                setTotal(data.total || 0)
+            }
+        } catch (err) {
+            setProducts([])
+            setTotal(0)
+            setLoadError(err.message || 'Unable to load products')
+        }
         setLoading(false)
     }
 
@@ -350,6 +362,11 @@ export default function AdminProducts() {
 
                 ) : (
                     <>
+                        {loadError && (
+                            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+                                {loadError}
+                            </div>
+                        )}
                         <div className="mb-6">
                             <input type="text" placeholder="🔍 Search products..."
                                    value={searchTerm} onChange={e => setSearchTerm(e.target.value)}

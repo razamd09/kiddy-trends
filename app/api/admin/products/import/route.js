@@ -196,17 +196,24 @@ export async function POST(request) {
             }
         }
 
-        return Response.json({
-            success: true,
-            summary: {
-                totalRows: rows.length,
-                validProducts: mapped.length,
-                inserted,
-                updated,
-                failed: errors.length,
-                errors: errors.slice(0, 20),
-            },
-        })
+        const summary = {
+            totalRows: rows.length,
+            validProducts: mapped.length,
+            inserted,
+            updated,
+            failed: errors.length,
+            errors: errors.slice(0, 20),
+        }
+
+        if (inserted === 0 && updated === 0 && errors.length > 0) {
+            return Response.json({
+                success: false,
+                error: 'Import failed for all rows',
+                summary,
+            }, { status: 500 })
+        }
+
+        return Response.json({ success: true, summary })
     } catch (error) {
         return Response.json({ success: false, error: error.message }, { status: 500 })
     }

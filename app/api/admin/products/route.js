@@ -11,14 +11,28 @@ export async function GET(request) {
     const limit  = 20
     const offset = (page - 1) * limit
 
-    const { data, error, count } = await supabase
+    let { data, error, count } = await supabase
         .from('products')
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1)
 
-    if (error) return Response.json({ error: error.message }, { status: 500 })
-    return Response.json({ products: data, total: count })
+    // Some older tables may not have created_at; fallback to id ordering.
+    if (error && /created_at/i.test(error.message || '')) {
+        const fallback = await supabase
+            .from('products')
+            .select('*', { count: 'exact' })
+            .order('id', { ascending: false })
+            .range(offset, offset + limit - 1)
+        data = fallback.data
+        error = fallback.error
+        count = fallback.count
+    }
+
+    if (error) {
+        return Response.json({ success: false, error: error.message }, { status: 500 })
+    }
+    return Response.json({ success: true, products: data || [], total: count || 0 })
 }
 
 export async function POST(request) {
