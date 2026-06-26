@@ -5,6 +5,55 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_KEY
 )
 
+function normalizeImages(images) {
+    if (Array.isArray(images)) {
+        return images
+            .map(img => typeof img === 'string' ? img : img?.src)
+            .filter(Boolean)
+    }
+
+    if (typeof images === 'string') {
+        const trimmed = images.trim()
+        if (!trimmed) return []
+
+        try {
+            const parsed = JSON.parse(trimmed)
+            if (Array.isArray(parsed)) {
+                return parsed
+                    .map(img => typeof img === 'string' ? img : img?.src)
+                    .filter(Boolean)
+            }
+        } catch {}
+
+        if (trimmed.includes('\n')) {
+            return trimmed.split('\n').map(s => s.trim()).filter(Boolean)
+        }
+
+        return [trimmed]
+    }
+
+    return []
+}
+
+function getSupabaseStoragePath(url) {
+    if (typeof url !== 'string') return null
+
+    const publicMarker = '/storage/v1/object/public/products/'
+    const signedMarker = '/storage/v1/object/sign/products/'
+    let path = null
+
+    if (url.includes(publicMarker)) {
+        path = url.split(publicMarker)[1]
+    } else if (url.includes(signedMarker)) {
+        path = url.split(signedMarker)[1]
+    } else if (url.startsWith('images/')) {
+        path = url
+    }
+
+    if (!path) return null
+    return path.split('?')[0]
+}
+
 export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const page   = parseInt(searchParams.get('page') || '1')
@@ -32,8 +81,29 @@ export async function GET(request) {
     if (error) {
         return Response.json({ success: false, error: error.message }, { status: 500 })
     }
-    
-    const response = Response.json({ success: true, products: data || [], total: count || 0 })
+
+    const products = await Promise.all((data || []).map(async (product) => {
+        const imageUrls = normalizeImages(product.images)
+
+        const resolvedImages = await Promise.all(imageUrls.map(async (url) => {
+            const storagePath = getSupabaseStoragePath(url)
+            if (!storagePath) return url
+
+            const { data: signedData, error: signError } = await supabase.storage
+                .from('products')
+                .createSignedUrl(storagePath, 60 * 60 * 24 * 30)
+
+            if (signError || !signedData?.signedUrl) return url
+            return signedData.signedUrl
+        }))
+
+        return {
+            ...product,
+            images: resolvedImages,
+        }
+    }))
+
+    const response = Response.json({ success: true, products, total: count || 0 })
     response.headers.set('Cache-Control', 'no-store, max-age=0')
     return response
 }
