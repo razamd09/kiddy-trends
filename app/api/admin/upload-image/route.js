@@ -21,18 +21,24 @@ export async function POST(request) {
         // Optimize image
         const optimized = await sharp(fileBuffer)
             .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
-            .webp({ quality: 85 })
+            .webp({ quality: 82, effort: 4 })
             .toBuffer()
 
-        const fileNameWebP = fileName.replace(/\.[^.]+$/, '') + '.webp'
+        const safeBaseName = String(fileName || 'image')
+            .replace(/\.[^.]+$/, '')
+            .replace(/[^a-zA-Z0-9_-]/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '') || 'image'
+        const fileNameWebP = safeBaseName + '.webp'
         const timestamp = Date.now()
         const path = `images/${timestamp}-${fileNameWebP}`
 
-        const { data, error } = await supabase.storage
+        const { error } = await supabase.storage
             .from('products')
             .upload(path, optimized, {
                 contentType: 'image/webp',
-                cacheControl: '31536000'
+                cacheControl: '31536000',
+                upsert: false,
             })
 
         if (error) {
@@ -43,7 +49,18 @@ export async function POST(request) {
             .from('products')
             .getPublicUrl(path)
 
-        return Response.json({ success: true, url: publicUrl })
+        const { data: signedData } = await supabase.storage
+            .from('products')
+            .createSignedUrl(path, 60 * 60 * 24 * 30)
+
+        const immediateUrl = signedData?.signedUrl || publicUrl
+
+        return Response.json({
+            success: true,
+            url: immediateUrl,
+            storagePath: path,
+            publicUrl,
+        })
     } catch (error) {
         return Response.json({ success: false, error: error.message }, { status: 500 })
     }

@@ -353,7 +353,9 @@ export default function AdminProducts() {
             product_type:  form.product_type,
             tags:          form.tags.split(',').map(t => t.trim()).filter(Boolean),
             stock:         totalStock,
-            images:        formImages.map(img => img.url),
+            images:        formImages
+                .map(img => img.url)
+                .filter((url) => typeof url === 'string' && url.trim() && !url.startsWith('blob:')),
             variants:      variants.length > 0 ? variants : null,
         }
 
@@ -572,25 +574,50 @@ export default function AdminProducts() {
         const files = e.target.files
         if (!files) return
 
-        for (const file of files) {
+        const selectedFiles = Array.from(files)
+        const uploadItems = selectedFiles.map((file, idx) => {
+            const tempId = String(Date.now()) + '_' + String(idx) + '_' + Math.random().toString(36).slice(2, 8)
+            return {
+                tempId,
+                file,
+                previewUrl: URL.createObjectURL(file),
+            }
+        })
+
+        setFormImages(prev => [
+            ...prev,
+            ...uploadItems.map((item) => ({ url: item.previewUrl, uploading: true, tempId: item.tempId })),
+        ])
+
+        await Promise.all(uploadItems.map(async (item) => {
             try {
                 const formData = new FormData()
-                formData.append('file', file)
+                formData.append('file', item.file)
 
                 const res = await fetch('/api/admin/upload-image', {
                     method: 'POST',
                     body: formData
                 })
                 const data = await readApiJson(res)
-                if (res.ok && data.success) {
-                    setFormImages(prev => [...prev, { url: data.url }])
+                if (res.ok && data.success && data.url) {
+                    setFormImages(prev => prev.map((img) =>
+                        img.tempId === item.tempId
+                            ? { url: data.url, uploading: false, storagePath: data.storagePath || '' }
+                            : img
+                    ))
                 } else {
+                    setFormImages(prev => prev.filter((img) => img.tempId !== item.tempId))
                     alert('Image upload failed: ' + (data.error || ('HTTP ' + res.status)))
                 }
             } catch (err) {
+                setFormImages(prev => prev.filter((img) => img.tempId !== item.tempId))
                 alert('Image upload failed: ' + err.message)
+            } finally {
+                URL.revokeObjectURL(item.previewUrl)
             }
-        }
+        }))
+
+        e.target.value = ''
     }
 
     function openImageEditor(idx) {
@@ -647,7 +674,13 @@ export default function AdminProducts() {
     }
 
     function removeFormImage(idx) {
-        setFormImages(prev => prev.filter((_, i) => i !== idx))
+        setFormImages(prev => {
+            const imageToRemove = prev[idx]
+            if (imageToRemove?.url && imageToRemove.url.startsWith('blob:')) {
+                URL.revokeObjectURL(imageToRemove.url)
+            }
+            return prev.filter((_, i) => i !== idx)
+        })
     }
 
     function moveFormImage(idx, dir) {
@@ -1112,11 +1145,17 @@ export default function AdminProducts() {
                                                             <span className="text-white text-lg animate-spin">↻</span>
                                                         </div>
                                                     )}
+                                                    {imgObj.uploading && (
+                                                        <div className="absolute inset-0 rounded-lg bg-black/45 flex items-center justify-center">
+                                                            <span className="text-white text-xs font-semibold">Uploading...</span>
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div className="mt-2 grid grid-cols-2 gap-2">
                                                     <button
                                                         type="button"
                                                         onClick={() => openImageEditor(idx)}
+                                                        disabled={imgObj.uploading}
                                                         className="col-span-2 px-2 py-1.5 bg-charcoal text-white text-xs rounded-lg hover:bg-charcoal/90"
                                                     >
                                                         Edit Image
@@ -1125,6 +1164,7 @@ export default function AdminProducts() {
                                                         <button
                                                             type="button"
                                                             onClick={() => moveFormImage(idx, -1)}
+                                                            disabled={imgObj.uploading}
                                                             className="px-2 py-1.5 bg-blue-50 text-blue-600 text-xs rounded-lg hover:bg-blue-100"
                                                         >
                                                             Move Left
@@ -1134,6 +1174,7 @@ export default function AdminProducts() {
                                                         <button
                                                             type="button"
                                                             onClick={() => moveFormImage(idx, 1)}
+                                                            disabled={imgObj.uploading}
                                                             className="px-2 py-1.5 bg-blue-50 text-blue-600 text-xs rounded-lg hover:bg-blue-100"
                                                         >
                                                             Move Right
@@ -1142,6 +1183,7 @@ export default function AdminProducts() {
                                                     <button
                                                         type="button"
                                                         onClick={() => removeFormImage(idx)}
+                                                        disabled={imgObj.uploading}
                                                         className="col-span-2 px-2 py-1.5 bg-red-50 text-red-600 text-xs rounded-lg hover:bg-red-100"
                                                     >
                                                         Remove
