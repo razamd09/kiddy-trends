@@ -44,6 +44,18 @@ Set these environment variables in Vercel:
 - `EMAILJS_TEMPLATE_ID`
 - `EMAILJS_PUBLIC_KEY`
 
+## PostEx Tracking Integration
+
+Order tracking now supports live courier status from PostEx when an AWB/tracking number is saved on the order.
+
+Optional environment variables:
+
+- `POSTEX_TRACKING_URL` (default: `https://postex.pk/api/tracking-order`)
+- `POSTEX_BEARER_TOKEN`
+- `POSTEX_API_KEY`
+- `POSTEX_CLIENT_ID`
+- `POSTEX_CLIENT_SECRET`
+
 ## To Add Your Logo
 Your logo is already saved at `public/logo.jpg` and used across the site.
 

@@ -26,7 +26,7 @@ export default function OrderTracking() {
       const res  = await fetch('/api/orders/track?order_number=' + encodeURIComponent(orderNumber.trim()))
       const data = await res.json()
       if (data.success) {
-        setResult(data.order)
+        setResult(data)
       } else {
         setError(data.error || 'Order not found')
       }
@@ -42,7 +42,9 @@ export default function OrderTracking() {
     } catch { return [] }
   }
 
-  const currentStep = result ? statusIndex[result.status] : -1
+  const order = result?.order || null
+  const shipment = result?.shipment || null
+  const currentStep = order ? statusIndex[order.status] : -1
 
   return (
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
@@ -79,28 +81,52 @@ export default function OrderTracking() {
               <div className="bg-white rounded-3xl p-6 border border-gray-100">
                 <div className="flex items-center justify-between mb-4">
                   <div>
-                    <p className="font-display text-2xl text-coral">{result.order_number}</p>
+                    <p className="font-display text-2xl text-coral">{order.order_number}</p>
                     <p className="text-xs text-gray-400">
-                      Placed on {new Date(result.created_at).toLocaleDateString('en-PK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                      Placed on {new Date(order.created_at).toLocaleDateString('en-PK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                   </div>
-                  {result.status === 'cancelled' ? (
+                  {order.status === 'cancelled' ? (
                       <span className="bg-red-100 text-red-500 font-bold text-sm px-4 py-2 rounded-full">❌ Cancelled</span>
                   ) : (
                       <span className="bg-green-100 text-green-600 font-bold text-sm px-4 py-2 rounded-full">
-                  {result.status === 'delivered' ? '✅ Delivered' : '🔄 In Progress'}
+                  {order.status === 'delivered' ? '✅ Delivered' : '🔄 In Progress'}
                 </span>
                   )}
                 </div>
                 <div className="bg-cream rounded-2xl p-4 text-sm space-y-1">
-                  <p><span className="text-gray-400">Customer:</span> <span className="font-semibold">{result.customer_name}</span></p>
-                  <p><span className="text-gray-400">City:</span> <span className="font-semibold">{result.customer_city}</span></p>
-                  <p><span className="text-gray-400">Total:</span> <span className="font-bold text-coral">PKR {result.total?.toLocaleString()}</span></p>
+                  <p><span className="text-gray-400">Customer:</span> <span className="font-semibold">{order.customer_name}</span></p>
+                  <p><span className="text-gray-400">City:</span> <span className="font-semibold">{order.customer_city}</span></p>
+                  <p><span className="text-gray-400">Total:</span> <span className="font-bold text-coral">PKR {order.total?.toLocaleString()}</span></p>
                 </div>
               </div>
 
+              {shipment && (
+                  <div className="bg-white rounded-3xl p-6 border border-gray-100">
+                    <p className="font-display text-lg text-charcoal mb-4">Courier Tracking</p>
+                    <div className="bg-cream rounded-2xl p-4 text-sm space-y-1 mb-4">
+                      <p><span className="text-gray-400">Courier:</span> <span className="font-semibold uppercase">{shipment.provider}</span></p>
+                      <p><span className="text-gray-400">Tracking #:</span> <span className="font-semibold">{shipment.tracking_number}</span></p>
+                      <p><span className="text-gray-400">Latest Status:</span> <span className="font-semibold">{shipment.raw_status || shipment.status}</span></p>
+                    </div>
+                    {Array.isArray(shipment.events) && shipment.events.length > 0 && (
+                        <div className="space-y-3">
+                          {shipment.events.slice(0, 10).map((event, idx) => (
+                              <div key={idx} className="bg-cream rounded-xl px-4 py-3">
+                                <p className="font-semibold text-sm text-charcoal">{event.status || 'Update'}</p>
+                                {event.description && <p className="text-xs text-gray-500 mt-0.5">{event.description}</p>}
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {[event.location, event.timestamp].filter(Boolean).join(' • ') || 'PostEx update'}
+                                </p>
+                              </div>
+                          ))}
+                        </div>
+                    )}
+                  </div>
+              )}
+
               {/* Status tracker */}
-              {result.status !== 'cancelled' && (
+              {order.status !== 'cancelled' && (
                   <div className="bg-white rounded-3xl p-6 border border-gray-100">
                     <p className="font-display text-lg text-charcoal mb-5">Order Progress</p>
                     <div className="space-y-4">
@@ -138,9 +164,9 @@ export default function OrderTracking() {
               <div className="bg-white rounded-3xl p-6 border border-gray-100">
                 <p className="font-display text-lg text-charcoal mb-4">Order Items</p>
                 <div className="space-y-2">
-                  {getItems(result).length === 0 ? (
+                  {getItems(order).length === 0 ? (
                       <p className="text-sm text-gray-400">No item details available</p>
-                  ) : getItems(result).map((item, i) => (
+                  ) : getItems(order).map((item, i) => (
                       <div key={i} className="flex items-center justify-between bg-cream rounded-xl px-4 py-3">
                         <div className="flex items-center gap-3">
                           {item.image && <img src={item.image} alt="" className="w-10 h-10 object-contain rounded-lg" />}
@@ -158,14 +184,14 @@ export default function OrderTracking() {
                 </div>
                 <div className="border-t border-gray-100 mt-4 pt-4 space-y-1 text-sm">
                   <div className="flex justify-between text-gray-400">
-                    <span>Subtotal</span><span>PKR {(result.subtotal||0).toLocaleString()}</span>
+                    <span>Subtotal</span><span>PKR {(order.subtotal||0).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-gray-400">
-                    <span>Shipping</span><span>PKR {(result.shipping||250).toLocaleString()}</span>
+                    <span>Shipping</span><span>PKR {(order.shipping||250).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between font-display text-base pt-1 border-t border-gray-100">
                     <span>Total</span>
-                    <span className="text-coral font-bold">PKR {(result.total||0).toLocaleString()}</span>
+                    <span className="text-coral font-bold">PKR {(order.total||0).toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -174,7 +200,7 @@ export default function OrderTracking() {
               <div className="bg-cream rounded-3xl p-5 text-center">
                 <p className="font-display text-base text-charcoal mb-1">Need Help?</p>
                 <p className="text-sm text-gray-500 mb-4">Contact us directly on WhatsApp for instant support</p>
-                <a href={'https://wa.me/923360677340?text=' + encodeURIComponent('Hi! I need help with my order ' + result.order_number)}
+                <a href={'https://wa.me/923360677340?text=' + encodeURIComponent('Hi! I need help with my order ' + order.order_number)}
                    target="_blank" rel="noopener noreferrer"
                    className="inline-flex items-center gap-2 bg-green-500 text-white font-display px-6 py-3 rounded-full hover:bg-green-600 transition-colors">
                   💬 WhatsApp Us

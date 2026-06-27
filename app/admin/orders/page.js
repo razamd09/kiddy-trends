@@ -40,6 +40,7 @@ export default function AdminOrders() {
     const [selected, setSelected]           = useState(null)
     const [updating, setUpdating]           = useState(false)
     const [lastOrderCount, setLastOrderCount] = useState(0)
+    const [trackingInput, setTrackingInput] = useState('')
     const router = useRouter()
 
     // Verify session
@@ -98,6 +99,21 @@ export default function AdminOrders() {
         }
     }, [verified])
 
+    useEffect(() => {
+        if (!selected) {
+            setTrackingInput('')
+            return
+        }
+        const fromFields =
+            selected.tracking_number ||
+            selected.awb_number ||
+            selected.awb ||
+            selected.consignment_number ||
+            ''
+        const notesMatch = String(selected.notes || '').match(/\[PostEx\][^\n\r]*AWB:\s*([A-Za-z0-9-]+)/i)
+        setTrackingInput(String(fromFields || notesMatch?.[1] || ''))
+    }, [selected?.id])
+
     async function fetchOrders() {
         setLoading(true)
         const token = localStorage.getItem('admin_token')
@@ -122,6 +138,29 @@ export default function AdminOrders() {
         if (data.success) {
             setSelected(prev => prev ? { ...prev, status } : null)
             setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o))
+        }
+        setUpdating(false)
+    }
+
+    async function saveTracking() {
+        if (!selected) return
+        setUpdating(true)
+        const token = localStorage.getItem('admin_token')
+        const cleanTracking = trackingInput.trim()
+        const baseNotes = String(selected.notes || '').replace(/\s*\[PostEx\][^\n\r]*/gi, '').trim()
+        const nextNotes = cleanTracking
+            ? (baseNotes ? (baseNotes + ' | ') : '') + '[PostEx] AWB: ' + cleanTracking
+            : baseNotes
+
+        const res = await fetch('/api/admin/orders', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+            body: JSON.stringify({ id: selected.id, notes: nextNotes }),
+        })
+        const data = await res.json()
+        if (data.success) {
+            setSelected(data.order)
+            setOrders(prev => prev.map(o => o.id === selected.id ? data.order : o))
         }
         setUpdating(false)
     }
@@ -323,6 +362,28 @@ export default function AdminOrders() {
                                         💬 Contact Customer on WhatsApp
                                     </a>
                                 )}
+
+                                {/* Status radio buttons */}
+                                <div className="bg-cream rounded-2xl p-4">
+                                    <p className="font-display text-sm text-charcoal mb-3">🚚 Courier Tracking (PostEx)</p>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            value={trackingInput}
+                                            onChange={(e) => setTrackingInput(e.target.value.toUpperCase())}
+                                            placeholder="Enter AWB / tracking number"
+                                            className="flex-1 px-3 py-2 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-white text-sm font-semibold"
+                                        />
+                                        <button
+                                            onClick={saveTracking}
+                                            disabled={updating}
+                                            className="px-4 py-2 rounded-xl bg-coral text-white text-sm font-semibold hover:bg-opacity-90 disabled:opacity-70"
+                                        >
+                                            Save
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-2">Saved tracking appears on customer Track Order page.</p>
+                                </div>
 
                                 {/* Status radio buttons */}
                                 <div className="bg-cream rounded-2xl p-4">

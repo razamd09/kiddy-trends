@@ -28,11 +28,18 @@ export async function GET(request) {
 }
 
 export async function PUT(request) {
-    const { id, status } = await request.json()
+    const { id, status, notes } = await request.json()
+    const updates = { updated_at: new Date().toISOString() }
+    if (status) updates.status = status
+    if (typeof notes === 'string') updates.notes = notes
+
+    if (!id || (status === undefined && notes === undefined)) {
+        return Response.json({ error: 'Order id and at least one field are required' }, { status: 400 })
+    }
 
     const { data, error } = await supabase
         .from('orders')
-        .update({ status, updated_at: new Date().toISOString() })
+        .update(updates)
         .eq('id', id)
         .select()
         .single()
