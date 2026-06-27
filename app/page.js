@@ -20,10 +20,7 @@ export default function Home() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const res  = await fetch('/api/products?limit=8', {
-          cache: 'no-store',
-          headers: { 'pragma': 'no-cache', 'cache-control': 'no-cache' }
-        })
+        const res  = await fetch('/api/products?limit=8')
         const data = await res.json()
         if (data.success && Array.isArray(data.products)) setProducts(data.products)
         setLoadingProducts(false)

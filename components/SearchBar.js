@@ -2,6 +2,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
+const searchCache = new Map()
+const SEARCH_CACHE_TTL = 60 * 1000
+
 export default function SearchBar() {
   const [query, setQuery]           = useState('')
   const [results, setResults]       = useState([])
@@ -27,12 +30,20 @@ export default function SearchBar() {
     const timer = setTimeout(async () => {
       setLoading(true)
       try {
-        const res  = await fetch('/api/products?limit=8&search=' + encodeURIComponent(query), {
-          cache: 'no-store',
-          headers: { 'pragma': 'no-cache', 'cache-control': 'no-cache' }
-        })
+        const key = query.trim().toLowerCase()
+        const cached = searchCache.get(key)
+        if (cached && cached.expiresAt > Date.now()) {
+          setResults(cached.results)
+          setOpen(true)
+          setLoading(false)
+          return
+        }
+
+        const res  = await fetch('/api/products?limit=8&search=' + encodeURIComponent(query), { cache: 'force-cache' })
         const data = await res.json()
-        setResults((data.products || []).slice(0, 8))
+        const nextResults = (data.products || []).slice(0, 8)
+        searchCache.set(key, { results: nextResults, expiresAt: Date.now() + SEARCH_CACHE_TTL })
+        setResults(nextResults)
         setOpen(true)
       } catch {}
       setLoading(false)

@@ -33,6 +33,16 @@ export default function AdminProducts() {
     const [formImages, setFormImages] = useState([])   // [{url, rotating}]
     const [formVariants, setFormVariants] = useState([]) // [{option1_name,option1_value,option2_name,option2_value,price,stock,sku}]
     const [rotatingIdx, setRotatingIdx] = useState(null)
+    const [imageEditor, setImageEditor] = useState({
+        open: false,
+        index: null,
+        rotate: 0,
+        flipHorizontal: false,
+        flipVertical: false,
+        fit: 'cover',
+        background: '#ffffff',
+        saving: false,
+    })
     const router = useRouter()
 
     const categories = ['Clothing', 'Bedding', 'Bags', 'Accessories', 'Footwear', 'Toys', 'Shoes', 'Other']
@@ -246,11 +256,13 @@ export default function AdminProducts() {
         setFormImages([])
         setFormVariants([])
         setEditingId(null)
+        setImageEditor(prev => ({ ...prev, open: false, saving: false }))
     }
 
     function openEdit(product) {
         const imgs = normalizeImages(product.images)
         setFormImages(imgs.map(url => ({ url })))
+        setImageEditor(prev => ({ ...prev, open: false, saving: false }))
 
         // Parse variants from DB format
         let variants = []
@@ -509,27 +521,57 @@ export default function AdminProducts() {
         }
     }
 
-    async function handleRotateImage(idx, degrees) {
-        const imgObj = formImages[idx]
+    function openImageEditor(idx) {
+        if (!formImages[idx]) return
+        setImageEditor({
+            open: true,
+            index: idx,
+            rotate: 0,
+            flipHorizontal: false,
+            flipVertical: false,
+            fit: 'cover',
+            background: '#ffffff',
+            saving: false,
+        })
+    }
+
+    function closeImageEditor() {
+        setImageEditor(prev => ({ ...prev, open: false, saving: false }))
+    }
+
+    async function applyImageEdit() {
+        if (imageEditor.index === null) return
+        const imgObj = formImages[imageEditor.index]
         if (!imgObj) return
-        setRotatingIdx(idx)
+
+        setRotatingIdx(imageEditor.index)
+        setImageEditor(prev => ({ ...prev, saving: true }))
         const token = localStorage.getItem('admin_token')
         try {
-            const res = await fetch('/api/admin/rotate-image', {
+            const res = await fetch('/api/admin/edit-image', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
-                body: JSON.stringify({ url: imgObj.url, degrees })
+                body: JSON.stringify({
+                    url: imgObj.url,
+                    rotate: imageEditor.rotate,
+                    flipHorizontal: imageEditor.flipHorizontal,
+                    flipVertical: imageEditor.flipVertical,
+                    fit: imageEditor.fit,
+                    background: imageEditor.background,
+                })
             })
             const data = await readApiJson(res)
             if (data.success && data.url) {
-                setFormImages(prev => prev.map((img, i) => i === idx ? { url: data.url } : img))
+                setFormImages(prev => prev.map((img, i) => i === imageEditor.index ? { url: data.url } : img))
+                closeImageEditor()
             } else {
-                alert('Rotation failed: ' + (data.error || 'Unknown'))
+                alert('Image edit failed: ' + (data.error || 'Unknown'))
             }
         } catch (err) {
-            alert('Rotation failed: ' + err.message)
+            alert('Image edit failed: ' + err.message)
         }
         setRotatingIdx(null)
+        setImageEditor(prev => ({ ...prev, saving: false }))
     }
 
     function removeFormImage(idx) {
@@ -947,41 +989,58 @@ export default function AdminProducts() {
 
                                 {/* Image thumbnails grid */}
                                 {formImages.length > 0 && (
-                                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3 mb-4">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mb-4">
                                         {formImages.map((imgObj, idx) => (
-                                            <div key={idx} className="relative group aspect-square">
-                                                <img
-                                                    src={imgObj.url}
-                                                    alt={`Image ${idx + 1}`}
-                                                    className={`w-full h-full object-cover rounded-xl border-2 ${idx === 0 ? 'border-coral' : 'border-gray-100'} transition-opacity ${rotatingIdx === idx ? 'opacity-50' : ''}`}
-                                                    onError={e => e.target.style.opacity = '0.2'}
-                                                />
-                                                {idx === 0 && (
-                                                    <span className="absolute top-1 left-1 bg-coral text-white text-xs px-1.5 py-0.5 rounded-md font-bold">Main</span>
-                                                )}
-                                                {rotatingIdx === idx && (
-                                                    <div className="absolute inset-0 rounded-xl bg-black/30 flex items-center justify-center">
-                                                        <span className="text-white text-lg animate-spin">↻</span>
-                                                    </div>
-                                                )}
-                                                {/* Controls */}
-                                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex flex-col items-center justify-center gap-1 p-1">
-                                                    <div className="flex gap-1">
-                                                        <button type="button" onClick={() => handleRotateImage(idx, -90)} disabled={rotatingIdx !== null} title="Rotate Left"
-                                                                className="bg-white/90 text-charcoal text-xs px-2 py-1 rounded-lg hover:bg-white font-bold disabled:opacity-50">↺</button>
-                                                        <button type="button" onClick={() => handleRotateImage(idx, 90)} disabled={rotatingIdx !== null} title="Rotate Right"
-                                                                className="bg-white/90 text-charcoal text-xs px-2 py-1 rounded-lg hover:bg-white font-bold disabled:opacity-50">↻</button>
-                                                    </div>
-                                                    <div className="flex gap-1">
-                                                        {idx > 0 && <button type="button" onClick={() => moveFormImage(idx, -1)} title="Move left"
-                                                                className="bg-blue-500/90 text-white text-xs px-2 py-1 rounded-lg hover:bg-blue-500">←</button>}
-                                                        {idx < formImages.length - 1 && <button type="button" onClick={() => moveFormImage(idx, 1)} title="Move right"
-                                                                className="bg-blue-500/90 text-white text-xs px-2 py-1 rounded-lg hover:bg-blue-500">→</button>}
-                                                        <button type="button" onClick={() => removeFormImage(idx)} title="Remove"
-                                                                className="bg-red-500/90 text-white text-xs px-2 py-1 rounded-lg hover:bg-red-500">✕</button>
-                                                    </div>
-                                                    <a href="https://www.remove.bg/upload" target="_blank" rel="noreferrer"
-                                                       className="bg-purple-500/90 text-white text-xs px-2 py-0.5 rounded-lg hover:bg-purple-500 mt-0.5">Remove BG ↗</a>
+                                            <div key={idx} className="rounded-xl border border-gray-100 p-2 bg-gray-50">
+                                                <div className="relative aspect-square">
+                                                    <img
+                                                        src={imgObj.url}
+                                                        alt={`Image ${idx + 1}`}
+                                                        className={`w-full h-full object-cover rounded-lg border-2 ${idx === 0 ? 'border-coral' : 'border-gray-100'} transition-opacity ${rotatingIdx === idx ? 'opacity-50' : ''}`}
+                                                        onError={e => e.target.style.opacity = '0.2'}
+                                                    />
+                                                    {idx === 0 && (
+                                                        <span className="absolute top-1 left-1 bg-coral text-white text-xs px-1.5 py-0.5 rounded-md font-bold">Main</span>
+                                                    )}
+                                                    {rotatingIdx === idx && (
+                                                        <div className="absolute inset-0 rounded-lg bg-black/30 flex items-center justify-center">
+                                                            <span className="text-white text-lg animate-spin">↻</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="mt-2 grid grid-cols-2 gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openImageEditor(idx)}
+                                                        className="col-span-2 px-2 py-1.5 bg-charcoal text-white text-xs rounded-lg hover:bg-charcoal/90"
+                                                    >
+                                                        Edit Image
+                                                    </button>
+                                                    {idx > 0 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => moveFormImage(idx, -1)}
+                                                            className="px-2 py-1.5 bg-blue-50 text-blue-600 text-xs rounded-lg hover:bg-blue-100"
+                                                        >
+                                                            Move Left
+                                                        </button>
+                                                    )}
+                                                    {idx < formImages.length - 1 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => moveFormImage(idx, 1)}
+                                                            className="px-2 py-1.5 bg-blue-50 text-blue-600 text-xs rounded-lg hover:bg-blue-100"
+                                                        >
+                                                            Move Right
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeFormImage(idx)}
+                                                        className="col-span-2 px-2 py-1.5 bg-red-50 text-red-600 text-xs rounded-lg hover:bg-red-100"
+                                                    >
+                                                        Remove
+                                                    </button>
                                                 </div>
                                             </div>
                                         ))}
@@ -995,7 +1054,7 @@ export default function AdminProducts() {
                                         <input type="file" multiple accept="image/*" onChange={handleImageUpload} className="hidden" />
                                     </label>
                                 </div>
-                                <p className="text-xs text-gray-400">First image is the main/thumbnail · Hover image to rotate, reorder, or remove background</p>
+                                <p className="text-xs text-gray-400">First image is the main/thumbnail · Use Edit Image for larger Shopify-style controls</p>
                             </div>
 
                             <div className="flex gap-3 pt-2">
@@ -1155,6 +1214,130 @@ export default function AdminProducts() {
                     </>
                 )}
             </div>
+
+            {imageEditor.open && imageEditor.index !== null && formImages[imageEditor.index] && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60" onClick={closeImageEditor} />
+                    <div className="relative bg-white rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden shadow-2xl grid grid-cols-1 lg:grid-cols-5">
+                        <div className="lg:col-span-3 bg-gray-100 p-4 flex items-center justify-center">
+                            <div
+                                className="w-full max-w-2xl aspect-square rounded-xl overflow-hidden border border-gray-200"
+                                style={{ background: imageEditor.fit === 'contain' ? imageEditor.background : '#f3f4f6' }}
+                            >
+                                <img
+                                    src={formImages[imageEditor.index].url}
+                                    alt="Preview"
+                                    className={`w-full h-full ${imageEditor.fit === 'contain' ? 'object-contain' : 'object-cover'}`}
+                                    style={{
+                                        transform: `rotate(${imageEditor.rotate}deg) scaleX(${imageEditor.flipHorizontal ? -1 : 1}) scaleY(${imageEditor.flipVertical ? -1 : 1})`,
+                                    }}
+                                />
+                            </div>
+                        </div>
+                        <div className="lg:col-span-2 p-5 overflow-y-auto">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-display text-lg text-charcoal">Edit Image</h3>
+                                <button type="button" onClick={closeImageEditor} className="text-gray-400 hover:text-charcoal">✕</button>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="text-xs font-semibold text-gray-500">Rotation ({Math.round(imageEditor.rotate)}°)</label>
+                                    <input
+                                        type="range"
+                                        min="-180"
+                                        max="180"
+                                        value={imageEditor.rotate}
+                                        onChange={e => setImageEditor(prev => ({ ...prev, rotate: Number(e.target.value) }))}
+                                        className="w-full mt-1"
+                                    />
+                                    <div className="grid grid-cols-3 gap-2 mt-2">
+                                        <button type="button" onClick={() => setImageEditor(prev => ({ ...prev, rotate: prev.rotate - 90 }))} className="px-2 py-1.5 text-xs bg-gray-100 rounded-lg hover:bg-gray-200">-90°</button>
+                                        <button type="button" onClick={() => setImageEditor(prev => ({ ...prev, rotate: 0 }))} className="px-2 py-1.5 text-xs bg-gray-100 rounded-lg hover:bg-gray-200">Reset</button>
+                                        <button type="button" onClick={() => setImageEditor(prev => ({ ...prev, rotate: prev.rotate + 90 }))} className="px-2 py-1.5 text-xs bg-gray-100 rounded-lg hover:bg-gray-200">+90°</button>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setImageEditor(prev => ({ ...prev, flipHorizontal: !prev.flipHorizontal }))}
+                                        className={`px-3 py-2 text-xs rounded-lg ${imageEditor.flipHorizontal ? 'bg-charcoal text-white' : 'bg-gray-100 text-charcoal hover:bg-gray-200'}`}
+                                    >
+                                        Flip Horizontal
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setImageEditor(prev => ({ ...prev, flipVertical: !prev.flipVertical }))}
+                                        className={`px-3 py-2 text-xs rounded-lg ${imageEditor.flipVertical ? 'bg-charcoal text-white' : 'bg-gray-100 text-charcoal hover:bg-gray-200'}`}
+                                    >
+                                        Flip Vertical
+                                    </button>
+                                </div>
+
+                                <div>
+                                    <label className="text-xs font-semibold text-gray-500">Fit</label>
+                                    <select
+                                        value={imageEditor.fit}
+                                        onChange={e => setImageEditor(prev => ({ ...prev, fit: e.target.value }))}
+                                        className="w-full mt-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-coral"
+                                    >
+                                        <option value="cover">Cover (fill frame)</option>
+                                        <option value="contain">Contain (pad to square)</option>
+                                    </select>
+                                </div>
+
+                                {imageEditor.fit === 'contain' && (
+                                    <div>
+                                        <label className="text-xs font-semibold text-gray-500">Background Color</label>
+                                        <div className="flex gap-2 mt-1">
+                                            <input
+                                                type="color"
+                                                value={imageEditor.background}
+                                                onChange={e => setImageEditor(prev => ({ ...prev, background: e.target.value }))}
+                                                className="h-10 w-14 rounded border border-gray-200"
+                                            />
+                                            <input
+                                                type="text"
+                                                value={imageEditor.background}
+                                                onChange={e => setImageEditor(prev => ({ ...prev, background: e.target.value }))}
+                                                className="flex-1 px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:border-coral"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                <a
+                                    href="https://www.remove.bg/upload"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="block w-full text-center px-3 py-2 bg-purple-500 text-white text-sm rounded-lg hover:bg-purple-600"
+                                >
+                                    Remove Background ↗
+                                </a>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 mt-5">
+                                <button
+                                    type="button"
+                                    onClick={applyImageEdit}
+                                    disabled={imageEditor.saving}
+                                    className="px-4 py-2 bg-coral text-white text-sm font-semibold rounded-lg hover:bg-opacity-90 disabled:opacity-60"
+                                >
+                                    {imageEditor.saving ? 'Applying...' : 'Apply Changes'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={closeImageEditor}
+                                    className="px-4 py-2 bg-gray-200 text-charcoal text-sm font-semibold rounded-lg hover:bg-gray-300"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Delete Confirmation */}
             {deleteConfirm && (

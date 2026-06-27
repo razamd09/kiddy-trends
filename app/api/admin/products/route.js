@@ -4,6 +4,9 @@ const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_KEY
 )
+const signedUrlCache = new Map()
+const SIGNED_URL_TTL_MS = 29 * 24 * 60 * 60 * 1000
+const SIGNED_URL_BUFFER_MS = 5 * 60 * 1000
 
 function normalizeImages(images) {
     if (Array.isArray(images)) {
@@ -52,6 +55,29 @@ function getSupabaseStoragePath(url) {
 
     if (!path) return null
     return path.split('?')[0]
+}
+
+async function resolveSignedImageUrl(url) {
+    const storagePath = getSupabaseStoragePath(url)
+    if (!storagePath) return url
+
+    const cached = signedUrlCache.get(storagePath)
+    if (cached && cached.expiresAt > Date.now() + SIGNED_URL_BUFFER_MS) {
+        return cached.url
+    }
+
+    const { data: signedData, error: signError } = await supabase.storage
+        .from('products')
+        .createSignedUrl(storagePath, 60 * 60 * 24 * 30)
+
+    if (signError || !signedData?.signedUrl) return url
+
+    signedUrlCache.set(storagePath, {
+        url: signedData.signedUrl,
+        expiresAt: Date.now() + SIGNED_URL_TTL_MS,
+    })
+
+    return signedData.signedUrl
 }
 
 export async function GET(request) {
@@ -107,18 +133,7 @@ export async function GET(request) {
 
     const products = await Promise.all((data || []).map(async (product) => {
         const imageUrls = normalizeImages(product.images)
-
-        const resolvedImages = await Promise.all(imageUrls.map(async (url) => {
-            const storagePath = getSupabaseStoragePath(url)
-            if (!storagePath) return url
-
-            const { data: signedData, error: signError } = await supabase.storage
-                .from('products')
-                .createSignedUrl(storagePath, 60 * 60 * 24 * 30)
-
-            if (signError || !signedData?.signedUrl) return url
-            return signedData.signedUrl
-        }))
+        const resolvedImages = await Promise.all(imageUrls.map(resolveSignedImageUrl))
 
         return {
             ...product,
@@ -127,7 +142,7 @@ export async function GET(request) {
     }))
 
     const response = Response.json({ success: true, products, total: count || 0 })
-    response.headers.set('Cache-Control', 'no-store, max-age=0')
+    response.headers.set('Cache-Control', 'private, max-age=30, stale-while-revalidate=120')
     return response
 }
 
