@@ -136,9 +136,22 @@ async function fetchPostExTracking(trackingNumber) {
 export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const orderNumber = searchParams.get('order_number')?.toUpperCase().trim()
+    const directTrackingNumber = searchParams.get('tracking_number')?.trim()
 
-    if (!orderNumber) {
-        return Response.json({ error: 'Order number is required' }, { status: 400 })
+    if (!orderNumber && !directTrackingNumber) {
+        return Response.json({ error: 'Order number or PostEx tracking number is required' }, { status: 400 })
+    }
+
+    if (!orderNumber && directTrackingNumber) {
+        const shipmentOnly = await fetchPostExTracking(directTrackingNumber)
+        if (!shipmentOnly) {
+            return Response.json({ error: 'Tracking not found. Please check your PostEx tracking number.' }, { status: 404 })
+        }
+        return Response.json({
+            success: true,
+            order: null,
+            shipment: shipmentOnly,
+        })
     }
 
     const { data, error } = await supabase
@@ -148,10 +161,20 @@ export async function GET(request) {
         .single()
 
     if (error || !data) {
+        if (directTrackingNumber) {
+            const shipmentOnly = await fetchPostExTracking(directTrackingNumber)
+            if (shipmentOnly) {
+                return Response.json({
+                    success: true,
+                    order: null,
+                    shipment: shipmentOnly,
+                })
+            }
+        }
         return Response.json({ error: 'Order not found. Please check your order number.' }, { status: 404 })
     }
 
-    const trackingNumber = extractTrackingNumber(data)
+    const trackingNumber = directTrackingNumber || extractTrackingNumber(data)
     const shipment = trackingNumber ? await fetchPostExTracking(trackingNumber) : null
     const order = {
         ...data,

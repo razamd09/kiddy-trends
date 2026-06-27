@@ -12,18 +12,25 @@ const statusIndex = { pending: 0, processing: 1, dispatched: 2, delivered: 3, ca
 
 export default function OrderTracking() {
   const [orderNumber, setOrderNumber] = useState('')
+  const [trackingNumber, setTrackingNumber] = useState('')
   const [result, setResult]           = useState(null)
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState('')
 
   async function handleTrack(e) {
     e.preventDefault()
-    if (!orderNumber.trim()) { setError('Please enter your order number'); return }
+    if (!orderNumber.trim() && !trackingNumber.trim()) {
+      setError('Please enter order number or PostEx tracking ID')
+      return
+    }
     setLoading(true)
     setError('')
     setResult(null)
     try {
-      const res  = await fetch('/api/orders/track?order_number=' + encodeURIComponent(orderNumber.trim()))
+      const params = new URLSearchParams()
+      if (orderNumber.trim()) params.set('order_number', orderNumber.trim())
+      if (trackingNumber.trim()) params.set('tracking_number', trackingNumber.trim())
+      const res  = await fetch('/api/orders/track?' + params.toString())
       const data = await res.json()
       if (data.success) {
         setResult(data)
@@ -53,7 +60,7 @@ export default function OrderTracking() {
         <div className="text-center mb-10">
           <div className="text-5xl mb-4">📦</div>
           <h1 className="section-title mb-3">Track Your Order</h1>
-          <p className="text-gray-500">Enter your order number to see the latest status</p>
+          <p className="text-gray-500">Track using order number or PostEx tracking ID</p>
         </div>
 
         {/* Search form */}
@@ -65,6 +72,14 @@ export default function OrderTracking() {
                    onChange={e => { setOrderNumber(e.target.value.toUpperCase()); setError('') }}
                    className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm font-bold tracking-wider" />
             <p className="text-xs text-gray-400 mt-2">Your order number was shared after placing the order e.g. KT101</p>
+          </div>
+          <div className="mb-4">
+            <label className="block font-semibold text-sm text-charcoal mb-2">PostEx Tracking ID</label>
+            <input type="text" placeholder="e.g. POSTEX123456"
+                   value={trackingNumber}
+                   onChange={e => { setTrackingNumber(e.target.value.toUpperCase()); setError('') }}
+                   className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm font-bold tracking-wider" />
+            <p className="text-xs text-gray-400 mt-2">If you already have courier tracking ID, enter it here</p>
           </div>
           {error && <p className="text-red-400 text-sm mb-3">{error}</p>}
           <button type="submit" disabled={loading}
@@ -78,28 +93,30 @@ export default function OrderTracking() {
             <div className="space-y-4">
 
               {/* Order header */}
-              <div className="bg-white rounded-3xl p-6 border border-gray-100">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <p className="font-display text-2xl text-coral">{order.order_number}</p>
-                    <p className="text-xs text-gray-400">
-                      Placed on {new Date(order.created_at).toLocaleDateString('en-PK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                    </p>
+              {order && (
+                  <div className="bg-white rounded-3xl p-6 border border-gray-100">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <p className="font-display text-2xl text-coral">{order.order_number}</p>
+                        <p className="text-xs text-gray-400">
+                          Placed on {new Date(order.created_at).toLocaleDateString('en-PK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        </p>
+                      </div>
+                      {order.status === 'cancelled' ? (
+                          <span className="bg-red-100 text-red-500 font-bold text-sm px-4 py-2 rounded-full">❌ Cancelled</span>
+                      ) : (
+                          <span className="bg-green-100 text-green-600 font-bold text-sm px-4 py-2 rounded-full">
+                      {order.status === 'delivered' ? '✅ Delivered' : '🔄 In Progress'}
+                    </span>
+                      )}
+                    </div>
+                    <div className="bg-cream rounded-2xl p-4 text-sm space-y-1">
+                      <p><span className="text-gray-400">Customer:</span> <span className="font-semibold">{order.customer_name}</span></p>
+                      <p><span className="text-gray-400">City:</span> <span className="font-semibold">{order.customer_city}</span></p>
+                      <p><span className="text-gray-400">Total:</span> <span className="font-bold text-coral">PKR {order.total?.toLocaleString()}</span></p>
+                    </div>
                   </div>
-                  {order.status === 'cancelled' ? (
-                      <span className="bg-red-100 text-red-500 font-bold text-sm px-4 py-2 rounded-full">❌ Cancelled</span>
-                  ) : (
-                      <span className="bg-green-100 text-green-600 font-bold text-sm px-4 py-2 rounded-full">
-                  {order.status === 'delivered' ? '✅ Delivered' : '🔄 In Progress'}
-                </span>
-                  )}
-                </div>
-                <div className="bg-cream rounded-2xl p-4 text-sm space-y-1">
-                  <p><span className="text-gray-400">Customer:</span> <span className="font-semibold">{order.customer_name}</span></p>
-                  <p><span className="text-gray-400">City:</span> <span className="font-semibold">{order.customer_city}</span></p>
-                  <p><span className="text-gray-400">Total:</span> <span className="font-bold text-coral">PKR {order.total?.toLocaleString()}</span></p>
-                </div>
-              </div>
+              )}
 
               {shipment && (
                   <div className="bg-white rounded-3xl p-6 border border-gray-100">
@@ -126,7 +143,7 @@ export default function OrderTracking() {
               )}
 
               {/* Status tracker */}
-              {order.status !== 'cancelled' && (
+              {order && order.status !== 'cancelled' && (
                   <div className="bg-white rounded-3xl p-6 border border-gray-100">
                     <p className="font-display text-lg text-charcoal mb-5">Order Progress</p>
                     <div className="space-y-4">
@@ -161,46 +178,48 @@ export default function OrderTracking() {
               )}
 
               {/* Items */}
-              <div className="bg-white rounded-3xl p-6 border border-gray-100">
-                <p className="font-display text-lg text-charcoal mb-4">Order Items</p>
-                <div className="space-y-2">
-                  {getItems(order).length === 0 ? (
-                      <p className="text-sm text-gray-400">No item details available</p>
-                  ) : getItems(order).map((item, i) => (
-                      <div key={i} className="flex items-center justify-between bg-cream rounded-xl px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          {item.image && <img src={item.image} alt="" className="w-10 h-10 object-contain rounded-lg" />}
-                          <div>
-                            <p className="font-semibold text-sm text-charcoal">{item.title}</p>
-                            {item.variantTitle && <p className="text-xs text-gray-400">{item.variantTitle}</p>}
+              {order && (
+                  <div className="bg-white rounded-3xl p-6 border border-gray-100">
+                    <p className="font-display text-lg text-charcoal mb-4">Order Items</p>
+                    <div className="space-y-2">
+                      {getItems(order).length === 0 ? (
+                          <p className="text-sm text-gray-400">No item details available</p>
+                      ) : getItems(order).map((item, i) => (
+                          <div key={i} className="flex items-center justify-between bg-cream rounded-xl px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              {item.image && <img src={item.image} alt="" className="w-10 h-10 object-contain rounded-lg" />}
+                              <div>
+                                <p className="font-semibold text-sm text-charcoal">{item.title}</p>
+                                {item.variantTitle && <p className="text-xs text-gray-400">{item.variantTitle}</p>}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs text-gray-400">x{item.quantity}</p>
+                              <p className="font-bold text-coral text-sm">PKR {(parseFloat(item.price||0) * item.quantity).toLocaleString()}</p>
+                            </div>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs text-gray-400">x{item.quantity}</p>
-                          <p className="font-bold text-coral text-sm">PKR {(parseFloat(item.price||0) * item.quantity).toLocaleString()}</p>
-                        </div>
+                      ))}
+                    </div>
+                    <div className="border-t border-gray-100 mt-4 pt-4 space-y-1 text-sm">
+                      <div className="flex justify-between text-gray-400">
+                        <span>Subtotal</span><span>PKR {(order.subtotal||0).toLocaleString()}</span>
                       </div>
-                  ))}
-                </div>
-                <div className="border-t border-gray-100 mt-4 pt-4 space-y-1 text-sm">
-                  <div className="flex justify-between text-gray-400">
-                    <span>Subtotal</span><span>PKR {(order.subtotal||0).toLocaleString()}</span>
+                      <div className="flex justify-between text-gray-400">
+                        <span>Shipping</span><span>PKR {(order.shipping||250).toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between font-display text-base pt-1 border-t border-gray-100">
+                        <span>Total</span>
+                        <span className="text-coral font-bold">PKR {(order.total||0).toLocaleString()}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-gray-400">
-                    <span>Shipping</span><span>PKR {(order.shipping||250).toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between font-display text-base pt-1 border-t border-gray-100">
-                    <span>Total</span>
-                    <span className="text-coral font-bold">PKR {(order.total||0).toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
+              )}
 
               {/* Help */}
               <div className="bg-cream rounded-3xl p-5 text-center">
                 <p className="font-display text-base text-charcoal mb-1">Need Help?</p>
                 <p className="text-sm text-gray-500 mb-4">Contact us directly on WhatsApp for instant support</p>
-                <a href={'https://wa.me/923360677340?text=' + encodeURIComponent('Hi! I need help with my order ' + order.order_number)}
+                <a href={'https://wa.me/923360677340?text=' + encodeURIComponent('Hi! I need help with my order ' + (order?.order_number || trackingNumber || orderNumber))}
                    target="_blank" rel="noopener noreferrer"
                    className="inline-flex items-center gap-2 bg-green-500 text-white font-display px-6 py-3 rounded-full hover:bg-green-600 transition-colors">
                   💬 WhatsApp Us
