@@ -13,6 +13,7 @@ export default function AdminProducts() {
     const [total, setTotal]           = useState(0)
     const [searchTerm, setSearchTerm] = useState('')
     const [categoryFilter, setCategoryFilter] = useState('all')
+    const [variantFilter, setVariantFilter] = useState('all')
     const [sortBy, setSortBy] = useState('created_at')
     const [sortDir, setSortDir] = useState('desc')
     const [submitting, setSubmitting] = useState(false)
@@ -47,6 +48,23 @@ export default function AdminProducts() {
 
     const categories = ['Clothing', 'Bedding', 'Bags', 'Accessories', 'Footwear', 'Toys', 'Shoes', 'Other']
     const COMMON_SIZES = ['0-3M','3-6M','6-9M','9-12M','1-2Y','2-3Y','3-4Y','4-5Y','5-6Y','6-7Y','7-8Y','8-9Y','9-10Y','10-11Y','11-12Y','XS','S','M','L','XL']
+
+    function normalizeVariantLabel(value) {
+        return String(value || '')
+            .replace(/([0-9])\s*-\s*([0-9])\s*[Yy]/g, '$1-$2 Year')
+            .replace(/\s+/g, ' ')
+            .trim()
+    }
+
+    function getProductVariantValues(product) {
+        if (!Array.isArray(product?.variants)) return []
+        const values = []
+        for (const variant of product.variants) {
+            const label = normalizeVariantLabel(variant?.option1_value || variant?.title || variant?.size || '')
+            if (label) values.push(label)
+        }
+        return values
+    }
 
     function normalizeImages(images) {
         if (Array.isArray(images)) {
@@ -174,12 +192,12 @@ export default function AdminProducts() {
 
     useEffect(() => {
         if (verified) fetchProducts()
-    }, [verified, page, searchTerm, categoryFilter, sortBy, sortDir])
+    }, [verified, page, searchTerm, categoryFilter, variantFilter, sortBy, sortDir])
 
     useEffect(() => {
         if (!verified) return
         setPage(1)
-    }, [searchTerm, categoryFilter, sortBy, sortDir, verified])
+    }, [searchTerm, categoryFilter, variantFilter, sortBy, sortDir, verified])
 
     async function fetchProducts() {
         setLoading(true)
@@ -193,6 +211,7 @@ export default function AdminProducts() {
             })
             if (searchTerm.trim()) params.set('search', searchTerm.trim())
             if (categoryFilter && categoryFilter !== 'all') params.set('category', categoryFilter)
+            if (variantFilter && variantFilter !== 'all') params.set('variant', variantFilter)
             const res  = await fetch('/api/admin/products?' + params.toString(), { headers: { 'x-admin-token': token } })
             const data = await readApiJson(res)
             if (!res.ok || data.error) {
@@ -625,6 +644,12 @@ export default function AdminProducts() {
         router.push('/admin')
     }
 
+    const variantFilterOptions = Array.from(new Set([
+        ...COMMON_SIZES.map(normalizeVariantLabel),
+        ...products.flatMap(getProductVariantValues),
+    ])).sort((a, b) =>
+        a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+    )
     const filtered  = products
     const maxPages  = Math.ceil(total / 20)
 
@@ -1077,7 +1102,7 @@ export default function AdminProducts() {
                                 {loadError}
                             </div>
                         )}
-                        <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-3">
                             <input type="text" placeholder="🔍 Search products..."
                                    value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm" />
@@ -1088,6 +1113,16 @@ export default function AdminProducts() {
                             >
                                 <option value="all">All Categories</option>
                                 {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                            </select>
+                            <select
+                                value={variantFilter}
+                                onChange={e => setVariantFilter(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm bg-white"
+                            >
+                                <option value="all">All Variants / Sizes</option>
+                                {variantFilterOptions.map((variant) => (
+                                    <option key={variant} value={variant}>{variant}</option>
+                                ))}
                             </select>
                             <div className="grid grid-cols-2 gap-2">
                                 <select

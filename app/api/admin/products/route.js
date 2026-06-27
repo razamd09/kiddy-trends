@@ -8,6 +8,51 @@ const signedUrlCache = new Map()
 const SIGNED_URL_TTL_MS = 29 * 24 * 60 * 60 * 1000
 const SIGNED_URL_BUFFER_MS = 5 * 60 * 1000
 
+function normalizeVariantText(value) {
+    return String(value || '')
+        .toLowerCase()
+        .replace(/years?/g, 'y')
+        .replace(/[^a-z0-9]/g, '')
+}
+
+function parseVariants(rawVariants) {
+    if (Array.isArray(rawVariants)) return rawVariants
+    if (typeof rawVariants === 'string') {
+        const trimmed = rawVariants.trim()
+        if (!trimmed) return []
+        try {
+            const parsed = JSON.parse(trimmed)
+            return Array.isArray(parsed) ? parsed : []
+        } catch {
+            return []
+        }
+    }
+    return []
+}
+
+function productMatchesVariant(rawVariants, variantFilter) {
+    const needle = normalizeVariantText(variantFilter)
+    if (!needle) return true
+
+    const variants = parseVariants(rawVariants)
+    if (variants.length === 0) return false
+
+    return variants.some((variant) => {
+        const values = [
+            variant?.option1_value,
+            variant?.option2_value,
+            variant?.option3_value,
+            variant?.title,
+            variant?.name,
+            variant?.size,
+        ]
+        return values.some((value) => {
+            const normalized = normalizeVariantText(value)
+            return normalized && (normalized.includes(needle) || needle.includes(normalized))
+        })
+    })
+}
+
 function normalizeImages(images) {
     if (Array.isArray(images)) {
         return images
@@ -87,44 +132,113 @@ export async function GET(request) {
     const offset = (page - 1) * limit
     const category = (searchParams.get('category') || '').trim()
     const search = (searchParams.get('search') || '').trim()
+    const variant = (searchParams.get('variant') || '').trim()
     const sortByRaw = (searchParams.get('sortBy') || 'created_at').trim()
     const sortDirRaw = (searchParams.get('sortDir') || 'desc').trim().toLowerCase()
     const sortByAllowed = ['created_at', 'updated_at', 'price', 'title', 'stock']
     const sortBy = sortByAllowed.includes(sortByRaw) ? sortByRaw : 'created_at'
     const ascending = sortDirRaw === 'asc'
 
-    let query = supabase
-        .from('products')
-        .select('*', { count: 'exact' })
-    if (category && category !== 'all') {
-        query = query.eq('category', category)
-    }
-    if (search) {
-        query = query.ilike('title', '%' + search + '%')
-    }
-    query = query
-        .order(sortBy, { ascending })
-        .range(offset, offset + limit - 1)
-    let { data, error, count } = await query
+    let data = []
+    let error = null
+    let count = 0
 
-    // Some older tables may not have created_at/updated_at; fallback to id ordering.
-    if (error && /(created_at|updated_at)/i.test(error.message || '')) {
-        let fallback = supabase
+    if (variant) {
+        let variantQuery = supabase
+            .from('products')
+            .select('*')
+
+        if (category && category !== 'all') {
+            variantQuery = variantQuery.eq('category', category)
+        }
+        if (search) {
+            variantQuery = variantQuery.ilike('title', '%' + search + '%')
+        }
+
+        variantQuery = variantQuery.order(sortBy, { ascending })
+        let variantResult = await variantQuery
+        if (variantResult.error && /(created_at|updated_at)/i.test(variantResult.error.message || '')) {
+            let fallbackVariantQuery = supabase
+                .from('products')
+                .select('*')
+            if (category && category !== 'all') {
+                fallbackVariantQuery = fallbackVariantQuery.eq('category', category)
+            }
+            if (search) {
+                fallbackVariantQuery = fallbackVariantQuery.ilike('title', '%' + search + '%')
+            }
+            variantResult = await fallbackVariantQuery.order('id', { ascending: false })
+        }
+
+        if (variantResult.error) {
+            error = variantResult.error
+        } else {
+            const variantFiltered = (variantResult.data || []).filter((product) =>
+                productMatchesVariant(product.variants, variant)
+            )
+            count = variantFiltered.length
+            data = variantFiltered.slice(offset, offset + limit)
+        }
+    } else {
+        let query = supabase
             .from('products')
             .select('*', { count: 'exact' })
         if (category && category !== 'all') {
-            fallback = fallback.eq('category', category)
+            query = query.eq('category', category)
         }
         if (search) {
-            fallback = fallback.ilike('title', '%' + search + '%')
+            query = query.ilike('title', '%' + search + '%')
         }
-        fallback = fallback
-            .order('id', { ascending: false })
+        query = query
+            .order(sortBy, { ascending })
             .range(offset, offset + limit - 1)
-        const fallbackResult = await fallback
-        data = fallbackResult.data
-        error = fallbackResult.error
-        count = fallbackResult.count
+        const result = await query
+        data = result.data
+        error = result.error
+        count = result.count
+    }
+
+    // Some older tables may not have created_at/updated_at; fallback to id ordering.
+    if (error && /(created_at|updated_at)/i.test(error.message || '')) {
+        if (variant) {
+            let fallbackVariant = supabase
+                .from('products')
+                .select('*')
+            if (category && category !== 'all') {
+                fallbackVariant = fallbackVariant.eq('category', category)
+            }
+            if (search) {
+                fallbackVariant = fallbackVariant.ilike('title', '%' + search + '%')
+            }
+            const fallbackResult = await fallbackVariant.order('id', { ascending: false })
+            if (!fallbackResult.error) {
+                const variantFiltered = (fallbackResult.data || []).filter((product) =>
+                    productMatchesVariant(product.variants, variant)
+                )
+                data = variantFiltered.slice(offset, offset + limit)
+                count = variantFiltered.length
+                error = null
+            } else {
+                error = fallbackResult.error
+            }
+        } else {
+            let fallback = supabase
+                .from('products')
+                .select('*', { count: 'exact' })
+            if (category && category !== 'all') {
+                fallback = fallback.eq('category', category)
+            }
+            if (search) {
+                fallback = fallback.ilike('title', '%' + search + '%')
+            }
+            fallback = fallback
+                .order('id', { ascending: false })
+                .range(offset, offset + limit - 1)
+            const fallbackResult = await fallback
+            data = fallbackResult.data
+            error = fallbackResult.error
+            count = fallbackResult.count
+        }
     }
 
     if (error) {
