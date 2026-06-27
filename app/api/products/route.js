@@ -69,6 +69,23 @@ function seededNumericId(value) {
     return Math.abs(hash)
 }
 
+function normalizeHandleValue(value) {
+    const text = String(value || '')
+    let decoded = text
+    try {
+        decoded = decodeURIComponent(text)
+    } catch {}
+    return decoded.trim().toLowerCase().replace(/^\/+|\/+$/g, '')
+}
+
+function slugifyTitle(value) {
+    return String(value || '')
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+}
+
 function transformProduct(product) {
     const rawVariants = Array.isArray(product.variants) ? product.variants : []
     const hasRealVariants = rawVariants.some((v) => v && v.option1_value)
@@ -146,14 +163,14 @@ export async function GET(request) {
             .eq('is_active', true)
             .order('created_at', { ascending: false })
 
-        if (handle) query = query.or(`shopify_handle.eq.${handle},id.eq.${handle}`)
         if (category) query = query.eq('category', category)
         if (search) {
             const escaped = search.replace(/,/g, ' ')
             query = query.or(`title.ilike.%${escaped}%,product_type.ilike.%${escaped}%`)
         }
 
-        query = query.range(offset, offset + limit - 1)
+        if (handle) query = query.limit(2000)
+        else query = query.range(offset, offset + limit - 1)
 
         let { data, error, count } = await query
 
@@ -164,14 +181,15 @@ export async function GET(request) {
                 .eq('is_active', true)
                 .order('id', { ascending: false })
 
-            if (handle) fallback = fallback.or(`shopify_handle.eq.${handle},id.eq.${handle}`)
             if (category) fallback = fallback.eq('category', category)
             if (search) {
                 const escaped = search.replace(/,/g, ' ')
                 fallback = fallback.or(`title.ilike.%${escaped}%,product_type.ilike.%${escaped}%`)
             }
 
-            const result = await fallback.range(offset, offset + limit - 1)
+            const result = handle
+                ? await fallback.limit(2000)
+                : await fallback.range(offset, offset + limit - 1)
             data = result.data
             error = result.error
             count = result.count
@@ -188,6 +206,15 @@ export async function GET(request) {
                 const tags = normalizeTags(p.tags).join(' ').toLowerCase()
                 const title = String(p.title || '').toLowerCase()
                 return title.includes(q) || tags.includes(q)
+            })
+        }
+        if (handle) {
+            const target = normalizeHandleValue(handle)
+            filtered = filtered.filter((p) => {
+                const productHandle = normalizeHandleValue(p.shopify_handle)
+                const productId = normalizeHandleValue(p.id)
+                const titleSlug = slugifyTitle(p.title)
+                return productHandle === target || productId === target || titleSlug === target
             })
         }
 
