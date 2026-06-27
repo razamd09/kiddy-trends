@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 const STORAGE_KEY = 'kt_spin_wheel_state'
 const LOCK_MS = 12 * 60 * 60 * 1000
@@ -73,6 +73,14 @@ function pickWeightedSegment() {
   return 0
 }
 
+function getSegmentByRotation(totalRotation) {
+  const segmentAngle = 360 / SEGMENTS.length
+  const normalized = ((totalRotation % 360) + 360) % 360
+  const pointerWheelAngle = (360 - normalized) % 360
+  const index = Math.floor(pointerWheelAngle / segmentAngle) % SEGMENTS.length
+  return SEGMENTS[index]
+}
+
 export default function SpinWheelPopup() {
   const [open, setOpen] = useState(false)
   const [rotation, setRotation] = useState(0)
@@ -80,6 +88,7 @@ export default function SpinWheelPopup() {
   const [result, setResult] = useState(null)
   const [spinsLeft, setSpinsLeft] = useState(0)
   const [showWinEffect, setShowWinEffect] = useState(false)
+  const finalRotationRef = useRef(0)
 
   useEffect(() => {
     const now = Date.now()
@@ -124,7 +133,6 @@ export default function SpinWheelPopup() {
     setShowWinEffect(false)
 
     const selectedIndex = pickWeightedSegment()
-    const selected = SEGMENTS[selectedIndex]
     const segmentAngle = 360 / SEGMENTS.length
     const centerAngle = selectedIndex * segmentAngle + (segmentAngle / 2)
     // Pointer is at top (0deg). Rotate wheel so selected segment center lands exactly under pointer.
@@ -133,21 +141,24 @@ export default function SpinWheelPopup() {
     setRotation((prev) => {
       const currentAngle = ((prev % 360) + 360) % 360
       const deltaToTarget = (targetAngle - currentAngle + 360) % 360
-      return prev + (fullSpins * 360) + deltaToTarget
+      const nextRotation = prev + (fullSpins * 360) + deltaToTarget
+      finalRotationRef.current = nextRotation
+      return nextRotation
     })
 
     window.setTimeout(() => {
       const now = Date.now()
       const state = readState(now)
+      const landed = getSegmentByRotation(finalRotationRef.current)
       const nextSpinsUsed = Math.min(MAX_SPINS_PER_WINDOW, Number(state.spinsUsed || 0) + 1)
       const nextState = {
         ...state,
         spinsUsed: nextSpinsUsed,
       }
 
-      if (selected.amount > 0) {
-        nextState.pendingDiscount = selected.amount
-        nextState.pendingCode = 'SPIN' + selected.amount
+      if (landed.amount > 0) {
+        nextState.pendingDiscount = landed.amount
+        nextState.pendingCode = 'SPIN' + landed.amount
         nextState.activeDiscount = 0
         nextState.discountCode = ''
         nextState.consumed = false
@@ -158,9 +169,9 @@ export default function SpinWheelPopup() {
 
       saveState(nextState)
       setSpinsLeft(Math.max(0, MAX_SPINS_PER_WINDOW - nextSpinsUsed))
-      setResult(selected)
+      setResult(landed)
       setSpinning(false)
-      if (selected.amount > 0) {
+      if (landed.amount > 0) {
         setShowWinEffect(true)
       }
     }, 4100)
@@ -222,19 +233,20 @@ export default function SpinWheelPopup() {
 
         <div className="relative w-64 h-64 mx-auto mb-4">
           <div className="absolute left-1/2 -translate-x-1/2 -top-2 text-coral text-2xl z-10">▼</div>
-          <div className="w-64 h-64 rounded-full border-8 border-coral/20 shadow-inner mx-auto overflow-hidden" style={wheelStyle} />
-          {segmentLabels.map((segment, idx) => (
-            <div
-              key={segment.label + idx}
-              className="absolute left-1/2 top-1/2 text-[11px] font-bold text-charcoal"
-              style={{
-                transform: `rotate(${segment.angle}deg) translate(0, -102px) rotate(${-segment.angle}deg)`,
-                transformOrigin: 'center',
-              }}
-            >
-              {segment.amount > 0 ? ('Rs ' + segment.amount) : 'No Luck'}
-            </div>
-          ))}
+          <div className="w-64 h-64 rounded-full border-8 border-coral/20 shadow-inner mx-auto overflow-hidden relative" style={wheelStyle}>
+            {segmentLabels.map((segment, idx) => (
+              <div
+                key={segment.label + idx}
+                className="absolute left-1/2 top-1/2 text-[11px] font-bold text-charcoal"
+                style={{
+                  transform: `rotate(${segment.angle}deg) translate(0, -102px) rotate(${-segment.angle}deg)`,
+                  transformOrigin: 'center',
+                }}
+              >
+                {segment.amount > 0 ? ('Rs ' + segment.amount) : 'No Luck'}
+              </div>
+            ))}
+          </div>
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-14 h-14 rounded-full bg-charcoal text-white flex items-center justify-center font-display text-sm">SPIN</div>
           </div>
