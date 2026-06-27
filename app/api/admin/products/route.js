@@ -4,6 +4,7 @@ const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_KEY
 )
+const DRAFT_SOURCE = 'draft_workspace'
 const signedUrlCache = new Map()
 const SIGNED_URL_TTL_MS = 29 * 24 * 60 * 60 * 1000
 const SIGNED_URL_BUFFER_MS = 5 * 60 * 1000
@@ -147,6 +148,7 @@ export async function GET(request) {
         let variantQuery = supabase
             .from('products')
             .select('*')
+            .or('source.is.null,source.neq.' + DRAFT_SOURCE)
 
         if (category && category !== 'all') {
             variantQuery = variantQuery.eq('category', category)
@@ -161,6 +163,7 @@ export async function GET(request) {
             let fallbackVariantQuery = supabase
                 .from('products')
                 .select('*')
+                .or('source.is.null,source.neq.' + DRAFT_SOURCE)
             if (category && category !== 'all') {
                 fallbackVariantQuery = fallbackVariantQuery.eq('category', category)
             }
@@ -183,6 +186,7 @@ export async function GET(request) {
         let query = supabase
             .from('products')
             .select('*', { count: 'exact' })
+            .or('source.is.null,source.neq.' + DRAFT_SOURCE)
         if (category && category !== 'all') {
             query = query.eq('category', category)
         }
@@ -204,6 +208,7 @@ export async function GET(request) {
             let fallbackVariant = supabase
                 .from('products')
                 .select('*')
+                .or('source.is.null,source.neq.' + DRAFT_SOURCE)
             if (category && category !== 'all') {
                 fallbackVariant = fallbackVariant.eq('category', category)
             }
@@ -225,6 +230,7 @@ export async function GET(request) {
             let fallback = supabase
                 .from('products')
                 .select('*', { count: 'exact' })
+                .or('source.is.null,source.neq.' + DRAFT_SOURCE)
             if (category && category !== 'all') {
                 fallback = fallback.eq('category', category)
             }

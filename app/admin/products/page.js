@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 export default function AdminProducts() {
+    const DRAFT_MODE = 'draft'
+    const PRODUCTION_MODE = 'production'
     const [products, setProducts]     = useState([])
     const [loading, setLoading]       = useState(true)
     const [verified, setVerified]     = useState(false)
@@ -25,6 +27,9 @@ export default function AdminProducts() {
     const [loadError, setLoadError] = useState('')
     const [syncing, setSyncing] = useState(false)
     const [syncResult, setSyncResult] = useState(null)
+    const [workspaceMode, setWorkspaceMode] = useState(PRODUCTION_MODE)
+    const [publishingDraftId, setPublishingDraftId] = useState(null)
+    const [publishingAllDrafts, setPublishingAllDrafts] = useState(false)
     const [cdnStatus, setCdnStatus] = useState(null)
     const [loadingCdnStatus, setLoadingCdnStatus] = useState(false)
     const [form, setForm] = useState({
@@ -192,12 +197,14 @@ export default function AdminProducts() {
 
     useEffect(() => {
         if (verified) fetchProducts()
-    }, [verified, page, searchTerm, categoryFilter, variantFilter, sortBy, sortDir])
+    }, [verified, page, searchTerm, categoryFilter, variantFilter, sortBy, sortDir, workspaceMode])
 
     useEffect(() => {
         if (!verified) return
         setPage(1)
-    }, [searchTerm, categoryFilter, variantFilter, sortBy, sortDir, verified])
+    }, [searchTerm, categoryFilter, variantFilter, sortBy, sortDir, workspaceMode, verified])
+
+    const productsApiBase = workspaceMode === DRAFT_MODE ? '/api/admin/products/drafts' : '/api/admin/products'
 
     async function fetchProducts() {
         setLoading(true)
@@ -212,7 +219,7 @@ export default function AdminProducts() {
             if (searchTerm.trim()) params.set('search', searchTerm.trim())
             if (categoryFilter && categoryFilter !== 'all') params.set('category', categoryFilter)
             if (variantFilter && variantFilter !== 'all') params.set('variant', variantFilter)
-            const res  = await fetch('/api/admin/products?' + params.toString(), { headers: { 'x-admin-token': token } })
+            const res  = await fetch(productsApiBase + '?' + params.toString(), { headers: { 'x-admin-token': token } })
             const data = await readApiJson(res)
             if (!res.ok || data.error) {
                 setProducts([])
@@ -253,7 +260,7 @@ export default function AdminProducts() {
                 shopify_handle: baseHandle ? (baseHandle + '-copy-' + Date.now()) : null,
             }
 
-            const res = await fetch('/api/admin/products', {
+            const res = await fetch(productsApiBase, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
                 body: JSON.stringify(duplicatePayload),
@@ -354,7 +361,7 @@ export default function AdminProducts() {
         if (editingId) payload.id = editingId
 
         try {
-            const res  = await fetch('/api/admin/products', {
+            const res  = await fetch(productsApiBase, {
                 method,
                 headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
                 body:    JSON.stringify(payload)
@@ -377,7 +384,7 @@ export default function AdminProducts() {
     async function handleDelete(id) {
         const token = localStorage.getItem('admin_token')
         try {
-            const res  = await fetch('/api/admin/products?id=' + id, {
+            const res  = await fetch(productsApiBase + '?id=' + id, {
                 method:  'DELETE',
                 headers: { 'x-admin-token': token }
             })
@@ -391,6 +398,52 @@ export default function AdminProducts() {
         } catch (err) {
             alert('Error: ' + err.message)
         }
+    }
+
+    async function handlePublishDraft(productId) {
+        if (!productId) return
+        setPublishingDraftId(productId)
+        const token = localStorage.getItem('admin_token') || ''
+        try {
+            const res = await fetch('/api/admin/products/drafts/publish', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+                body: JSON.stringify({ ids: [productId] }),
+            })
+            const data = await readApiJson(res)
+            if (!res.ok || !data.success) {
+                alert('Publish failed: ' + (data.error || 'Unknown error'))
+            } else {
+                fetchProducts()
+            }
+        } catch (err) {
+            alert('Publish failed: ' + (err.message || 'Unknown error'))
+        }
+        setPublishingDraftId(null)
+    }
+
+    async function handlePublishVisibleDrafts() {
+        if (!filtered.length) return
+        setPublishingAllDrafts(true)
+        const token = localStorage.getItem('admin_token') || ''
+        try {
+            const ids = filtered.map((p) => p.id).filter(Boolean)
+            const res = await fetch('/api/admin/products/drafts/publish', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+                body: JSON.stringify({ ids }),
+            })
+            const data = await readApiJson(res)
+            if (!res.ok || !data.success) {
+                alert('Publish failed: ' + (data.error || 'Unknown error'))
+            } else {
+                alert('Published ' + (data.publishedCount || 0) + ' draft products.')
+                fetchProducts()
+            }
+        } catch (err) {
+            alert('Publish failed: ' + (err.message || 'Unknown error'))
+        }
+        setPublishingAllDrafts(false)
     }
 
     async function handleImportCsv() {
@@ -667,13 +720,40 @@ export default function AdminProducts() {
                     <Link href="/admin/dashboard" className="text-gray-400 hover:text-coral text-sm">← Back</Link>
                     <h1 className="font-display text-xl text-charcoal">Products</h1>
                     <span className="bg-coral/10 text-coral text-xs px-2 py-1 rounded-full font-bold">{total}</span>
+                    <span className={'text-xs px-2 py-1 rounded-full font-bold ' + (workspaceMode === DRAFT_MODE ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700')}>
+                        {workspaceMode === DRAFT_MODE ? 'Draft Workspace' : 'Production'}
+                    </span>
                 </div>
                 <div className="flex items-center gap-3">
+                    <div className="flex items-center bg-gray-100 rounded-full p-1">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setWorkspaceMode(PRODUCTION_MODE)
+                                setShowForm(false)
+                                setDeleteConfirm(null)
+                            }}
+                            className={'px-3 py-1.5 text-xs rounded-full font-semibold ' + (workspaceMode === PRODUCTION_MODE ? 'bg-white text-charcoal shadow-sm' : 'text-gray-500')}
+                        >
+                            Production
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setWorkspaceMode(DRAFT_MODE)
+                                setShowForm(false)
+                                setDeleteConfirm(null)
+                            }}
+                            className={'px-3 py-1.5 text-xs rounded-full font-semibold ' + (workspaceMode === DRAFT_MODE ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500')}
+                        >
+                            Drafts
+                        </button>
+                    </div>
                     <button onClick={() => { resetForm(); setShowForm(!showForm) }}
                             className="px-5 py-2 bg-coral text-white font-display text-sm rounded-full hover:bg-opacity-90">
-                        {showForm ? '← Back' : '+ Add Product'}
+                        {showForm ? '← Back' : (workspaceMode === DRAFT_MODE ? '+ Add Draft' : '+ Add Product')}
                     </button>
-                    {!showForm && (
+                    {!showForm && workspaceMode === PRODUCTION_MODE && (
                         <Link href="/admin/products/bulk-images"
                               className="px-4 py-2 bg-purple-600 text-white font-display text-sm rounded-full hover:bg-purple-700">
                             🖼️ Bulk Images
@@ -684,7 +764,7 @@ export default function AdminProducts() {
             </div>
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {!showForm && (
+                {!showForm && workspaceMode === PRODUCTION_MODE && (
                     <div className="bg-white rounded-2xl p-4 shadow-sm mb-6 border border-gray-100">
                         <div className="flex flex-col md:flex-row md:items-end gap-3">
                             <div className="flex-1">
@@ -814,7 +894,7 @@ export default function AdminProducts() {
                 {showForm ? (
                     <div className="bg-white rounded-2xl p-6 shadow-sm">
                         <h2 className="font-display text-xl text-charcoal mb-6">
-                            {editingId ? 'Edit Product' : 'Add New Product'}
+                            {editingId ? 'Edit Product' : (workspaceMode === DRAFT_MODE ? 'Add New Draft Product' : 'Add New Product')}
                         </h2>
                         <form onSubmit={handleSubmit} className="space-y-6">
 
@@ -1085,7 +1165,7 @@ export default function AdminProducts() {
                             <div className="flex gap-3 pt-2">
                                 <button type="submit" disabled={submitting}
                                         className="flex-1 px-5 py-3 bg-coral text-white font-display rounded-xl hover:bg-opacity-90 disabled:opacity-50">
-                                    {submitting ? 'Saving...' : editingId ? 'Update Product' : 'Add Product'}
+                                    {submitting ? 'Saving...' : editingId ? 'Update Product' : (workspaceMode === DRAFT_MODE ? 'Save Draft' : 'Add Product')}
                                 </button>
                                 <button type="button" onClick={() => { setShowForm(false); resetForm() }}
                                         className="px-5 py-3 bg-gray-200 text-charcoal font-display rounded-xl hover:bg-gray-300">
@@ -1146,6 +1226,18 @@ export default function AdminProducts() {
                                 </select>
                             </div>
                         </div>
+                        {workspaceMode === DRAFT_MODE && filtered.length > 0 && (
+                            <div className="mb-4 flex items-center justify-end">
+                                <button
+                                    type="button"
+                                    onClick={handlePublishVisibleDrafts}
+                                    disabled={publishingAllDrafts}
+                                    className="px-4 py-2 bg-green-600 text-white text-xs font-semibold rounded-xl hover:bg-green-700 disabled:opacity-60"
+                                >
+                                    {publishingAllDrafts ? 'Publishing...' : 'Publish All Visible Drafts'}
+                                </button>
+                            </div>
+                        )}
 
                         {loading ? (
                             <div className="text-center py-8 text-gray-400 animate-pulse">Loading products...</div>
@@ -1225,6 +1317,15 @@ export default function AdminProducts() {
                                                                     className="px-3 py-1 text-xs bg-red-50 text-red-500 rounded-lg hover:bg-red-100">
                                                                 Delete
                                                             </button>
+                                                            {workspaceMode === DRAFT_MODE && (
+                                                                <button
+                                                                    onClick={() => handlePublishDraft(product.id)}
+                                                                    disabled={publishingDraftId === product.id}
+                                                                    className="px-3 py-1 text-xs bg-green-50 text-green-700 rounded-lg hover:bg-green-100 disabled:opacity-50"
+                                                                >
+                                                                    {publishingDraftId === product.id ? 'Publishing...' : 'Publish'}
+                                                                </button>
+                                                            )}
                                                         </div>
                                                     </td>
                                                 </tr>

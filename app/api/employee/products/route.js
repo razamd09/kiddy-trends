@@ -4,6 +4,7 @@ const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
+const DRAFT_SOURCE = 'draft_workspace'
 
 export async function GET(request) {
     try {
@@ -15,6 +16,7 @@ export async function GET(request) {
         const { data, error, count } = await supabase
             .from('products')
             .select('id, title, category, price, compare_price, stock, is_active, product_type, images, created_at', { count: 'exact' })
+            .or('source.is.null,source.neq.' + DRAFT_SOURCE)
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1)
 

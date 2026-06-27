@@ -4,6 +4,7 @@ const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_KEY
 )
+const DRAFT_SOURCE = 'draft_workspace'
 const signedUrlCache = new Map()
 const SIGNED_URL_TTL_MS = 29 * 24 * 60 * 60 * 1000
 const SIGNED_URL_BUFFER_MS = 5 * 60 * 1000
@@ -214,6 +215,7 @@ export async function GET(request) {
                     .from('products')
                     .select('*', { count: 'exact' })
                     .eq('is_active', true)
+                    .or('source.is.null,source.neq.' + DRAFT_SOURCE)
                     .eq('shopify_handle', candidate)
                     .limit(1)
                 if (!byHandle.error && (byHandle.data || []).length > 0) {
@@ -228,6 +230,7 @@ export async function GET(request) {
                     .from('products')
                     .select('*', { count: 'exact' })
                     .eq('is_active', true)
+                    .or('source.is.null,source.neq.' + DRAFT_SOURCE)
                     .eq('id', handle)
                     .limit(1)
                 if (!byId.error && (byId.data || []).length > 0) {
@@ -242,6 +245,7 @@ export async function GET(request) {
                     .from('products')
                     .select('*', { count: 'exact' })
                     .eq('is_active', true)
+                    .or('source.is.null,source.neq.' + DRAFT_SOURCE)
                     .ilike('title', '%' + slugQuery + '%')
                     .limit(20)
                 if (!byTitle.error) {
@@ -256,6 +260,7 @@ export async function GET(request) {
                 .from('products')
                 .select('*', { count: 'exact' })
                 .eq('is_active', true)
+                .or('source.is.null,source.neq.' + DRAFT_SOURCE)
                 .order('created_at', { ascending: false })
 
             if (category) query = query.eq('category', category)
@@ -274,6 +279,7 @@ export async function GET(request) {
                     .from('products')
                     .select('*', { count: 'exact' })
                     .eq('is_active', true)
+                    .or('source.is.null,source.neq.' + DRAFT_SOURCE)
                     .order('id', { ascending: false })
 
                 if (category) fallback = fallback.eq('category', category)
