@@ -12,6 +12,7 @@ const EMAILJS_PUBLIC_KEY =
 const ORDER_NOTIFICATION_EMAIL =
   process.env.NEXT_PUBLIC_ORDER_NOTIFICATION_EMAIL || 'thekiddytrends@gmail.com'
 const SPIN_STORAGE_KEY = 'kt_spin_wheel_state'
+const GIFT_FLASH_SEEN_KEY = 'kt_checkout_reward_flash_seen'
 
 const cities = [
   'Karachi','Lahore','Islamabad','Rawalpindi','Faisalabad',
@@ -50,7 +51,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   const [errors, setErrors]           = useState({})
   const [discount, setDiscount]       = useState(null)
   const [rewards, setRewards]         = useState({ userId: '', points: 0, redeemed: 0 })
-  const [showGiftFlash, setShowGiftFlash] = useState(true)
+  const [showGiftFlash, setShowGiftFlash] = useState(false)
 
   const price          = isCart ? cartTotal : parseFloat(variant?.price || 0)
   const comparePrice   = parseFloat(variant?.compare_at_price || 0)
@@ -84,6 +85,15 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
       }
     } catch {}
   }, [discount])
+
+  useEffect(() => {
+    try {
+      const seen = localStorage.getItem(GIFT_FLASH_SEEN_KEY) === '1'
+      if (!seen) {
+        setShowGiftFlash(true)
+      }
+    } catch {}
+  }, [])
 
   function consumeSpinDiscountIfUsed() {
     if (!discount?.code || !String(discount.code).startsWith('SPIN')) return
@@ -357,7 +367,10 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                 </p>
                 <button
                   type="button"
-                  onClick={() => setShowGiftFlash(false)}
+                  onClick={() => {
+                    setShowGiftFlash(false)
+                    try { localStorage.setItem(GIFT_FLASH_SEEN_KEY, '1') } catch {}
+                  }}
                   className="mt-3 w-full bg-charcoal text-white font-display text-sm py-2.5 rounded-xl hover:bg-coral transition-colors"
                 >
                   Continue to Checkout

@@ -66,11 +66,11 @@ function saveState(state) {
 function pickWeightedSegment() {
   const totalWeight = SEGMENTS.reduce((sum, s) => sum + s.weight, 0)
   let roll = Math.random() * totalWeight
-  for (const segment of SEGMENTS) {
-    roll -= segment.weight
-    if (roll <= 0) return segment
+  for (let i = 0; i < SEGMENTS.length; i += 1) {
+    roll -= SEGMENTS[i].weight
+    if (roll <= 0) return i
   }
-  return SEGMENTS[0]
+  return 0
 }
 
 export default function SpinWheelPopup() {
@@ -121,10 +121,19 @@ export default function SpinWheelPopup() {
     if (spinning) return
     setSpinning(true)
     setResult(null)
+    setShowWinEffect(false)
 
-    const selected = pickWeightedSegment()
-    const extraRotation = 1800 + Math.floor(Math.random() * 720)
-    setRotation((prev) => prev + extraRotation)
+    const selectedIndex = pickWeightedSegment()
+    const selected = SEGMENTS[selectedIndex]
+    const segmentAngle = 360 / SEGMENTS.length
+    const centerAngle = selectedIndex * segmentAngle + (segmentAngle / 2)
+    const targetAngle = (270 - centerAngle + 360) % 360
+    const fullSpins = 5 + Math.floor(Math.random() * 2)
+    setRotation((prev) => {
+      const currentAngle = ((prev % 360) + 360) % 360
+      const deltaToTarget = (targetAngle - currentAngle + 360) % 360
+      return prev + (fullSpins * 360) + deltaToTarget
+    })
 
     window.setTimeout(() => {
       const now = Date.now()
