@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import ProductCard from '../components/ProductCard'
 import FlashSaleBanner from '../components/FlashSaleBanner'
 import RewardsChecker from '../components/RewardsChecker'
+import SpinWheelPopup from '../components/SpinWheelPopup'
 
 const SUMMER_NEW_ARRIVALS_TARGET = 10
 const SUMMER_NEW_ARRIVALS_MATCHER = /summer\s+new\s+arrivals?\s+2026/i
@@ -65,6 +66,7 @@ export default function Home() {
 
   return (
       <>
+        <SpinWheelPopup />
         {/* HERO */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-16">
           <div className="grid md:grid-cols-2 gap-10 items-center">

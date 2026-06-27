@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import emailjs from '@emailjs/browser'
 import RewardsSection from './RewardsSection'
 
@@ -11,6 +11,7 @@ const EMAILJS_PUBLIC_KEY =
   process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || 'G3OmrUP2PwOat-o1W'
 const ORDER_NOTIFICATION_EMAIL =
   process.env.NEXT_PUBLIC_ORDER_NOTIFICATION_EMAIL || 'thekiddytrends@gmail.com'
+const SPIN_STORAGE_KEY = 'kt_spin_wheel_state'
 
 const cities = [
   'Karachi','Lahore','Islamabad','Rawalpindi','Faisalabad',
@@ -61,6 +62,41 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
     : 0 : 0
   const rewardsDiscount = rewards.redeemed || 0
   const total = price + shipping - (discount?.type !== 'shipping' ? discountAmount : 0) - rewardsDiscount
+
+  useEffect(() => {
+    if (discount) return
+    try {
+      const raw = localStorage.getItem(SPIN_STORAGE_KEY)
+      if (!raw) return
+      const state = JSON.parse(raw)
+      const now = Date.now()
+      const amount = Number(state?.activeDiscount || 0)
+      const consumed = Boolean(state?.consumed)
+      const lockedUntil = Number(state?.lockedUntil || 0)
+
+      if (amount > 0 && !consumed && lockedUntil > now) {
+        setDiscount({
+          type: 'fixed',
+          value: Math.min(100, amount),
+          code: state?.discountCode || ('SPIN' + amount),
+        })
+      }
+    } catch {}
+  }, [discount])
+
+  function consumeSpinDiscountIfUsed() {
+    if (!discount?.code || !String(discount.code).startsWith('SPIN')) return
+    try {
+      const raw = localStorage.getItem(SPIN_STORAGE_KEY)
+      if (!raw) return
+      const state = JSON.parse(raw)
+      localStorage.setItem(SPIN_STORAGE_KEY, JSON.stringify({
+        ...state,
+        consumed: true,
+        activeDiscount: 0,
+      }))
+    } catch {}
+  }
 
   function formatPhone(val) {
     let digits = String(val || '').replace(/\D/g, '')
@@ -258,6 +294,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
       }
 
       if (data.success) {
+        consumeSpinDiscountIfUsed()
         const orderNumber = data.orderNumber || data.orderName || ('#' + data.orderId)
         try {
           await Promise.race([
