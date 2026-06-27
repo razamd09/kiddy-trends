@@ -127,7 +127,8 @@ export default function SpinWheelPopup() {
     const selected = SEGMENTS[selectedIndex]
     const segmentAngle = 360 / SEGMENTS.length
     const centerAngle = selectedIndex * segmentAngle + (segmentAngle / 2)
-    const targetAngle = (270 - centerAngle + 360) % 360
+    // Pointer is at top (0deg). Rotate wheel so selected segment center lands exactly under pointer.
+    const targetAngle = (360 - centerAngle) % 360
     const fullSpins = 5 + Math.floor(Math.random() * 2)
     setRotation((prev) => {
       const currentAngle = ((prev % 360) + 360) % 360

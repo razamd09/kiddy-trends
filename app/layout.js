@@ -4,7 +4,6 @@ import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import CartDrawer from '../components/CartDrawer'
 import Script from 'next/script'
-import RewardsPopup from '../components/RewardsPopup'
 import LiveNotifications from '../components/LiveNotifications'
 import BottomNav from '../components/BottomNav'
 
@@ -75,7 +74,6 @@ export default function RootLayout({ children }) {
       <Script src="https://www.instagram.com/embed.js" strategy="lazyOnload" />
 
       <CartProvider>
-        <RewardsPopup />
         <LiveNotifications />
         <Navbar />
 
