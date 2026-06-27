@@ -56,26 +56,49 @@ function getSupabaseStoragePath(url) {
 
 export async function GET(request) {
     const { searchParams } = new URL(request.url)
-    const page   = parseInt(searchParams.get('page') || '1')
-    const limit  = 20
+    const page   = Math.max(parseInt(searchParams.get('page') || '1', 10), 1)
+    const limit  = Math.min(Math.max(parseInt(searchParams.get('limit') || '20', 10), 1), 100)
     const offset = (page - 1) * limit
+    const category = (searchParams.get('category') || '').trim()
+    const search = (searchParams.get('search') || '').trim()
+    const sortByRaw = (searchParams.get('sortBy') || 'created_at').trim()
+    const sortDirRaw = (searchParams.get('sortDir') || 'desc').trim().toLowerCase()
+    const sortByAllowed = ['created_at', 'updated_at', 'price', 'title', 'stock']
+    const sortBy = sortByAllowed.includes(sortByRaw) ? sortByRaw : 'created_at'
+    const ascending = sortDirRaw === 'asc'
 
-    let { data, error, count } = await supabase
+    let query = supabase
         .from('products')
         .select('*', { count: 'exact' })
-        .order('created_at', { ascending: false })
+    if (category && category !== 'all') {
+        query = query.eq('category', category)
+    }
+    if (search) {
+        query = query.ilike('title', '%' + search + '%')
+    }
+    query = query
+        .order(sortBy, { ascending })
         .range(offset, offset + limit - 1)
+    let { data, error, count } = await query
 
-    // Some older tables may not have created_at; fallback to id ordering.
-    if (error && /created_at/i.test(error.message || '')) {
-        const fallback = await supabase
+    // Some older tables may not have created_at/updated_at; fallback to id ordering.
+    if (error && /(created_at|updated_at)/i.test(error.message || '')) {
+        let fallback = supabase
             .from('products')
             .select('*', { count: 'exact' })
+        if (category && category !== 'all') {
+            fallback = fallback.eq('category', category)
+        }
+        if (search) {
+            fallback = fallback.ilike('title', '%' + search + '%')
+        }
+        fallback = fallback
             .order('id', { ascending: false })
             .range(offset, offset + limit - 1)
-        data = fallback.data
-        error = fallback.error
-        count = fallback.count
+        const fallbackResult = await fallback
+        data = fallbackResult.data
+        error = fallbackResult.error
+        count = fallbackResult.count
     }
 
     if (error) {

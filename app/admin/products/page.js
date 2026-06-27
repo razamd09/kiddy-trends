@@ -12,7 +12,11 @@ export default function AdminProducts() {
     const [page, setPage]             = useState(1)
     const [total, setTotal]           = useState(0)
     const [searchTerm, setSearchTerm] = useState('')
+    const [categoryFilter, setCategoryFilter] = useState('all')
+    const [sortBy, setSortBy] = useState('created_at')
+    const [sortDir, setSortDir] = useState('desc')
     const [submitting, setSubmitting] = useState(false)
+    const [duplicatingId, setDuplicatingId] = useState(null)
     const [deleteConfirm, setDeleteConfirm] = useState(null)
     const [importFile, setImportFile] = useState(null)
     const [importing, setImporting] = useState(false)
@@ -160,14 +164,26 @@ export default function AdminProducts() {
 
     useEffect(() => {
         if (verified) fetchProducts()
-    }, [verified, page])
+    }, [verified, page, searchTerm, categoryFilter, sortBy, sortDir])
+
+    useEffect(() => {
+        if (!verified) return
+        setPage(1)
+    }, [searchTerm, categoryFilter, sortBy, sortDir, verified])
 
     async function fetchProducts() {
         setLoading(true)
         setLoadError('')
         const token = localStorage.getItem('admin_token')
         try {
-            const res  = await fetch('/api/admin/products?page=' + page, { headers: { 'x-admin-token': token } })
+            const params = new URLSearchParams({
+                page: String(page),
+                sortBy,
+                sortDir,
+            })
+            if (searchTerm.trim()) params.set('search', searchTerm.trim())
+            if (categoryFilter && categoryFilter !== 'all') params.set('category', categoryFilter)
+            const res  = await fetch('/api/admin/products?' + params.toString(), { headers: { 'x-admin-token': token } })
             const data = await readApiJson(res)
             if (!res.ok || data.error) {
                 setProducts([])
@@ -187,6 +203,42 @@ export default function AdminProducts() {
             setLoadError(err.message || 'Unable to load products')
         }
         setLoading(false)
+    }
+
+    async function handleDuplicate(product) {
+        setDuplicatingId(product.id)
+        const token = localStorage.getItem('admin_token')
+        try {
+            const baseHandle = String(product.shopify_handle || '').trim()
+            const duplicatePayload = {
+                title: (product.title || 'Untitled Product') + ' (Copy)',
+                description: product.description || '',
+                price: product.price || 0,
+                compare_price: product.compare_price || null,
+                category: product.category || '',
+                product_type: product.product_type || '',
+                tags: Array.isArray(product.tags) ? product.tags : [],
+                stock: product.stock || 0,
+                images: normalizeImages(product.images),
+                variants: Array.isArray(product.variants) ? product.variants : null,
+                shopify_handle: baseHandle ? (baseHandle + '-copy-' + Date.now()) : null,
+            }
+
+            const res = await fetch('/api/admin/products', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+                body: JSON.stringify(duplicatePayload),
+            })
+            const data = await readApiJson(res)
+            if (!res.ok || !data.success) {
+                alert('Duplicate failed: ' + (data.error || 'Unknown error'))
+            } else {
+                fetchProducts()
+            }
+        } catch (err) {
+            alert('Duplicate failed: ' + (err.message || 'Unknown error'))
+        }
+        setDuplicatingId(null)
     }
 
     function resetForm() {
@@ -531,7 +583,7 @@ export default function AdminProducts() {
         router.push('/admin')
     }
 
-    const filtered  = products.filter(p => p.title?.toLowerCase().includes(searchTerm.toLowerCase()))
+    const filtered  = products
     const maxPages  = Math.ceil(total / 20)
 
     if (!verified) return (
@@ -966,10 +1018,39 @@ export default function AdminProducts() {
                                 {loadError}
                             </div>
                         )}
-                        <div className="mb-6">
+                        <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-3">
                             <input type="text" placeholder="🔍 Search products..."
                                    value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm" />
+                            <select
+                                value={categoryFilter}
+                                onChange={e => setCategoryFilter(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm bg-white"
+                            >
+                                <option value="all">All Categories</option>
+                                {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                            </select>
+                            <div className="grid grid-cols-2 gap-2">
+                                <select
+                                    value={sortBy}
+                                    onChange={e => setSortBy(e.target.value)}
+                                    className="w-full px-3 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm bg-white"
+                                >
+                                    <option value="created_at">Created At</option>
+                                    <option value="updated_at">Updated At</option>
+                                    <option value="price">Price</option>
+                                    <option value="title">Title</option>
+                                    <option value="stock">Stock</option>
+                                </select>
+                                <select
+                                    value={sortDir}
+                                    onChange={e => setSortDir(e.target.value)}
+                                    className="w-full px-3 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm bg-white"
+                                >
+                                    <option value="desc">New → Old</option>
+                                    <option value="asc">Old → New</option>
+                                </select>
+                            </div>
                         </div>
 
                         {loading ? (
@@ -1040,6 +1121,11 @@ export default function AdminProducts() {
                                                             <button onClick={() => openEdit(product)}
                                                                     className="px-3 py-1 text-xs bg-skyblue/20 text-charcoal rounded-lg hover:bg-skyblue/40">
                                                                 Edit
+                                                            </button>
+                                                            <button onClick={() => handleDuplicate(product)}
+                                                                    disabled={duplicatingId === product.id}
+                                                                    className="px-3 py-1 text-xs bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 disabled:opacity-50">
+                                                                {duplicatingId === product.id ? 'Duplicating...' : 'Duplicate'}
                                                             </button>
                                                             <button onClick={() => setDeleteConfirm(product.id)}
                                                                     className="px-3 py-1 text-xs bg-red-50 text-red-500 rounded-lg hover:bg-red-100">
