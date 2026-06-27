@@ -42,7 +42,7 @@ const categories = [
   { id: 'accessories', label: 'Accessories', emoji: '🎀', color: 'bg-mint/20',    subFilters: [] },
 ]
 
-function productMatchesFilter(product, catId, subId, subFilters) {
+function productMatchesFilter(product, catId, subId, subFilters, gender) {
   const text = [
     product.title,
     product.product_type,
@@ -55,6 +55,13 @@ function productMatchesFilter(product, catId, subId, subFilters) {
 
   const type  = (product.product_type || '').toLowerCase()
   const title = (product.title || '').toLowerCase()
+
+  if (gender) {
+    const hasBoys = /\bboys?\b/.test(title)
+    const hasGirls = /\bgirls?\b/.test(title)
+    if (gender === 'boys' && !hasBoys) return false
+    if (gender === 'girls' && !hasGirls) return false
+  }
 
   if (subId) {
     const sub = subFilters.find(s => s.id === subId)
@@ -86,8 +93,9 @@ export default function Collections() {
   const [products, setProducts]   = useState(cachedProducts)
   const [loading, setLoading]     = useState(cachedProducts.length === 0)
   const [activeCat, setActiveCat] = useState('all')
+  const [activeGender, setActiveGender] = useState(null)
   const [activeSub, setActiveSub] = useState(null)
-  const [sort, setSort]           = useState('default')
+  const [sort, setSort]           = useState('new')
   const [page, setPage]           = useState(1)
   const ITEMS_PER_PAGE = 40
 
@@ -132,10 +140,11 @@ export default function Collections() {
 
   const activeCatObj = categories.find(c => c.id === activeCat)
   const subFilters   = activeCatObj?.subFilters || []
+  const showGenderFilter = ['kids', 'toddler', 'tweens'].includes(activeCat)
 
   let filtered = activeCat === 'all'
     ? products
-    : products.filter(p => productMatchesFilter(p, activeCat, activeSub, subFilters))
+    : products.filter(p => productMatchesFilter(p, activeCat, activeSub, subFilters, activeGender))
 
   if (sort === 'low')          filtered = [...filtered].sort((a,b) => parseFloat(a.variants[0]?.price) - parseFloat(b.variants[0]?.price))
   if (sort === 'high')         filtered = [...filtered].sort((a,b) => parseFloat(b.variants[0]?.price) - parseFloat(a.variants[0]?.price))
@@ -160,6 +169,7 @@ export default function Collections() {
 
   function handleCatClick(catId) {
     setActiveCat(catId)
+    setActiveGender(null)
     setActiveSub(null)
     setPage(1)
   }
@@ -191,6 +201,24 @@ export default function Collections() {
       {subFilters.length > 0 && (
         <div className="flex flex-wrap gap-2 justify-center mb-8">
           <div className={'w-full flex flex-wrap gap-2 justify-center p-4 rounded-2xl ' + activeCatObj?.color}>
+            {showGenderFilter && (
+              <>
+                <p className="w-full text-center font-display text-charcoal text-sm mb-1">Select Boys / Girls:</p>
+                <button onClick={() => { setActiveGender(null); setPage(1) }}
+                  className={'px-4 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ' + (!activeGender ? 'bg-charcoal text-white border-charcoal' : 'bg-white text-charcoal border-gray-200 hover:border-charcoal')}>
+                  All
+                </button>
+                <button onClick={() => { setActiveGender('boys'); setPage(1) }}
+                  className={'px-4 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ' + (activeGender === 'boys' ? 'bg-charcoal text-white border-charcoal' : 'bg-white text-charcoal border-gray-200 hover:border-charcoal')}>
+                  Boys
+                </button>
+                <button onClick={() => { setActiveGender('girls'); setPage(1) }}
+                  className={'px-4 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ' + (activeGender === 'girls' ? 'bg-charcoal text-white border-charcoal' : 'bg-white text-charcoal border-gray-200 hover:border-charcoal')}>
+                  Girls
+                </button>
+                <div className="w-full h-px bg-charcoal/10 my-1" />
+              </>
+            )}
             <p className="w-full text-center font-display text-charcoal text-sm mb-1">Select age group:</p>
             <button onClick={() => setActiveSub(null)}
               className={'px-4 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ' + (!activeSub ? 'bg-charcoal text-white border-charcoal' : 'bg-white text-charcoal border-gray-200 hover:border-charcoal')}>
@@ -210,17 +238,17 @@ export default function Collections() {
       <div className="flex items-center justify-between mb-6">
         <p className="text-sm text-gray-400 font-semibold">
           {loading ? 'Loading...' : `${filtered.length} product${filtered.length !== 1 ? 's' : ''}`}
+          {activeGender && <span className="ml-2 text-coral">· {activeGender === 'boys' ? 'Boys' : 'Girls'}</span>}
           {activeSub && <span className="ml-2 text-coral">· {subFilters.find(s => s.id === activeSub)?.label}</span>}
         </p>
         <select value={sort} onChange={e => { setSort(e.target.value); setPage(1) }}
           className="px-4 py-2 rounded-full border-2 border-gray-100 text-sm font-semibold focus:outline-none focus:border-coral bg-cream">
-          <option value="default">Featured</option>
+          <option value="new">Newest First</option>
           <option value="best_selling">Best Selling</option>
           <option value="az">A–Z</option>
           <option value="za">Z–A</option>
           <option value="low">Price: Low to High</option>
           <option value="high">Price: High to Low</option>
-          <option value="new">Newest First</option>
           <option value="old">Oldest First</option>
         </select>
       </div>
