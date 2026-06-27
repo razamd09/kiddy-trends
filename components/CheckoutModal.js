@@ -50,6 +50,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   const [errors, setErrors]           = useState({})
   const [discount, setDiscount]       = useState(null)
   const [rewards, setRewards]         = useState({ userId: '', points: 0, redeemed: 0 })
+  const [showGiftFlash, setShowGiftFlash] = useState(true)
 
   const price          = isCart ? cartTotal : parseFloat(variant?.price || 0)
   const comparePrice   = parseFloat(variant?.compare_at_price || 0)
@@ -342,6 +343,27 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
         {/* Step 1 - Form */}
         {step === 1 && (
           <div className="px-6 py-5">
+            {showGiftFlash && (
+              <div className="mb-5 rounded-2xl border-2 border-sunny bg-yellow-50 p-4 relative overflow-hidden">
+                <div className="absolute -right-5 -top-5 text-6xl opacity-20">🥚</div>
+                <p className="font-display text-lg text-charcoal">🎁 Free Reward Offer</p>
+                <p className="text-sm text-gray-700 mt-1">
+                  Order above <strong>PKR 5,000</strong> and get a <strong>FREE Kinder Lego Egg</strong>.
+                </p>
+                <p className={'text-xs mt-2 font-semibold ' + (Number(price || 0) >= 5000 ? 'text-green-600' : 'text-coral')}>
+                  {Number(price || 0) >= 5000
+                    ? '✅ Great! Your current subtotal qualifies for the free gift.'
+                    : ('Add PKR ' + Math.max(0, 5000 - Number(price || 0)).toLocaleString() + ' more to qualify.')}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowGiftFlash(false)}
+                  className="mt-3 w-full bg-charcoal text-white font-display text-sm py-2.5 rounded-xl hover:bg-coral transition-colors"
+                >
+                  Continue to Checkout
+                </button>
+              </div>
+            )}
             {/* Order Summary */}
             <div className="bg-cream rounded-2xl p-4 mb-6">
               {isCart ? (

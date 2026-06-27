@@ -79,6 +79,7 @@ export default function SpinWheelPopup() {
   const [spinning, setSpinning] = useState(false)
   const [result, setResult] = useState(null)
   const [spinsLeft, setSpinsLeft] = useState(0)
+  const [showWinEffect, setShowWinEffect] = useState(false)
 
   useEffect(() => {
     const now = Date.now()
@@ -104,6 +105,17 @@ export default function SpinWheelPopup() {
       transition: spinning ? 'transform 4s cubic-bezier(0.2, 0.8, 0.2, 1)' : 'none',
     }
   }, [rotation, spinning])
+
+  const segmentLabels = useMemo(() => {
+    const segmentAngle = 360 / SEGMENTS.length
+    return SEGMENTS.map((segment, index) => {
+      const angle = index * segmentAngle + (segmentAngle / 2) - 90
+      return {
+        ...segment,
+        angle,
+      }
+    })
+  }, [])
 
   function spinNow() {
     if (spinning) return
@@ -138,6 +150,9 @@ export default function SpinWheelPopup() {
       setSpinsLeft(Math.max(0, MAX_SPINS_PER_WINDOW - nextSpinsUsed))
       setResult(selected)
       setSpinning(false)
+      if (selected.amount > 0) {
+        setShowWinEffect(true)
+      }
     }, 4100)
   }
 
@@ -153,6 +168,7 @@ export default function SpinWheelPopup() {
       pendingCode: '',
       consumed: false,
     })
+    setShowWinEffect(false)
     setOpen(false)
   }
 
@@ -170,6 +186,7 @@ export default function SpinWheelPopup() {
       cleared.consumed = true
     }
     saveState(cleared)
+    setShowWinEffect(false)
     setOpen(false)
   }
 
@@ -179,12 +196,35 @@ export default function SpinWheelPopup() {
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 text-center">
+        {showWinEffect && result?.amount > 0 && (
+          <div className="absolute inset-0 z-20 rounded-3xl pointer-events-none bg-gradient-to-b from-yellow-100/80 via-white/30 to-pink-100/80 animate-pulse">
+            <div className="h-full w-full flex items-center justify-center">
+              <div className="text-center px-4">
+                <p className="text-4xl mb-2 animate-bounce">🎉</p>
+                <p className="font-display text-2xl text-coral">WOOOWW!</p>
+                <p className="font-display text-xl text-charcoal">You won PKR {result.amount} discount</p>
+              </div>
+            </div>
+          </div>
+        )}
         <p className="font-display text-2xl text-charcoal mb-1">Spin & Win Discount 🎯</p>
         <p className="text-sm text-gray-500 mb-4">Win PKR discount for checkout (max PKR 100)</p>
 
         <div className="relative w-64 h-64 mx-auto mb-4">
           <div className="absolute left-1/2 -translate-x-1/2 -top-2 text-coral text-2xl z-10">▼</div>
           <div className="w-64 h-64 rounded-full border-8 border-coral/20 shadow-inner mx-auto overflow-hidden" style={wheelStyle} />
+          {segmentLabels.map((segment, idx) => (
+            <div
+              key={segment.label + idx}
+              className="absolute left-1/2 top-1/2 text-[11px] font-bold text-charcoal"
+              style={{
+                transform: `rotate(${segment.angle}deg) translate(0, -102px) rotate(${-segment.angle}deg)`,
+                transformOrigin: 'center',
+              }}
+            >
+              {segment.amount > 0 ? ('Rs ' + segment.amount) : 'No Luck'}
+            </div>
+          ))}
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-14 h-14 rounded-full bg-charcoal text-white flex items-center justify-center font-display text-sm">SPIN</div>
           </div>
@@ -204,13 +244,13 @@ export default function SpinWheelPopup() {
           <button
             onClick={result?.amount > 0 ? applyDiscount : spinNow}
             disabled={spinning || spinsLeft <= 0 || (result && result.amount <= 0 && spinsLeft <= 0)}
-            className="w-full bg-coral text-white font-display text-base py-3 rounded-2xl hover:bg-opacity-90 disabled:opacity-60"
+            className="w-full bg-coral text-white font-display text-base py-3 rounded-2xl hover:bg-opacity-90 disabled:opacity-60 relative z-30"
           >
             {result?.amount > 0 ? 'Apply Discount' : (spinning ? 'Spinning...' : 'Spin Now')}
           </button>
           <button
             onClick={closePopup}
-            className="w-full bg-gray-100 text-charcoal font-display text-base py-3 rounded-2xl hover:bg-gray-200"
+            className="w-full bg-gray-100 text-charcoal font-display text-base py-3 rounded-2xl hover:bg-gray-200 relative z-30"
           >
             Cancel / Close
           </button>
