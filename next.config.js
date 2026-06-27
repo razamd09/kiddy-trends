@@ -1,9 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    remotePatterns: [
-      { protocol: 'https', hostname: 'cdn.shopify.com' },
-    ],
+    remotePatterns: [],
     formats: ['image/webp'],
     minimumCacheTTL: 3600,
   },
