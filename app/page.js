@@ -6,6 +6,8 @@ import ProductCard from '../components/ProductCard'
 import FlashSaleBanner from '../components/FlashSaleBanner'
 import RewardsChecker from '../components/RewardsChecker'
 
+const SUMMER_NEW_ARRIVALS_KEYWORD = 'summer new arrivals 2026'
+
 const categories = [
   { label: 'Kids Clothing',      desc: 'Newborn to 12 years',         color: 'bg-coral/20',   emoji: '👕', href: '/collections' },
   { label: 'Kids Bedding',       desc: 'Single bed sets & covers',    color: 'bg-skyblue/30', emoji: '🛏️', href: '/collections' },
@@ -20,9 +22,14 @@ export default function Home() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const res  = await fetch('/api/products?limit=8')
+        const res  = await fetch('/api/products?limit=40&search=Summer New Arrivals 2026')
         const data = await res.json()
-        if (data.success && Array.isArray(data.products)) setProducts(data.products)
+        if (data.success && Array.isArray(data.products)) {
+          const onlySummerNewArrivals = data.products
+            .filter((product) => String(product?.title || '').toLowerCase().includes(SUMMER_NEW_ARRIVALS_KEYWORD))
+            .slice(0, 8)
+          setProducts(onlySummerNewArrivals)
+        }
         setLoadingProducts(false)
       } catch { setLoadingProducts(false) }
     }
@@ -92,9 +99,8 @@ export default function Home() {
 
         {/* NEW ARRIVALS */}
         <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-10">
+          <div className="mb-10">
             <h2 className="section-title">New Arrivals 🆕</h2>
-            <Link href="/collections" className="text-coral font-semibold hover:underline">See all →</Link>
           </div>
           {loadingProducts && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
@@ -111,11 +117,21 @@ export default function Home() {
               </div>
           )}
           {!loadingProducts && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-                {products.map(product => (
-                    <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+                  {products.map(product => (
+                      <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+                <div className="text-center mt-8">
+                  <Link
+                    href="/collections"
+                    className="inline-flex items-center justify-center px-8 py-3 rounded-full bg-coral text-white font-display text-base hover:bg-opacity-90 transition-all"
+                  >
+                    More
+                  </Link>
+                </div>
+              </>
           )}
         </section>
 
