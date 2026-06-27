@@ -16,6 +16,7 @@ export default function EmployeeDashboard() {
     const [time, setTime]             = useState(new Date())
     const [history, setHistory]       = useState([])
     const router = useRouter()
+    const displayTimeZone = 'Asia/Karachi'
 
     useEffect(() => {
         const stored = localStorage.getItem('employee')
@@ -54,17 +55,25 @@ export default function EmployeeDashboard() {
     }
 
     async function fetchTodayAttendance(empId) {
-        const today = new Date().toISOString().split('T')[0]
-        const res   = await fetch('/api/admin/attendance?employee_id=' + empId + '&period=daily&date=' + today)
+        const res   = await fetch('/api/admin/attendance?employee_id=' + empId + '&period=daily')
         const data  = await res.json()
-        if (data.attendance?.length > 0) setAttendance(data.attendance[0])
+        setAttendance(data.attendance?.[0] || null)
     }
 
     async function fetchHistory(empId) {
-        const today = new Date().toISOString().split('T')[0]
-        const res   = await fetch('/api/admin/attendance?employee_id=' + empId + '&period=monthly&date=' + today)
+        const res   = await fetch('/api/admin/attendance?employee_id=' + empId + '&period=monthly')
         const data  = await res.json()
         setHistory(data.attendance || [])
+    }
+
+    function formatPkTime(value) {
+        if (!value) return '—'
+        return new Date(value).toLocaleTimeString('en-PK', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true,
+            timeZone: displayTimeZone,
+        })
     }
 
     async function handleTimeIn() {
@@ -78,7 +87,13 @@ export default function EmployeeDashboard() {
         const data = await res.json()
         if (data.success) {
             setAttendance(data.attendance)
-            setMessage('✅ Time In recorded at ' + new Date().toLocaleTimeString())
+            const stamp = data.server_time ? new Date(data.server_time) : new Date()
+            setMessage('✅ Time In recorded at ' + stamp.toLocaleTimeString('en-PK', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: displayTimeZone,
+            }))
         } else {
             setMessage('⚠️ ' + data.error)
         }
@@ -96,7 +111,13 @@ export default function EmployeeDashboard() {
         const data = await res.json()
         if (data.success) {
             setAttendance(data.attendance)
-            setMessage('✅ Time Out recorded at ' + new Date().toLocaleTimeString())
+            const stamp = data.server_time ? new Date(data.server_time) : new Date()
+            setMessage('✅ Time Out recorded at ' + stamp.toLocaleTimeString('en-PK', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: displayTimeZone,
+            }))
             fetchHistory(employee.employee_id)
         } else {
             setMessage('⚠️ ' + data.error)
@@ -148,17 +169,13 @@ export default function EmployeeDashboard() {
                         <div className="bg-cream rounded-2xl p-4 text-center">
                             <p className="text-xs text-gray-400 mb-1">Time In</p>
                             <p className="font-display text-xl text-coral">
-                                {attendance?.time_in
-                                    ? new Date(attendance.time_in).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' })
-                                    : '—'}
+                                {formatPkTime(attendance?.time_in)}
                             </p>
                         </div>
                         <div className="bg-cream rounded-2xl p-4 text-center">
                             <p className="text-xs text-gray-400 mb-1">Time Out</p>
                             <p className="font-display text-xl text-coral">
-                                {attendance?.time_out
-                                    ? new Date(attendance.time_out).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' })
-                                    : '—'}
+                                {formatPkTime(attendance?.time_out)}
                             </p>
                         </div>
                     </div>
@@ -210,9 +227,9 @@ export default function EmployeeDashboard() {
                                             {new Date(record.date).toLocaleDateString('en-PK', { weekday: 'short', month: 'short', day: 'numeric' })}
                                         </p>
                                         <p className="text-xs text-gray-400">
-                                            {record.time_in ? new Date(record.time_in).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                                            {formatPkTime(record.time_in)}
                                             {' → '}
-                                            {record.time_out ? new Date(record.time_out).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' }) : 'Not clocked out'}
+                                            {record.time_out ? formatPkTime(record.time_out) : 'Not clocked out'}
                                         </p>
                                     </div>
                                     <div className="text-right">
