@@ -249,21 +249,21 @@ export default function EmployeeDashboard() {
                     <p className="font-display text-lg text-charcoal mb-4">Module Access</p>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <ModuleCard
-                            enabled={permissions.can_manage_orders}
+                            enabled={true}
                             title="Manage Orders"
                             icon="📦"
                             href="/employee/orders"
                             subtitle="View and update order status"
                         />
                         <ModuleCard
-                            enabled={permissions.can_manage_products}
+                            enabled={true}
                             title="Manage Products"
                             icon="👕"
                             href="/employee/products"
                             subtitle="Update stock and pricing"
                         />
                         <ModuleCard
-                            enabled={permissions.can_manage_rewards}
+                            enabled={true}
                             title="Reward Points"
                             icon="⭐"
                             href="/employee/rewards"

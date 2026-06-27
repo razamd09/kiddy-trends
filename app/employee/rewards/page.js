@@ -13,8 +13,6 @@ export default function EmployeeRewardsPage() {
         const stored = localStorage.getItem('employee')
         if (!stored) { router.push('/employee'); return }
         const emp = JSON.parse(stored)
-        const canAccess = emp?.permissions?.can_manage_rewards !== false
-        if (!canAccess) { router.push('/employee/dashboard'); return }
         setEmployee(emp)
         fetchRewards()
     }, [])

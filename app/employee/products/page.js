@@ -15,8 +15,6 @@ export default function EmployeeProductsPage() {
         const stored = localStorage.getItem('employee')
         if (!stored) { router.push('/employee'); return }
         const emp = JSON.parse(stored)
-        const canAccess = emp?.permissions?.can_manage_products !== false
-        if (!canAccess) { router.push('/employee/dashboard'); return }
         setEmployee(emp)
         fetchProducts()
     }, [])

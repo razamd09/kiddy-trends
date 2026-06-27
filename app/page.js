@@ -6,7 +6,12 @@ import ProductCard from '../components/ProductCard'
 import FlashSaleBanner from '../components/FlashSaleBanner'
 import RewardsChecker from '../components/RewardsChecker'
 
-const SUMMER_NEW_ARRIVALS_KEYWORD = 'summer new arrivals 2026'
+const SUMMER_NEW_ARRIVALS_TARGET = 10
+const SUMMER_NEW_ARRIVALS_MATCHER = /summer\s+new\s+arrivals?\s+2026/i
+
+function isSummerNewArrival2026(product) {
+  return SUMMER_NEW_ARRIVALS_MATCHER.test(String(product?.title || ''))
+}
 
 const categories = [
   { label: 'Kids Clothing',      desc: 'Newborn to 12 years',         color: 'bg-coral/20',   emoji: '👕', href: '/collections' },
@@ -22,14 +27,36 @@ export default function Home() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const res  = await fetch('/api/products?limit=40&search=Summer New Arrivals 2026')
-        const data = await res.json()
-        if (data.success && Array.isArray(data.products)) {
-          const onlySummerNewArrivals = data.products
-            .filter((product) => String(product?.title || '').toLowerCase().includes(SUMMER_NEW_ARRIVALS_KEYWORD))
-            .slice(0, 8)
-          setProducts(onlySummerNewArrivals)
+        const responses = await Promise.allSettled([
+          fetch('/api/products?limit=120&search=Summer New Arrival 2026').then(r => r.json()),
+          fetch('/api/products?limit=120&search=Summer New Arrivals 2026').then(r => r.json()),
+          fetch('/api/products?limit=400&page=1').then(r => r.json()),
+        ])
+
+        const [singularData, pluralData, fallbackData] = responses.map((result) =>
+          result.status === 'fulfilled' ? result.value : null
+        )
+
+        const mergedProducts = [
+          ...(Array.isArray(singularData?.products) ? singularData.products : []),
+          ...(Array.isArray(pluralData?.products) ? pluralData.products : []),
+          ...(Array.isArray(fallbackData?.products) ? fallbackData.products : []),
+        ]
+
+        const uniqueProducts = []
+        const seen = new Set()
+        for (const product of mergedProducts) {
+          const key = product?._id || product?.id || product?.handle || ''
+          if (!key || seen.has(String(key))) continue
+          seen.add(String(key))
+          uniqueProducts.push(product)
         }
+
+        const onlySummerNewArrivals = uniqueProducts
+          .filter(isSummerNewArrival2026)
+          .slice(0, SUMMER_NEW_ARRIVALS_TARGET)
+
+        setProducts(onlySummerNewArrivals)
         setLoadingProducts(false)
       } catch { setLoadingProducts(false) }
     }
@@ -126,9 +153,9 @@ export default function Home() {
                 <div className="text-center mt-8">
                   <Link
                     href="/collections"
-                    className="inline-flex items-center justify-center px-8 py-3 rounded-full bg-coral text-white font-display text-base hover:bg-opacity-90 transition-all"
+                    className="text-coral font-semibold hover:underline"
                   >
-                    More
+                    Show More →
                   </Link>
                 </div>
               </>
