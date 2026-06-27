@@ -6,8 +6,6 @@ import ProductCard from '../components/ProductCard'
 import FlashSaleBanner from '../components/FlashSaleBanner'
 import RewardsChecker from '../components/RewardsChecker'
 
-const STORE_DOMAIN = 'the-kiddy-trends.myshopify.com'
-
 const categories = [
   { label: 'Kids Clothing',      desc: 'Newborn to 12 years',         color: 'bg-coral/20',   emoji: '👕', href: '/collections' },
   { label: 'Kids Bedding',       desc: 'Single bed sets & covers',    color: 'bg-skyblue/30', emoji: '🛏️', href: '/collections' },
@@ -16,64 +14,22 @@ const categories = [
 ]
 
 export default function Home() {
-  const [trending, setTrending]               = useState([])
-  const [loadingTrending, setLoadingTrending] = useState(true)
-  const [myProducts, setMyProducts]           = useState([])
-  const [loadingMyProducts, setLoadingMyProducts] = useState(true)
+  const [products, setProducts] = useState([])
+  const [loadingProducts, setLoadingProducts] = useState(true)
 
   useEffect(() => {
-    async function fetchTrending() {
+    async function fetchProducts() {
       try {
-        const res  = await fetch('https://' + STORE_DOMAIN + '/products.json?limit=250', { next: { revalidate: 300 } })
-        const data = await res.json()
-        const all  = data.products || []
-        // 2026 products always first
-        const summerNew = all.filter(p => (p.title || '').toLowerCase().includes('summer new arrival 2026'))
-        const other2026 = all.filter(p => (p.title || '').includes('2026') && !(p.title || '').toLowerCase().includes('summer new arrival 2026'))
-        const rest      = all.filter(p => !(p.title || '').includes('2026'))
-        setTrending([...summerNew, ...other2026, ...rest].slice(0, 8))
-        setLoadingTrending(false)
-      } catch { setLoadingTrending(false) }
-    }
-    fetchTrending()
-  }, [])
-
-  useEffect(() => {
-    async function fetchMyProducts() {
-      try {
-        const res = await fetch('/api/admin/products?page=1', {
+        const res  = await fetch('/api/products?limit=8', {
           cache: 'no-store',
           headers: { 'pragma': 'no-cache', 'cache-control': 'no-cache' }
         })
         const data = await res.json()
-        if (data.success && data.products) {
-          // Transform database products to Shopify format for ProductCard
-          const transformed = data.products.map(p => ({
-            id: p.id,
-            handle: p.shopify_handle || p.id,
-            title: p.title,
-            product_type: p.product_type,
-            images: (p.images || []).map(img => ({
-              src: typeof img === 'string' ? img : img.src
-            })),
-            variants: [{
-              id: p.id,
-              title: 'Default Title',
-              price: p.price?.toString() || '0',
-              compare_at_price: p.compare_price?.toString() || '0',
-              available: (p.stock || 0) > 0,
-              inventory_management: 'shopify',
-              inventory_quantity: p.stock || 0
-            }],
-            tags: p.tags || [],
-            stock: p.stock || 0
-          }))
-          setMyProducts(transformed.slice(0, 8))
-        }
-        setLoadingMyProducts(false)
-      } catch { setLoadingMyProducts(false) }
+        if (data.success && Array.isArray(data.products)) setProducts(data.products)
+        setLoadingProducts(false)
+      } catch { setLoadingProducts(false) }
     }
-    fetchMyProducts()
+    fetchProducts()
   }, [])
 
   return (
@@ -143,7 +99,7 @@ export default function Home() {
             <h2 className="section-title">New Arrivals 🆕</h2>
             <Link href="/collections" className="text-coral font-semibold hover:underline">See all →</Link>
           </div>
-          {loadingTrending && (
+          {loadingProducts && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
                 {[...Array(8)].map((_, i) => (
                     <div key={i} className="bg-gray-100 rounded-3xl overflow-hidden animate-pulse">
@@ -157,46 +113,14 @@ export default function Home() {
                 ))}
               </div>
           )}
-          {!loadingTrending && (
+          {!loadingProducts && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-                {trending.map(product => (
+                {products.map(product => (
                     <ProductCard key={product.id} product={product} />
                 ))}
               </div>
           )}
         </section>
-
-        {/* MY PRODUCTS (TESTING) */}
-        {myProducts.length > 0 && (
-          <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between mb-10">
-              <h2 className="section-title">My Products 🧪</h2>
-              <Link href="/admin/products" className="text-coral font-semibold hover:underline">Manage →</Link>
-            </div>
-            {loadingMyProducts && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-                  {[...Array(4)].map((_, i) => (
-                      <div key={i} className="bg-gray-100 rounded-3xl overflow-hidden animate-pulse">
-                        <div className="h-48 bg-gray-200" />
-                        <div className="p-4 space-y-2">
-                          <div className="h-4 bg-gray-200 rounded w-3/4" />
-                          <div className="h-4 bg-gray-200 rounded w-1/2" />
-                          <div className="h-8 bg-gray-200 rounded-xl mt-3" />
-                        </div>
-                      </div>
-                  ))}
-                </div>
-            )}
-            {!loadingMyProducts && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-                  {myProducts.map(product => (
-                      <ProductCard key={product.id} product={product} />
-                  ))}
-                </div>
-            )}
-            <p className="text-xs text-gray-400 mt-6 text-center">🧪 Testing section: All product management features are tested here first</p>
-          </section>
-        )}
 
         {/* TIKTOK VIDEOS */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">

@@ -8,8 +8,6 @@ import CheckoutModal from '../../../components/CheckoutModal'
 import RecentlyViewed from '../../../components/RecentlyViewed'
 import SizeRecommender from '../../../components/SizeRecommender'
 
-const STORE_DOMAIN = 'the-kiddy-trends.myshopify.com'
-
 const girlReviewers = [
   { name: 'Ayesha K.',   city: 'Lahore',      review: 'Love this product! The fabric is so soft and my daughter absolutely adores it. Will definitely order again!' },
   { name: 'Sana M.',     city: 'Karachi',     review: 'Amazing quality for the price. The colors are exactly as shown. My daughter looks so cute in it!' },
@@ -93,15 +91,19 @@ export default function ProductPage() {
   useEffect(() => {
     async function fetchProduct() {
       try {
-        const res  = await fetch('https://' + STORE_DOMAIN + '/products/' + handle + '.json')
+        const res  = await fetch('/api/products?handle=' + encodeURIComponent(handle), {
+          cache: 'no-store',
+          headers: { 'pragma': 'no-cache', 'cache-control': 'no-cache' }
+        })
         const data = await res.json()
-        if (data.product) {
-          setProduct(data.product)
-          setSelectedVariant(data.product.variants?.[0])
+        if (data.success && data.products?.length > 0) {
+          const p = data.products[0]
+          setProduct(p)
+          setSelectedVariant(p.variants?.[0])
           try {
             const stored   = JSON.parse(localStorage.getItem('recently_viewed') || '[]')
-            const filtered = stored.filter(p => p.id !== data.product.id)
-            localStorage.setItem('recently_viewed', JSON.stringify([data.product, ...filtered].slice(0, 10)))
+            const filtered = stored.filter((item) => item._id !== p._id && item.id !== p.id)
+            localStorage.setItem('recently_viewed', JSON.stringify([p, ...filtered].slice(0, 10)))
           } catch {}
         }
         setLoading(false)
@@ -114,19 +116,14 @@ export default function ProductPage() {
     if (!product) return
     async function fetchRelated() {
       try {
-        const res  = await fetch('https://' + STORE_DOMAIN + '/products.json?limit=250')
+        const res  = await fetch('/api/products?limit=100', {
+          cache: 'no-store',
+          headers: { 'pragma': 'no-cache', 'cache-control': 'no-cache' }
+        })
         const data = await res.json()
-        const type = (product.product_type || '').toLowerCase()
-        const productTags = typeof product.tags === 'string'
-            ? product.tags.split(',').map(t => t.trim())
-            : (product.tags || [])
         const filtered = (data.products || [])
-            .filter(p => {
-              if (p.id === product.id) return false
-              const pTags = typeof p.tags === 'string' ? p.tags.split(',').map(t => t.trim()) : (p.tags || [])
-              return (p.product_type || '').toLowerCase() === type || pTags.some(t => productTags.includes(t))
-            })
-            .slice(0, 4)
+          .filter((p) => p._id !== product._id && (p.category === product.category || p.product_type === product.product_type))
+          .slice(0, 4)
         setRelated(filtered)
       } catch {}
     }
@@ -136,7 +133,7 @@ export default function ProductPage() {
     fetch('/api/products/views', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ product_id: product.id })
+      body:    JSON.stringify({ product_id: product._id || product.id })
     }).then(r => r.json()).then(d => setViews(d.views)).catch(() => {})
   }, [product])
 
@@ -392,11 +389,11 @@ export default function ProductPage() {
               <SizeRecommender />
 
               {/* Description */}
-              {product.body_html && (
+              {(product.body_html || product.description) && (
                   <div className="border-t border-gray-100 pt-6">
                     <h3 className="font-display text-xl text-charcoal mb-3">Product Details</h3>
                     <div className="text-sm text-gray-600 leading-relaxed"
-                         dangerouslySetInnerHTML={{ __html: product.body_html }} />
+                         dangerouslySetInnerHTML={{ __html: product.body_html || product.description }} />
                   </div>
               )}
 
@@ -439,7 +436,7 @@ export default function ProductPage() {
             </div>
           </div>
 
-          <RecentlyViewed currentProductId={product.id} />
+          <RecentlyViewed currentProductId={product._id || product.id} />
 
           {/* Related Products */}
           {related.length > 0 && (

@@ -37,7 +37,7 @@ export default function ProductCard({ product }) {
   const price        = parseFloat(selectedVariant?.price || 0)
   const comparePrice = parseFloat(selectedVariant?.compare_at_price || 0)
   const image        = product.images?.[0]?.src
-  const isSoldOut    = !selectedVariant?.available && selectedVariant?.inventory_management === 'shopify'
+  const isSoldOut    = selectedVariant ? selectedVariant.available === false : false
   const inCart       = cart.find(i => i.variantId === selectedVariant?.id)?.quantity || 0
   const isMaxed      = inCart >= 2
   const rating       = getCardRating(product.id)
@@ -131,7 +131,7 @@ export default function ProductCard({ product }) {
           {hasVariants && (
             <select value={selectedVariant?.id}
               onChange={e => {
-                const v = product.variants.find(v => v.id === parseInt(e.target.value))
+                const v = product.variants.find(v => String(v.id) === String(e.target.value))
                 setSelectedVariant(v)
               }}
               className="mt-2 w-full text-xs border-2 border-gray-100 rounded-xl px-2 py-1.5 focus:outline-none focus:border-coral bg-cream font-semibold">

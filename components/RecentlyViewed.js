@@ -11,7 +11,9 @@ export default function RecentlyViewed({ currentProductId }) {
   useEffect(() => {
     try {
       const stored = JSON.parse(localStorage.getItem('recently_viewed') || '[]')
-      const filtered = stored.filter(p => p.id !== currentProductId).slice(0, 4)
+      const filtered = stored
+        .filter((p) => (p._id || p.id) !== currentProductId)
+        .slice(0, 4)
       setViewed(filtered)
     } catch {}
   }, [currentProductId])

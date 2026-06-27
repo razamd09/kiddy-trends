@@ -11,8 +11,6 @@ export default function SearchBar() {
   const ref    = useRef(null)
   const router = useRouter()
 
-  const STORE_DOMAIN = 'the-kiddy-trends.myshopify.com'
-
   useEffect(() => {
     function handleClick(e) {
       if (ref.current && !ref.current.contains(e.target)) {
@@ -29,17 +27,12 @@ export default function SearchBar() {
     const timer = setTimeout(async () => {
       setLoading(true)
       try {
-        const res  = await fetch('https://' + STORE_DOMAIN + '/products.json?limit=250')
+        const res  = await fetch('/api/products?limit=8&search=' + encodeURIComponent(query), {
+          cache: 'no-store',
+          headers: { 'pragma': 'no-cache', 'cache-control': 'no-cache' }
+        })
         const data = await res.json()
-        const q    = query.toLowerCase()
-        const filtered = (data.products || [])
-          .filter(p =>
-            p.title.toLowerCase().includes(q) ||
-            (p.product_type || '').toLowerCase().includes(q) ||
-            (p.tags || []).join(' ').toLowerCase().includes(q)
-          )
-          .slice(0, 8)
-        setResults(filtered)
+        setResults((data.products || []).slice(0, 8))
         setOpen(true)
       } catch {}
       setLoading(false)
@@ -90,8 +83,7 @@ export default function SearchBar() {
                 const image = product.images?.[0]?.src
                 return (
                   <a key={product.id}
-                    href={'https://the-kiddy-trends.myshopify.com/products/' + product.handle}
-                    target="_blank" rel="noopener noreferrer"
+                    href={'/products/' + product.handle}
                     onClick={() => { setOpen(false); setShowSearch(false); setQuery('') }}
                     className="flex items-center gap-3 p-2 rounded-2xl hover:bg-cream transition-colors">
                     <div className="w-12 h-12 bg-cream rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden">

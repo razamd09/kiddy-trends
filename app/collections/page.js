@@ -2,8 +2,6 @@
 import { useState, useEffect } from 'react'
 import ProductCard from '../../components/ProductCard'
 
-const STORE_DOMAIN = 'the-kiddy-trends.myshopify.com'
-
 const categories = [
   {
     id: 'newborn', label: 'Newborn', emoji: '👶', color: 'bg-skyblue/30',
@@ -102,11 +100,27 @@ export default function Collections() {
     }
     async function fetchAll() {
       try {
-        const [p1, p2] = await Promise.all([
-          fetch('https://' + STORE_DOMAIN + '/products.json?limit=250&page=1').then(r => r.json()),
-          fetch('https://' + STORE_DOMAIN + '/products.json?limit=250&page=2').then(r => r.json()),
-        ])
-        const all = [...(p1.products || []), ...(p2.products || [])]
+        const first = await fetch('/api/products?limit=200&page=1', {
+          cache: 'no-store',
+          headers: { 'pragma': 'no-cache', 'cache-control': 'no-cache' }
+        }).then(r => r.json())
+
+        const totalPages = Math.max(first.pages || 1, 1)
+        const restPagePromises = []
+        for (let p = 2; p <= totalPages; p++) {
+          restPagePromises.push(
+            fetch('/api/products?limit=200&page=' + p, {
+              cache: 'no-store',
+              headers: { 'pragma': 'no-cache', 'cache-control': 'no-cache' }
+            }).then(r => r.json())
+          )
+        }
+
+        const restPages = restPagePromises.length > 0 ? await Promise.all(restPagePromises) : []
+        const all = [
+          ...(first.products || []),
+          ...restPages.flatMap((pageResult) => pageResult.products || [])
+        ]
         cachedProducts = all
         cacheTime = Date.now()
         setProducts(all)
