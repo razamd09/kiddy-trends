@@ -124,8 +124,10 @@ export default function SpinWheelPopup() {
       }
 
       if (selected.amount > 0) {
-        nextState.activeDiscount = selected.amount
-        nextState.discountCode = 'SPIN' + selected.amount
+        nextState.pendingDiscount = selected.amount
+        nextState.pendingCode = 'SPIN' + selected.amount
+        nextState.activeDiscount = 0
+        nextState.discountCode = ''
         nextState.consumed = false
         nextState.lockedUntil = now + LOCK_MS
       } else if (nextSpinsUsed >= MAX_SPINS_PER_WINDOW) {
@@ -136,12 +138,39 @@ export default function SpinWheelPopup() {
       setSpinsLeft(Math.max(0, MAX_SPINS_PER_WINDOW - nextSpinsUsed))
       setResult(selected)
       setSpinning(false)
-
-      const shouldClose = selected.amount > 0 || nextSpinsUsed >= MAX_SPINS_PER_WINDOW
-      if (shouldClose) {
-        window.setTimeout(() => setOpen(false), 2000)
-      }
     }, 4100)
+  }
+
+  function applyDiscount() {
+    if (!result || result.amount <= 0) return
+    const now = Date.now()
+    const state = readState(now)
+    saveState({
+      ...state,
+      activeDiscount: result.amount,
+      discountCode: state.pendingCode || ('SPIN' + result.amount),
+      pendingDiscount: 0,
+      pendingCode: '',
+      consumed: false,
+    })
+    setOpen(false)
+  }
+
+  function closePopup() {
+    const now = Date.now()
+    const state = readState(now)
+    const cleared = {
+      ...state,
+      pendingDiscount: 0,
+      pendingCode: '',
+    }
+    if (result?.amount > 0) {
+      cleared.activeDiscount = 0
+      cleared.discountCode = ''
+      cleared.consumed = true
+    }
+    saveState(cleared)
+    setOpen(false)
   }
 
   if (!open) return null
@@ -166,20 +195,27 @@ export default function SpinWheelPopup() {
         {result && (
           <p className={'font-semibold mb-4 ' + (result.amount > 0 ? 'text-green-600' : 'text-gray-500')}>
             {result.amount > 0
-              ? ('🎉 You won PKR ' + result.amount + ' discount! Applied at checkout.')
+              ? ('🎉 You won PKR ' + result.amount + ' discount!')
               : '🙂 Better luck next time!'}
           </p>
         )}
 
-        <button
-          onClick={spinNow}
-          disabled={spinning || spinsLeft <= 0 || (result && result.amount > 0)}
-          className="w-full bg-coral text-white font-display text-lg py-3 rounded-2xl hover:bg-opacity-90 disabled:opacity-60"
-        >
-          {spinning ? 'Spinning...' : 'Spin Now'}
-        </button>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            onClick={result?.amount > 0 ? applyDiscount : spinNow}
+            disabled={spinning || spinsLeft <= 0 || (result && result.amount <= 0 && spinsLeft <= 0)}
+            className="w-full bg-coral text-white font-display text-base py-3 rounded-2xl hover:bg-opacity-90 disabled:opacity-60"
+          >
+            {result?.amount > 0 ? 'Apply Discount' : (spinning ? 'Spinning...' : 'Spin Now')}
+          </button>
+          <button
+            onClick={closePopup}
+            className="w-full bg-gray-100 text-charcoal font-display text-base py-3 rounded-2xl hover:bg-gray-200"
+          >
+            Cancel / Close
+          </button>
+        </div>
       </div>
     </div>
   )
 }
-
