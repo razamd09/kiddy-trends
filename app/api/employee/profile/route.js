@@ -20,20 +20,21 @@ function normalizePermissions(input) {
     }
 }
 
-export async function POST(request) {
+export async function GET(request) {
     try {
-        const { employee_id, password } = await request.json()
+        const { searchParams } = new URL(request.url)
+        const employeeId = searchParams.get('employee_id')
+        if (!employeeId) return Response.json({ error: 'employee_id required' }, { status: 400 })
 
         const { data, error } = await supabase
             .from('employees')
-            .select('*')
-            .eq('employee_id', employee_id)
-            .eq('password', password)
+            .select('id, name, employee_id, role, email, is_active')
+            .eq('employee_id', employeeId)
             .eq('is_active', true)
             .single()
 
         if (error || !data) {
-            return Response.json({ error: 'Invalid ID or password' }, { status: 401 })
+            return Response.json({ error: 'Employee not found' }, { status: 404 })
         }
 
         const { data: permissionRow } = await supabase
@@ -41,20 +42,15 @@ export async function POST(request) {
             .select('can_manage_orders, can_manage_products, can_manage_rewards')
             .eq('employee_id', data.id)
             .single()
-        const permissions = normalizePermissions(permissionRow || DEFAULT_PERMISSIONS)
 
         return Response.json({
             success: true,
             employee: {
-                id:          data.id,
-                name:        data.name,
-                employee_id: data.employee_id,
-                role:        data.role,
-                email:       data.email,
-                permissions,
-            }
+                ...data,
+                permissions: normalizePermissions(permissionRow || DEFAULT_PERMISSIONS),
+            },
         })
-    } catch (e) {
-        return Response.json({ error: e.message }, { status: 500 })
+    } catch (error) {
+        return Response.json({ error: error.message }, { status: 500 })
     }
 }

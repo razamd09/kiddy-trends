@@ -4,12 +4,13 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 export default function AdminEmployees() {
+    const defaultPermissions = { can_manage_orders: true, can_manage_products: true, can_manage_rewards: true }
     const [employees, setEmployees] = useState([])
     const [loading, setLoading]     = useState(true)
     const [verified, setVerified]   = useState(false)
     const [showForm, setShowForm]   = useState(false)
     const [editing, setEditing]     = useState(null)
-    const [form, setForm]           = useState({ name: '', employee_id: '', email: '', phone: '', role: 'employee', password: '' })
+    const [form, setForm]           = useState({ name: '', employee_id: '', email: '', phone: '', role: 'employee', password: '', permissions: { can_manage_orders: true, can_manage_products: true, can_manage_rewards: true } })
     const [saving, setSaving]       = useState(false)
     const [error, setError]         = useState('')
     const router = useRouter()
@@ -76,7 +77,7 @@ export default function AdminEmployees() {
         } else {
             setShowForm(false)
             setEditing(null)
-            setForm({ name: '', employee_id: '', email: '', phone: '', role: 'employee', password: '' })
+            setForm({ name: '', employee_id: '', email: '', phone: '', role: 'employee', password: '', permissions: { ...defaultPermissions } })
             fetchEmployees()
         }
         setSaving(false)
@@ -94,8 +95,30 @@ export default function AdminEmployees() {
 
     function handleEdit(emp) {
         setEditing(emp)
-        setForm({ name: emp.name, employee_id: emp.employee_id, email: emp.email || '', phone: formatPhone(emp.phone || ''), role: emp.role, password: '' })
+        setForm({
+            name: emp.name,
+            employee_id: emp.employee_id,
+            email: emp.email || '',
+            phone: formatPhone(emp.phone || ''),
+            role: emp.role,
+            password: '',
+            permissions: { ...(emp.permissions || defaultPermissions) },
+        })
         setShowForm(true)
+    }
+
+    async function toggleModule(emp, key) {
+        const token = localStorage.getItem('admin_token')
+        const nextPermissions = {
+            ...(emp.permissions || defaultPermissions),
+            [key]: !(emp.permissions || defaultPermissions)[key],
+        }
+        await fetch('/api/admin/employees', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+            body: JSON.stringify({ id: emp.id, permissions: nextPermissions }),
+        })
+        fetchEmployees()
     }
 
     function logout() {
@@ -118,7 +141,7 @@ export default function AdminEmployees() {
                     <span className="bg-coral/10 text-coral text-xs px-2 py-1 rounded-full font-bold">{employees.length}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button onClick={() => { setShowForm(true); setEditing(null); setForm({ name: '', employee_id: '', email: '', phone: '', role: 'employee', password: '' }) }}
+                    <button onClick={() => { setShowForm(true); setEditing(null); setForm({ name: '', employee_id: '', email: '', phone: '', role: 'employee', password: '', permissions: { ...defaultPermissions } }) }}
                             className="bg-coral text-white font-display text-sm px-5 py-2 rounded-full hover:bg-opacity-90">
                         + Add Employee
                     </button>
@@ -178,6 +201,44 @@ export default function AdminEmployees() {
                                        onChange={e => setForm({...form, password: e.target.value})}
                                        className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm" />
                             </div>
+                            <div className="md:col-span-2">
+                                <label className="block text-sm font-semibold text-charcoal mb-2">Employee Module Access</label>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                    <label className="bg-cream border-2 border-gray-100 rounded-2xl px-3 py-2 text-sm text-charcoal flex items-center justify-between">
+                                        Manage Orders
+                                        <input
+                                            type="checkbox"
+                                            checked={form.permissions?.can_manage_orders !== false}
+                                            onChange={(e) => setForm({
+                                                ...form,
+                                                permissions: { ...(form.permissions || defaultPermissions), can_manage_orders: e.target.checked },
+                                            })}
+                                        />
+                                    </label>
+                                    <label className="bg-cream border-2 border-gray-100 rounded-2xl px-3 py-2 text-sm text-charcoal flex items-center justify-between">
+                                        Manage Products
+                                        <input
+                                            type="checkbox"
+                                            checked={form.permissions?.can_manage_products !== false}
+                                            onChange={(e) => setForm({
+                                                ...form,
+                                                permissions: { ...(form.permissions || defaultPermissions), can_manage_products: e.target.checked },
+                                            })}
+                                        />
+                                    </label>
+                                    <label className="bg-cream border-2 border-gray-100 rounded-2xl px-3 py-2 text-sm text-charcoal flex items-center justify-between">
+                                        Reward Points
+                                        <input
+                                            type="checkbox"
+                                            checked={form.permissions?.can_manage_rewards !== false}
+                                            onChange={(e) => setForm({
+                                                ...form,
+                                                permissions: { ...(form.permissions || defaultPermissions), can_manage_rewards: e.target.checked },
+                                            })}
+                                        />
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                         {error && <p className="text-red-400 text-sm mt-3">{error}</p>}
                         <div className="flex gap-3 mt-4">
@@ -221,6 +282,20 @@ export default function AdminEmployees() {
                                             <span className={'text-xs px-2 py-0.5 rounded-full font-bold ' + (emp.is_active ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-500')}>
                         {emp.is_active ? 'Active' : 'Inactive'}
                       </span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-1 mt-2">
+                                           <button onClick={() => toggleModule(emp, 'can_manage_orders')}
+                                                   className={'text-xs px-2 py-1 rounded-full font-semibold ' + ((emp.permissions?.can_manage_orders !== false) ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500')}>
+                                               Orders: {(emp.permissions?.can_manage_orders !== false) ? 'ON' : 'OFF'}
+                                           </button>
+                                           <button onClick={() => toggleModule(emp, 'can_manage_products')}
+                                                   className={'text-xs px-2 py-1 rounded-full font-semibold ' + ((emp.permissions?.can_manage_products !== false) ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500')}>
+                                               Products: {(emp.permissions?.can_manage_products !== false) ? 'ON' : 'OFF'}
+                                           </button>
+                                           <button onClick={() => toggleModule(emp, 'can_manage_rewards')}
+                                                   className={'text-xs px-2 py-1 rounded-full font-semibold ' + ((emp.permissions?.can_manage_rewards !== false) ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500')}>
+                                               Rewards: {(emp.permissions?.can_manage_rewards !== false) ? 'ON' : 'OFF'}
+                                           </button>
                                         </div>
                                     </div>
                                 </div>

@@ -5,6 +5,11 @@ import Image from 'next/image'
 
 export default function EmployeeDashboard() {
     const [employee, setEmployee]     = useState(null)
+    const [permissions, setPermissions] = useState({
+        can_manage_orders: true,
+        can_manage_products: true,
+        can_manage_rewards: true,
+    })
     const [attendance, setAttendance] = useState(null)
     const [loading, setLoading]       = useState(false)
     const [message, setMessage]       = useState('')
@@ -17,11 +22,36 @@ export default function EmployeeDashboard() {
         if (!stored) { router.push('/employee'); return }
         const emp = JSON.parse(stored)
         setEmployee(emp)
+        setPermissions(emp.permissions || {
+            can_manage_orders: true,
+            can_manage_products: true,
+            can_manage_rewards: true,
+        })
+        fetchEmployeeProfile(emp.employee_id)
         fetchTodayAttendance(emp.employee_id)
         fetchHistory(emp.employee_id)
         const timer = setInterval(() => setTime(new Date()), 1000)
         return () => clearInterval(timer)
     }, [])
+
+    async function fetchEmployeeProfile(empId) {
+        try {
+            const res = await fetch('/api/employee/profile?employee_id=' + encodeURIComponent(empId), { cache: 'no-store' })
+            const data = await res.json()
+            if (data.success && data.employee) {
+                setEmployee((prev) => ({ ...prev, ...data.employee }))
+                setPermissions(data.employee.permissions || {
+                    can_manage_orders: true,
+                    can_manage_products: true,
+                    can_manage_rewards: true,
+                })
+                localStorage.setItem('employee', JSON.stringify({
+                    ...JSON.parse(localStorage.getItem('employee') || '{}'),
+                    ...data.employee,
+                }))
+            }
+        } catch {}
+    }
 
     async function fetchTodayAttendance(empId) {
         const today = new Date().toISOString().split('T')[0]
@@ -197,7 +227,55 @@ export default function EmployeeDashboard() {
                         </div>
                     )}
                 </div>
+
+                <div className="bg-white rounded-3xl p-5">
+                    <p className="font-display text-lg text-charcoal mb-4">Module Access</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <ModuleCard
+                            enabled={permissions.can_manage_orders}
+                            title="Manage Orders"
+                            icon="📦"
+                            href="/employee/orders"
+                            subtitle="View and update order status"
+                        />
+                        <ModuleCard
+                            enabled={permissions.can_manage_products}
+                            title="Manage Products"
+                            icon="👕"
+                            href="/employee/products"
+                            subtitle="Update stock and pricing"
+                        />
+                        <ModuleCard
+                            enabled={permissions.can_manage_rewards}
+                            title="Reward Points"
+                            icon="⭐"
+                            href="/employee/rewards"
+                            subtitle="View member points summary"
+                        />
+                    </div>
+                </div>
             </div>
         </div>
+    )
+}
+
+function ModuleCard({ enabled, title, icon, href, subtitle }) {
+    if (!enabled) {
+        return (
+            <div className="rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 p-4 text-center opacity-70">
+                <div className="text-2xl mb-2">{icon}</div>
+                <p className="font-display text-base text-charcoal">{title}</p>
+                <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
+                <p className="text-xs text-red-400 mt-2 font-semibold">Disabled by admin</p>
+            </div>
+        )
+    }
+
+    return (
+        <a href={href} className="rounded-2xl border-2 border-gray-100 bg-cream p-4 text-center hover:border-coral transition-colors block">
+            <div className="text-2xl mb-2">{icon}</div>
+            <p className="font-display text-base text-charcoal">{title}</p>
+            <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
+        </a>
     )
 }
