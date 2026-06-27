@@ -86,6 +86,13 @@ function slugifyTitle(value) {
         .replace(/^-+|-+$/g, '')
 }
 
+function getTitlePriority(title) {
+    const t = String(title || '').toLowerCase()
+    if (t.includes('summer new arrival 2026')) return 2
+    if (t.includes('2026')) return 1
+    return 0
+}
+
 function transformProduct(product) {
     const rawVariants = Array.isArray(product.variants) ? product.variants : []
     const hasRealVariants = rawVariants.some((v) => v && v.option1_value)
@@ -170,7 +177,7 @@ export async function GET(request) {
         }
 
         if (handle) query = query.limit(2000)
-        else query = query.range(offset, offset + limit - 1)
+        else query = query.limit(5000)
 
         let { data, error, count } = await query
 
@@ -189,7 +196,7 @@ export async function GET(request) {
 
             const result = handle
                 ? await fallback.limit(2000)
-                : await fallback.range(offset, offset + limit - 1)
+                : await fallback.limit(5000)
             data = result.data
             error = result.error
             count = result.count
@@ -235,13 +242,23 @@ export async function GET(request) {
             return { ...product, images: signedUrls }
         }))
 
-        const transformedProducts = productsWithSignedUrls.map(transformProduct)
-        const total = handle ? transformedProducts.length : (count || transformedProducts.length)
+        const transformedProducts = productsWithSignedUrls
+            .map(transformProduct)
+            .sort((a, b) => {
+                const priorityDiff = getTitlePriority(b.title) - getTitlePriority(a.title)
+                if (priorityDiff !== 0) return priorityDiff
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            })
+
+        const total = transformedProducts.length || count || 0
+        const paginatedProducts = handle
+            ? transformedProducts
+            : transformedProducts.slice(offset, offset + limit)
         const pages = Math.max(Math.ceil(total / limit), 1)
 
         const response = Response.json({
             success: true,
-            products: transformedProducts,
+            products: paginatedProducts,
             total,
             page,
             pages,
