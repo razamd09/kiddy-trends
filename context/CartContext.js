@@ -11,7 +11,11 @@ export function CartProvider({ children }) {
     const saved = localStorage.getItem('kt_cart')
     if (saved) {
       const parsed = JSON.parse(saved)
-      const fixed = parsed.map(item => ({ ...item, quantity: Math.min(item.quantity, 2) }))
+      const fixed = parsed.map(item => {
+        const maxStock = Number.isFinite(Number(item.stock)) ? Number(item.stock) : Infinity
+        const safeQty = Math.max(1, Number(item.quantity) || 1)
+        return { ...item, quantity: Math.min(safeQty, maxStock) }
+      })
       setCart(fixed)
     }
   }, [])
@@ -20,11 +24,14 @@ export function CartProvider({ children }) {
     localStorage.setItem('kt_cart', JSON.stringify(cart))
   }, [cart])
 
-  function addToCart(product, variant, stock, trackStock) {
+  function addToCart(product, variant) {
     setCart(prev => {
+      const variantStock = Number.isFinite(Number(variant?.inventory_quantity))
+        ? Number(variant.inventory_quantity)
+        : (Number.isFinite(Number(product?.stock)) ? Number(product.stock) : Infinity)
       const existing = prev.find(item => item.variantId === variant.id)
       if (existing) {
-        if (existing.quantity >= 2) return prev
+        if (existing.quantity >= variantStock) return prev
         return prev.map(item =>
           item.variantId === variant.id
             ? { ...item, quantity: item.quantity + 1 }
@@ -40,7 +47,7 @@ export function CartProvider({ children }) {
         image:        product.images?.[0]?.src || null,
         handle:       product.handle,
         quantity:     1,
-        stock:        2,
+        stock:        variantStock,
       }]
     })
     setCartOpen(true)
@@ -54,7 +61,8 @@ export function CartProvider({ children }) {
     if (quantity < 1) { removeFromCart(variantId); return }
     setCart(prev => prev.map(item => {
       if (item.variantId !== variantId) return item
-      return { ...item, quantity: Math.min(quantity, 2) }
+      const maxStock = Number.isFinite(Number(item.stock)) ? Number(item.stock) : Infinity
+      return { ...item, quantity: Math.min(quantity, maxStock) }
     }))
   }
 

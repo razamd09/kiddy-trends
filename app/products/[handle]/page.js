@@ -139,9 +139,12 @@ export default function ProductPage() {
 
   const price        = parseFloat(selectedVariant?.price || 0)
   const comparePrice = parseFloat(selectedVariant?.compare_at_price || 0)
+  const availableStock = Number.isFinite(Number(selectedVariant?.inventory_quantity))
+      ? Number(selectedVariant.inventory_quantity)
+      : (Number.isFinite(Number(product?.stock)) ? Number(product.stock) : Infinity)
   const inCart       = cart.find(i => i.variantId === selectedVariant?.id)?.quantity || 0
-  const isMaxed      = inCart >= 2
-  const isSoldOut    = false
+  const isMaxed      = inCart >= availableStock
+  const isSoldOut    = selectedVariant ? selectedVariant.available === false : false
 
   const discountPct = (() => {
     const type  = (product?.product_type || '').toLowerCase()
@@ -156,11 +159,7 @@ export default function ProductPage() {
       ? comparePrice
       : Math.round(price * (1 + discountPct / 100) / 100) * 100
 
-  const lowStock = (() => {
-    const seed = product?.id % 10
-    if (!product || seed > 4) return null
-    return [1,2,3,2,1,3,2,1,3,2][seed]
-  })()
+  const lowStock = availableStock > 0 && availableStock <= 5 ? availableStock : null
 
   const hasVariants = product?.variants?.length > 1 &&
       !(product?.variants?.length === 1 && product?.variants[0]?.title === 'Default Title')
@@ -169,7 +168,7 @@ export default function ProductPage() {
 
   function handleAddToCart() {
     if (isSoldOut || isMaxed) return
-    addToCart(product, selectedVariant, 2, true)
+    addToCart(product, selectedVariant)
     setAdded(true)
     setTimeout(() => setAdded(false), 2000)
   }
@@ -339,10 +338,11 @@ export default function ProductPage() {
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {product.variants.map(v => (
-                          <button key={v.id} onClick={() => setSelectedVariant(v)}
+                          <button key={v.id} onClick={() => setSelectedVariant(v)} disabled={v.available === false}
                                   className={'px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all ' +
-                                      (selectedVariant?.id === v.id ? 'border-coral bg-coral text-white' : 'border-gray-200 text-charcoal hover:border-coral')}>
-                            {v.title}
+                                      (selectedVariant?.id === v.id ? 'border-coral bg-coral text-white' : 'border-gray-200 text-charcoal hover:border-coral') +
+                                      (v.available === false ? ' opacity-50 cursor-not-allowed' : '')}>
+                            {v.title}{v.available === false ? ' (Sold Out)' : ''}
                           </button>
                       ))}
                     </div>

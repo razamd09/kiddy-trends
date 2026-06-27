@@ -10,14 +10,6 @@ function getCardRating(productId) {
   return (productId % 2 === 0) ? 5 : 4
 }
 
-// Fake low stock — shows on ~40% of products
-function getLowStock(productId) {
-  const seed = productId % 10
-  if (seed > 4) return null
-  const stocks = [1, 2, 3, 2, 1, 3, 2, 1, 3, 2]
-  return stocks[seed]
-}
-
 // Fake discount % based on category
 function getFakeDiscount(product) {
   const type  = (product.product_type || '').toLowerCase()
@@ -38,10 +30,13 @@ export default function ProductCard({ product }) {
   const comparePrice = parseFloat(selectedVariant?.compare_at_price || 0)
   const image        = product.images?.[0]?.src
   const isSoldOut    = selectedVariant ? selectedVariant.available === false : false
+  const availableStock = Number.isFinite(Number(selectedVariant?.inventory_quantity))
+    ? Number(selectedVariant.inventory_quantity)
+    : (Number.isFinite(Number(product?.stock)) ? Number(product.stock) : Infinity)
   const inCart       = cart.find(i => i.variantId === selectedVariant?.id)?.quantity || 0
-  const isMaxed      = inCart >= 2
+  const isMaxed      = inCart >= availableStock
   const rating       = getCardRating(product.id)
-  const lowStock     = getLowStock(product.id)
+  const lowStock     = availableStock > 0 && availableStock <= 3 ? availableStock : null
   const discountPct  = getFakeDiscount(product)
 
   // If no compare price set by Shopify, generate fake original price
@@ -55,7 +50,7 @@ export default function ProductCard({ product }) {
 
   function handleAddToCart() {
     if (isSoldOut || isMaxed) return
-    addToCart(product, selectedVariant, 2, true)
+    addToCart(product, selectedVariant)
     setAdded(true)
     setTimeout(() => setAdded(false), 2000)
   }
