@@ -185,6 +185,7 @@ function transformProduct(product) {
         options,
         stock: product.stock || 0,
         is_active: product.is_active !== false,
+        product_version: product.product_version || null,
     }
 }
 
@@ -319,6 +320,14 @@ export async function GET(request) {
         const transformedProducts = productsWithSignedUrls
             .map(transformProduct)
             .sort((a, b) => {
+                function versionPriority(p) {
+                    const v = String(p?.product_version || '').toLowerCase()
+                    return v === 'new arrivals' ? 2 : 0
+                }
+                const aVer = versionPriority(a)
+                const bVer = versionPriority(b)
+                if (bVer - aVer !== 0) return bVer - aVer
+
                 const priorityDiff = getTitlePriority(b.title) - getTitlePriority(a.title)
                 if (priorityDiff !== 0) return priorityDiff
                 return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()

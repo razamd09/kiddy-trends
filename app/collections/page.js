@@ -151,12 +151,19 @@ export default function Collections() {
   if (sort === 'old')          filtered = [...filtered].sort((a,b) => new Date(a.created_at) - new Date(b.created_at))
   if (sort === 'new')          filtered = [...filtered].sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
   if (sort === 'best_selling') filtered = [...filtered].sort((a,b) => (b.variants?.[0]?.inventory_quantity || 0) - (a.variants?.[0]?.inventory_quantity || 0))
-  // Priority sorting: "Summer New Arrival 2026" first, then other 2026, then rest
+  // Priority sorting: product_version 'new arrivals' first, then "Summer New Arrival 2026", then other 2026, then rest
   filtered = [...filtered].sort((a, b) => {
     const aTitle = (a.title || '').toLowerCase()
     const bTitle = (b.title || '').toLowerCase()
-    const aPriority = aTitle.includes('summer new arrival 2026') ? 2 : aTitle.includes('2026') ? 1 : 0
-    const bPriority = bTitle.includes('summer new arrival 2026') ? 2 : bTitle.includes('2026') ? 1 : 0
+
+    const aVer = String(a.product_version || '').toLowerCase() === 'new arrivals' ? 3 : 0
+    const bVer = String(b.product_version || '').toLowerCase() === 'new arrivals' ? 3 : 0
+
+    const aTitlePriority = aTitle.includes('summer new arrival 2026') ? 2 : aTitle.includes('2026') ? 1 : 0
+    const bTitlePriority = bTitle.includes('summer new arrival 2026') ? 2 : bTitle.includes('2026') ? 1 : 0
+
+    const aPriority = aVer + aTitlePriority
+    const bPriority = bVer + bTitlePriority
     return bPriority - aPriority
   })
 
