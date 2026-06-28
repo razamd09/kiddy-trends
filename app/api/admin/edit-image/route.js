@@ -30,6 +30,44 @@ function parseHexColor(hex) {
     }
 }
 
+async function removeNearWhiteBackground(image, sharpLib) {
+    const { data, info } = await image
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true })
+
+    const output = Buffer.from(data)
+    for (let i = 0; i < output.length; i += 4) {
+        const r = output[i]
+        const g = output[i + 1]
+        const b = output[i + 2]
+        const a = output[i + 3]
+
+        const min = Math.min(r, g, b)
+        const max = Math.max(r, g, b)
+        const spread = max - min
+
+        // Strongly remove near-white/near-gray backgrounds.
+        if (min >= 236 && spread <= 20) {
+            output[i + 3] = 0
+            continue
+        }
+
+        // Soft-edge fade for almost-white pixels to reduce jagged borders.
+        if (min >= 220 && spread <= 32) {
+            output[i + 3] = Math.max(0, Math.min(255, Math.round(a * 0.35)))
+        }
+    }
+
+    return sharpLib(output, {
+        raw: {
+            width: info.width,
+            height: info.height,
+            channels: info.channels,
+        },
+    })
+}
+
 export async function POST(request) {
     try {
         const {
@@ -39,6 +77,7 @@ export async function POST(request) {
             flipVertical = false,
             fit = 'cover',
             background = '#ffffff',
+            removeBackground = false,
         } = await request.json()
 
         if (!url) {
@@ -83,6 +122,10 @@ export async function POST(request) {
                 background: parseHexColor(background),
                 withoutEnlargement: false,
             })
+        }
+
+        if (removeBackground) {
+            image = await removeNearWhiteBackground(image, sharp)
         }
 
         const edited = await image

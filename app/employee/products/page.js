@@ -42,6 +42,7 @@ export default function EmployeeProducts() {
         flipVertical: false,
         fit: 'cover',
         background: '#ffffff',
+        removeBackground: false,
         saving: false,
     })
     const router = useRouter()
@@ -586,6 +587,7 @@ export default function EmployeeProducts() {
             flipVertical: false,
             fit: 'cover',
             background: '#ffffff',
+            removeBackground: false,
             saving: false,
         })
     }
@@ -613,6 +615,7 @@ export default function EmployeeProducts() {
                     flipVertical: imageEditor.flipVertical,
                     fit: imageEditor.fit,
                     background: imageEditor.background,
+                    removeBackground: imageEditor.removeBackground,
                 })
             })
             const data = await readApiJson(res)
@@ -1394,14 +1397,13 @@ export default function EmployeeProducts() {
                                     </div>
                                 )}
 
-                                <a
-                                    href="https://www.remove.bg/upload"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="block w-full text-center px-3 py-2 bg-purple-500 text-white text-sm rounded-lg hover:bg-purple-600"
+                                <button
+                                    type="button"
+                                    onClick={() => setImageEditor(prev => ({ ...prev, removeBackground: !prev.removeBackground }))}
+                                    className={'block w-full text-center px-3 py-2 text-sm rounded-lg ' + (imageEditor.removeBackground ? 'bg-purple-700 text-white' : 'bg-purple-500 text-white hover:bg-purple-600')}
                                 >
-                                    Remove Background ↗
-                                </a>
+                                    {imageEditor.removeBackground ? 'Background Removal: ON' : 'Enable Background Removal'}
+                                </button>
                             </div>
 
                             <div className="grid grid-cols-2 gap-2 mt-5">

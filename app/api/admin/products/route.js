@@ -287,6 +287,7 @@ export async function POST(request) {
                 stock:         parseInt(body.stock) || 0,
                 is_active:     true,
                 source:        'custom',
+                product_version: body.product_version || null,
                 shopify_handle: body.shopify_handle || null,
             }])
             .select()
@@ -349,6 +350,10 @@ export async function PUT(request) {
 
         if (updates.stock !== undefined) {
             cleanUpdates.stock = parseInt(updates.stock) || 0
+        }
+
+        if (updates.product_version !== undefined) {
+            cleanUpdates.product_version = String(updates.product_version || '').trim()
         }
 
         const { data, error } = await supabase

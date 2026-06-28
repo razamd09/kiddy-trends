@@ -34,8 +34,9 @@ export default function AdminProducts() {
     const [loadingCdnStatus, setLoadingCdnStatus] = useState(false)
     const [form, setForm] = useState({
         title: '', description: '', price: '', compare_price: '',
-        category: '', product_type: '', tags: '', stock: ''
-    })
+            category: '', product_type: '', tags: '', stock: '',
+            product_version: 'Old Packs'
+        })
     const [formImages, setFormImages] = useState([])   // [{url, rotating}]
     const [formVariants, setFormVariants] = useState([]) // [{option1_name,option1_value,option2_name,option2_value,price,stock,sku}]
     const [rotatingIdx, setRotatingIdx] = useState(null)
@@ -47,6 +48,7 @@ export default function AdminProducts() {
         flipVertical: false,
         fit: 'cover',
         background: '#ffffff',
+        removeBackground: false,
         saving: false,
     })
     const router = useRouter()
@@ -258,7 +260,8 @@ export default function AdminProducts() {
                 images: normalizeImages(product.images),
                 variants: Array.isArray(product.variants) ? product.variants : null,
                 shopify_handle: baseHandle ? (baseHandle + '-copy-' + Date.now()) : null,
-            }
+                            product_version: product.product_version || 'Old Packs',
+                        }
 
             const res = await fetch(productsApiBase, {
                 method: 'POST',
@@ -278,7 +281,7 @@ export default function AdminProducts() {
     }
 
     function resetForm() {
-        setForm({ title: '', description: '', price: '', compare_price: '', category: '', product_type: '', tags: '', stock: '' })
+            setForm({ title: '', description: '', price: '', compare_price: '', category: '', product_type: '', tags: '', stock: '', product_version: 'Old Packs' })
         setFormImages([])
         setFormVariants([])
         setEditingId(null)
@@ -317,7 +320,8 @@ export default function AdminProducts() {
             product_type:  product.product_type  || '',
             tags:          (product.tags || []).join(', '),
             stock:         product.stock         || '',
-        })
+                    product_version: product.product_version || 'Old Packs',
+                })
         setEditingId(product.id)
         setShowForm(true)
     }
@@ -357,7 +361,8 @@ export default function AdminProducts() {
                 .map(img => img.url)
                 .filter((url) => typeof url === 'string' && url.trim() && !url.startsWith('blob:')),
             variants:      variants.length > 0 ? variants : null,
-        }
+                    product_version: form.product_version,
+                }
 
         const method = editingId ? 'PUT' : 'POST'
         if (editingId) payload.id = editingId
@@ -630,6 +635,7 @@ export default function AdminProducts() {
             flipVertical: false,
             fit: 'cover',
             background: '#ffffff',
+            removeBackground: false,
             saving: false,
         })
     }
@@ -657,6 +663,7 @@ export default function AdminProducts() {
                     flipVertical: imageEditor.flipVertical,
                     fit: imageEditor.fit,
                     background: imageEditor.background,
+                    removeBackground: imageEditor.removeBackground,
                 })
             })
             const data = await readApiJson(res)
@@ -955,12 +962,22 @@ export default function AdminProducts() {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block font-semibold text-xs text-charcoal mb-1">Product Type</label>
-                                        <input type="text" value={form.product_type}
-                                               onChange={e => setForm({...form, product_type: e.target.value})}
-                                               placeholder="e.g. T-Shirt, Pajama Set"
-                                               className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm" />
-                                    </div>
+                                                                            <label className="block font-semibold text-xs text-charcoal mb-1">Product Version</label>
+                                                                            <select required value={form.product_version}
+                                                                                    onChange={e => setForm({...form, product_version: e.target.value})}
+                                                                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm">
+                                                                                <option value="">Select version</option>
+                                                                                <option value="new arrivals">new arrivals</option>
+                                                                                <option value="Old Packs">Old Packs</option>
+                                                                            </select>
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block font-semibold text-xs text-charcoal mb-1">Product Type</label>
+                                                                            <input type="text" value={form.product_type}
+                                                                                   onChange={e => setForm({...form, product_type: e.target.value})}
+                                                                                   placeholder="e.g. T-Shirt, Pajama Set"
+                                                                                   className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm" />
+                                                                        </div>
                                     <div className="md:col-span-2">
                                         <label className="block font-semibold text-xs text-charcoal mb-1">Description</label>
                                         <textarea value={form.description}
@@ -1485,14 +1502,13 @@ export default function AdminProducts() {
                                     </div>
                                 )}
 
-                                <a
-                                    href="https://www.remove.bg/upload"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="block w-full text-center px-3 py-2 bg-purple-500 text-white text-sm rounded-lg hover:bg-purple-600"
+                                <button
+                                    type="button"
+                                    onClick={() => setImageEditor(prev => ({ ...prev, removeBackground: !prev.removeBackground }))}
+                                    className={'block w-full text-center px-3 py-2 text-sm rounded-lg ' + (imageEditor.removeBackground ? 'bg-purple-700 text-white' : 'bg-purple-500 text-white hover:bg-purple-600')}
                                 >
-                                    Remove Background ↗
-                                </a>
+                                    {imageEditor.removeBackground ? 'Background Removal: ON' : 'Enable Background Removal'}
+                                </button>
                             </div>
 
                             <div className="grid grid-cols-2 gap-2 mt-5">

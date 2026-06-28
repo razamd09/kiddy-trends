@@ -99,6 +99,9 @@ function mapShopifyRow(row) {
     const status = cleanText(row['Status']).toLowerCase()
     const isActive = status ? status === 'active' : published
 
+    const lowerTitle = String(title || '').toLowerCase()
+    const product_version = lowerTitle.includes('summer new arrival 2026') ? 'new arrivals' : 'Old Packs'
+
     const description = cleanText(row['Body (HTML)'])
     const category = cleanText(row['Product Category']) || cleanText(row['Type']) || 'Uncategorized'
     const productType = cleanText(row['Type']) || cleanText(row['Product Category']) || ''
@@ -131,7 +134,8 @@ function mapShopifyRow(row) {
         variants,
         stock,
         is_active: isActive,
-        source: 'shopify_csv'
+        source: 'shopify_csv',
+        product_version,
     }
 }
 
@@ -157,6 +161,7 @@ function mergeRowsByHandle(rows) {
                 stock: mapped.stock || 0,
                 is_active: mapped.is_active,
                 source: 'shopify_csv',
+                product_version: mapped.product_version || null,
                 shopify_handle: mapped.handle,
             })
             continue
