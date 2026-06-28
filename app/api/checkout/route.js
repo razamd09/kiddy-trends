@@ -38,20 +38,20 @@ async function sendOrderNotification({ orderNumber, customer, cartItems, subtota
         })
         .join('\n')
 
-    const payload = {
+    const buildPayload = (toEmail) => ({
         service_id: EMAILJS_SERVICE_ID,
         template_id: EMAILJS_TEMPLATE_ID,
         user_id: EMAILJS_PUBLIC_KEY,
         template_params: {
-            to_email: ORDER_NOTIFICATION_EMAIL,
-            recipient_email: ORDER_NOTIFICATION_EMAIL,
-            email: ORDER_NOTIFICATION_EMAIL,
-            customer_email: ORDER_NOTIFICATION_EMAIL,
+            to_email: toEmail,
+            recipient_email: toEmail,
+            email: toEmail,
+            customer_email: toEmail,
             buyer_email: customer.email || '',
-            to_name: 'Kiddy Trends Admin',
-            from_name: 'Website Order Bot',
+            to_name: toEmail === ORDER_NOTIFICATION_EMAIL ? 'Kiddy Trends Admin' : (customer.name || 'Valued Customer'),
+            from_name: 'Kiddy Trends',
             reply_to: customer.email || ORDER_NOTIFICATION_EMAIL,
-            subject: 'New website order received - ' + orderNumber,
+            subject: 'Order Confirmation - ' + orderNumber,
             customer_name: customer.name || 'N/A',
             phone: customer.phone || '',
             address: customer.address || '',
@@ -62,19 +62,37 @@ async function sendOrderNotification({ orderNumber, customer, cartItems, subtota
             shipping: 'PKR ' + Number(shipping || 0).toLocaleString(),
             discount: 'PKR ' + Number(discount || 0).toLocaleString(),
             total: 'PKR ' + Number(total || 0).toLocaleString(),
-            message: 'We have received an order from website.',
+            message: 'Thank you for your order!' ,
         },
-    }
-
-    const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
     })
 
-    if (!res.ok) {
-        const text = await res.text()
-        throw new Error('EmailJS error: ' + text)
+    const sendEmail = async (toEmail) => {
+        const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(buildPayload(toEmail)),
+        })
+
+        if (!res.ok) {
+            const text = await res.text()
+            throw new Error(`EmailJS error for ${toEmail}: ${text}`)
+        }
+    }
+
+    try {
+        // Send to customer
+        if (customer.email) {
+            await sendEmail(customer.email)
+        }
+    } catch (err) {
+        console.log('Customer email error:', err.message)
+    }
+
+    try {
+        // Send CC to admin
+        await sendEmail(ORDER_NOTIFICATION_EMAIL)
+    } catch (err) {
+        console.log('Admin CC email error:', err.message)
     }
 }
 
