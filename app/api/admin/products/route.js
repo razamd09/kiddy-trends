@@ -289,6 +289,9 @@ export async function POST(request) {
                 source:        'custom',
                 product_version: body.product_version || null,
                 shopify_handle: body.shopify_handle || null,
+                last_action_by: 'admin',
+                last_action_type: 'added',
+                last_action_at: new Date().toISOString(),
             }])
             .select()
             .single()
@@ -311,7 +314,10 @@ export async function PUT(request) {
 
         const cleanUpdates = {
             ...updates,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            last_action_by: 'admin',
+            last_action_type: 'edited',
+            last_action_at: new Date().toISOString(),
         }
 
         if (updates.title !== undefined) {
@@ -381,6 +387,11 @@ export async function DELETE(request) {
             .from('products')
             .delete()
             .eq('id', id)
+
+        if (!error) {
+            // Log deletion (optional: store in audit_log table if created)
+            console.log('Product deleted by admin:', id)
+        }
 
         if (error) return Response.json({ error: error.message }, { status: 500 })
         return Response.json({ success: true })

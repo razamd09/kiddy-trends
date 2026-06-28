@@ -153,6 +153,9 @@ export async function POST(request) {
                 source: DRAFT_SOURCE,
                 product_version: body.product_version || null,
                 shopify_handle: body.shopify_handle || null,
+                last_action_by: 'admin',
+                last_action_type: 'added',
+                last_action_at: new Date().toISOString(),
             }])
             .select()
             .single()
@@ -170,7 +173,7 @@ export async function PUT(request) {
         const { id, ...updates } = body
         if (!id) return Response.json({ success: false, error: 'Product ID is required' }, { status: 400 })
 
-        const cleanUpdates = { ...updates, updated_at: new Date().toISOString() }
+        const cleanUpdates = { ...updates, updated_at: new Date().toISOString(), last_action_by: 'admin', last_action_type: 'edited', last_action_at: new Date().toISOString() }
         if (updates.title !== undefined) cleanUpdates.title = String(updates.title || '').trim()
         if (updates.category !== undefined) cleanUpdates.category = String(updates.category || '').trim()
         if (updates.description !== undefined) cleanUpdates.description = String(updates.description || '').trim()
@@ -208,6 +211,10 @@ export async function DELETE(request) {
             .delete()
             .eq('id', id)
             .eq('source', DRAFT_SOURCE)
+
+        if (!error) {
+            console.log('Draft deleted by admin:', id)
+        }
 
         if (error) return Response.json({ success: false, error: error.message }, { status: 500 })
         return Response.json({ success: true })

@@ -1317,6 +1317,7 @@ export default function AdminProducts() {
                                                 <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Price</th>
                                                 <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Variants</th>
                                                 <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Stock</th>
+                                                <th className="px-4 py-3 text-left font-semibold text-xs text-gray-500">Last Action</th>
                                                 <th className="px-4 py-3 text-center font-semibold text-sm text-charcoal">Actions</th>
                                             </tr>
                                             </thead>
@@ -1361,7 +1362,13 @@ export default function AdminProducts() {
                                 {product.stock}
                               </span>
                                                     </td>
-                                                    <td className="px-4 py-3 text-center">
+                                                   <td className="px-4 py-3 text-xs text-gray-500">
+                                                       <div className="space-y-1">
+                                                           <p>{product.last_action_type || 'unknown'}</p>
+                                                           <p className="text-gray-400">{product.last_action_at ? new Date(product.last_action_at).toLocaleDateString() : '—'}</p>
+                                                       </div>
+                                                   </td>
+                                                   <td className="px-4 py-3 text-center">
                                                         <div className="flex items-center justify-center gap-2">
                                                             <button onClick={() => openEdit(product)}
                                                                     className="px-3 py-1 text-xs bg-skyblue/20 text-charcoal rounded-lg hover:bg-skyblue/40">
