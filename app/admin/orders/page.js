@@ -326,10 +326,27 @@ export default function AdminOrders() {
                                         {getItems(selected).length === 0 ? (
                                             <p className="text-xs text-gray-400">No item details available</p>
                                         ) : getItems(selected).map((item, i) => {
-                                            const productUrl = item.handle ? `/products/${item.handle}` : '#'
+                                            const productUrl = item.handle ? `/products/${item.handle}` : `/api/product-search?q=${encodeURIComponent(item.title)}&id=${item.productId}`
+                                            const isApiLink = !item.handle
                                             return (
                                             <a key={i} href={productUrl} target="_blank" rel="noopener noreferrer"
-                                               className={'flex items-center gap-4 bg-white rounded-xl p-4 text-sm hover:shadow-lg hover:border-coral transition-all border-2 ' + (productUrl === '#' ? 'border-gray-200 opacity-75' : 'border-transparent cursor-pointer')}>
+                                               onClick={async (e) => {
+                                                    if (isApiLink) {
+                                                        e.preventDefault()
+                                                        try {
+                                                            const res = await fetch(`/api/product-search?q=${encodeURIComponent(item.title)}&id=${item.productId}`)
+                                                            const data = await res.json()
+                                                            if (data.success && data.handle) {
+                                                                window.open(`/products/${data.handle}`, '_blank')
+                                                            } else {
+                                                                alert('Product not found. Please search manually on the store.')
+                                                            }
+                                                        } catch (err) {
+                                                            alert('Error finding product: ' + err.message)
+                                                        }
+                                                    }
+                                               }}
+                                               className="flex items-center gap-4 bg-white rounded-xl p-4 text-sm hover:shadow-lg hover:border-coral transition-all border-2 border-transparent cursor-pointer">
                                                 <div className="flex-shrink-0 bg-gray-50 rounded-lg p-2">
                                                     {item.image ? (
                                                         <img src={item.image} alt={item.title} className="w-32 h-32 object-contain" />
@@ -340,9 +357,7 @@ export default function AdminOrders() {
                                                 <div className="flex-1 min-w-0">
                                                     <p className="font-semibold text-charcoal text-base leading-snug">{item.title}</p>
                                                     {item.variantTitle && <p className="text-xs text-gray-400 mt-2">{item.variantTitle}</p>}
-                                                    {productUrl !== '#' && (
-                                                        <p className="text-xs text-coral font-semibold mt-2">✓ Click to view product →</p>
-                                                    )}
+                                                    <p className="text-xs text-coral font-semibold mt-2">✓ Click to view product →</p>
                                                 </div>
                                                 <div className="text-right flex-shrink-0">
                                                     <p className="text-sm text-gray-400">x{item.quantity}</p>
