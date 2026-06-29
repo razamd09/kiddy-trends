@@ -1,0 +1,53 @@
+{
+  "name": "kiddy-trends-desktop",
+  "version": "1.0.0",
+  "description": "Offline product manager for Kiddy Trends - sync to production",
+  "main": "main.js",
+  "homepage": "./",
+  "scripts": {
+    "react-start": "react-scripts start",
+    "react-build": "react-scripts build",
+    "electron-start": "electron .",
+    "electron-dev": "concurrently \"npm run react-start\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron-build": "npm run react-build && electron-builder",
+    "dev": "npm run electron-dev",
+    "build": "npm run electron-build"
+  },
+  "dependencies": {
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "electron-squirrel-startup": "^1.1.1",
+    "sqlite3": "^5.1.6",
+    "@supabase/supabase-js": "^2.108.2",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "electron": "^latest",
+    "electron-builder": "^24.6.4",
+    "react-scripts": "5.0.1",
+    "concurrently": "^8.2.1",
+    "wait-on": "^7.0.1"
+  },
+  "build": {
+    "appId": "com.kiddytrends.desktop",
+    "productName": "Kiddy Trends Desktop",
+    "files": [
+      "build/**/*",
+      "main.js",
+      "preload.js",
+      "database.js",
+      "sync.js",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
