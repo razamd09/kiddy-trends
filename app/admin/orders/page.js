@@ -470,16 +470,28 @@ export default function AdminOrders() {
             {/* Product Modal */}
             {productModalHandle && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setProductModalHandle(null)}>
-                    <div className="bg-white rounded-3xl w-full max-w-4xl h-[90vh] flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                            <h2 className="font-display text-xl text-charcoal">Product Details</h2>
-                            <button onClick={() => setProductModalHandle(null)} className="text-gray-400 hover:text-coral text-2xl">✕</button>
+                    <div className="bg-white rounded-3xl max-w-lg shadow-2xl p-8 text-center" onClick={(e) => e.stopPropagation()}>
+                        <button onClick={() => setProductModalHandle(null)} className="absolute top-4 right-4 text-gray-400 hover:text-coral text-2xl">✕</button>
+                        <div className="mb-6">
+                            <p className="text-5xl mb-4">📦</p>
+                            <h2 className="font-display text-xl text-charcoal mb-2">Opening Product</h2>
+                            <p className="text-sm text-gray-400">The product page will open in a new tab</p>
                         </div>
-                        <iframe
-                            src={`/products/${productModalHandle}`}
-                            className="flex-1 w-full border-0"
-                            title="Product Details"
-                        />
+                        <div className="flex gap-3">
+                            <button 
+                                onClick={() => setProductModalHandle(null)}
+                                className="flex-1 px-4 py-2 rounded-xl border-2 border-gray-100 text-charcoal font-semibold hover:border-coral transition-all">
+                                Cancel
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    window.open(`/products/${productModalHandle}`, '_blank')
+                                    setProductModalHandle(null)
+                                }}
+                                className="flex-1 px-4 py-2 rounded-xl bg-coral text-white font-semibold hover:bg-opacity-90">
+                                Open in New Tab
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
