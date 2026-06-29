@@ -41,7 +41,6 @@ export default function AdminOrders() {
     const [updating, setUpdating]           = useState(false)
     const [lastOrderCount, setLastOrderCount] = useState(0)
     const [trackingInput, setTrackingInput] = useState('')
-    const [productModalHandle, setProductModalHandle] = useState(null)
     const router = useRouter()
 
     // Verify session
@@ -333,14 +332,14 @@ export default function AdminOrders() {
                                                    e.preventDefault()
                                                    const handle = item.handle
                                                    if (handle) {
-                                                       setProductModalHandle(handle)
+                                                       window.open(`/products/${handle}`, '_blank')
                                                    } else {
                                                        try {
                                                            const searchUrl = `/api/product-search?q=${encodeURIComponent(item.title)}${item.productId ? `&id=${item.productId}` : ''}`
                                                            const res = await fetch(searchUrl)
                                                            const data = await res.json()
                                                            if (data.success && data.handle) {
-                                                               setProductModalHandle(data.handle)
+                                                               window.open(`/products/${data.handle}`, '_blank')
                                                            } else {
                                                                alert('Product not found. Please search manually on the store.')
                                                            }
@@ -350,9 +349,9 @@ export default function AdminOrders() {
                                                    }
                                                }}
                                                className="flex items-center gap-4 bg-white rounded-xl p-4 text-sm hover:shadow-lg hover:border-coral transition-all border-2 border-transparent cursor-pointer">
-                                               <div className="flex-shrink-0 bg-gray-50 rounded-lg p-2">
+                                               <div className="flex-shrink-0 bg-gray-50 rounded-lg p-2 overflow-hidden">
                                                    {item.image ? (
-                                                       <img src={item.image} alt={item.title} className="w-32 h-32 object-contain" />
+                                                       <img src={item.image} alt={item.title} className="w-32 h-32 object-contain transition-transform duration-300 hover:scale-150" />
                                                    ) : (
                                                        <div className="w-32 h-32 flex items-center justify-center text-4xl">📦</div>
                                                    )}
@@ -466,6 +465,7 @@ export default function AdminOrders() {
                     </div>
                 </div>
             </div>
+
 
             {/* Product Modal */}
             {productModalHandle && (
