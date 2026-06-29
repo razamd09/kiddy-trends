@@ -50,6 +50,9 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   })
   const [errors, setErrors]           = useState({})
   const [discount, setDiscount]       = useState(null)
+  const [discountCode, setDiscountCode] = useState('')
+  const [discountCodeLoading, setDiscountCodeLoading] = useState(false)
+  const [discountCodeError, setDiscountCodeError] = useState('')
   const [rewards, setRewards]         = useState({ userId: '', points: 0, redeemed: 0 })
   const [showGiftFlash, setShowGiftFlash] = useState(false)
 
@@ -61,6 +64,8 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   const discountAmount = discount
     ? discount.type === 'percent' ? Math.round(price * discount.value / 100)
     : discount.type === 'fixed'   ? Math.min(discount.value, price)
+    : discount.discount_type === 'percentage' ? Math.round(price * discount.discount_value / 100)
+    : discount.discount_type === 'amount' ? Math.min(discount.discount_value, price)
     : 0 : 0
   const rewardsDiscount = rewards.redeemed || 0
   const total = price + shipping - (discount?.type !== 'shipping' ? discountAmount : 0) - rewardsDiscount
@@ -174,6 +179,44 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
     if (digits.length === 10) {
       lookupCustomerByPhone(digits)
     }
+  }
+
+  async function applyDiscountCode() {
+    if (!discountCode.trim()) {
+      setDiscountCodeError('Please enter a discount code')
+      return
+    }
+    setDiscountCodeLoading(true)
+    setDiscountCodeError('')
+    try {
+      const res = await fetch('/api/validate-discount', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: discountCode.trim() })
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setDiscountCodeError(data.error || 'Invalid discount code')
+        return
+      }
+      setDiscount({
+        code: data.code,
+        discount_type: data.discount_type,
+        discount_value: data.discount_value,
+        type: 'database'
+      })
+      setDiscountCode('')
+      setDiscountCodeError('')
+    } catch (err) {
+      setDiscountCodeError('Error validating code. Please try again.')
+    }
+    setDiscountCodeLoading(false)
+  }
+
+  function removeDiscountCode() {
+    setDiscount(null)
+    setDiscountCode('')
+    setDiscountCodeError('')
   }
 
   function buildWhatsAppMessage() {
@@ -501,6 +544,58 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                 </div>
                 <span className="ml-auto text-coral font-bold text-xs">✓ Selected</span>
               </div>
+
+              {/* Discount Code */}
+              {!discount ? (
+                <div>
+                  <label className="block font-semibold text-sm text-charcoal mb-2">Have a Discount Code? 🎟️</label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="e.g. SUMMER20" 
+                      value={discountCode}
+                      onChange={e => {
+                        setDiscountCode(e.target.value.toUpperCase())
+                        setDiscountCodeError('')
+                      }}
+                      onKeyPress={e => e.key === 'Enter' && applyDiscountCode()}
+                      disabled={discountCodeLoading}
+                      className="flex-1 px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm disabled:opacity-50"
+                    />
+                    <button 
+                      type="button"
+                      onClick={applyDiscountCode}
+                      disabled={discountCodeLoading || !discountCode.trim()}
+                      className="px-6 bg-coral text-white font-display py-3 rounded-2xl hover:bg-opacity-90 transition-all disabled:opacity-50"
+                    >
+                      {discountCodeLoading ? 'Checking...' : 'Apply'}
+                    </button>
+                  </div>
+                  {discountCodeError && <p className="text-red-400 text-xs mt-2">{discountCodeError}</p>}
+                </div>
+              ) : (
+                <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-display text-base text-green-700">✅ Discount Applied!</p>
+                      <p className="text-sm text-green-600 mt-1">
+                        Code: <span className="font-bold font-mono">{discount.code}</span>
+                        {' '}
+                        {discount.discount_type === 'percentage' 
+                          ? `(${discount.discount_value}% OFF)` 
+                          : `(PKR ${discount.discount_value} OFF)`}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={removeDiscountCode}
+                      className="text-green-600 hover:text-red-500 text-sm font-semibold transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Rewards */}
               <RewardsSection onRewardsChange={setRewards} />
