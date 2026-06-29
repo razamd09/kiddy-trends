@@ -96,7 +96,7 @@ export default function AdminDashboard() {
                         { label: 'Employees',       href: '/admin/employees',  icon: '👥', color: 'bg-skyblue text-white' },
                         { label: 'Attendance',      href: '/admin/attendance', icon: '📅', color: 'bg-mint text-white' },
                         { label: 'Rewards Points',  href: '/admin/rewards',    icon: '⭐', color: 'bg-sunny text-charcoal' },
-                        { label: 'Customers',       href: '/admin/customers',  icon: '💝', color: 'bg-lavender text-white' },
+                        { label: 'Discount Codes',  href: '/admin/discount-codes', icon: '🎟️', color: 'bg-green-500 text-white' },
                         { label: 'Feedback', href: '/admin/feedback', icon: '💝', color: 'bg-pink-400 text-white' },
                         { label: 'View Website',    href: '/',                 icon: '🌐', color: 'bg-charcoal text-white' },
                     ].map((link, i) => (
