@@ -41,6 +41,7 @@ export default function AdminOrders() {
     const [updating, setUpdating]           = useState(false)
     const [lastOrderCount, setLastOrderCount] = useState(0)
     const [trackingInput, setTrackingInput] = useState('')
+    const [productModalHandle, setProductModalHandle] = useState(null)
     const router = useRouter()
 
     // Verify session
@@ -327,42 +328,43 @@ export default function AdminOrders() {
                                             <p className="text-xs text-gray-400">No item details available</p>
                                         ) : getItems(selected).map((item, i) => {
                                             return (
-                                            <a key={i} href={item.handle ? `/products/${item.handle}` : '#'} 
+                                            <a key={i} href="#" 
                                                onClick={async (e) => {
-                                                    if (!item.handle) {
-                                                        e.preventDefault()
-                                                        try {
-                                                            const searchUrl = `/api/product-search?q=${encodeURIComponent(item.title)}${item.productId ? `&id=${item.productId}` : ''}`
-                                                            const res = await fetch(searchUrl)
-                                                            const data = await res.json()
-                                                            if (data.success && data.handle) {
-                                                                window.open(`/products/${data.handle}`, '_blank')
-                                                            } else {
-                                                                alert('Product not found. Please search manually on the store.')
-                                                            }
-                                                        } catch (err) {
-                                                            alert('Error finding product: ' + err.message)
-                                                        }
-                                                    }
+                                                   e.preventDefault()
+                                                   const handle = item.handle
+                                                   if (handle) {
+                                                       setProductModalHandle(handle)
+                                                   } else {
+                                                       try {
+                                                           const searchUrl = `/api/product-search?q=${encodeURIComponent(item.title)}${item.productId ? `&id=${item.productId}` : ''}`
+                                                           const res = await fetch(searchUrl)
+                                                           const data = await res.json()
+                                                           if (data.success && data.handle) {
+                                                               setProductModalHandle(data.handle)
+                                                           } else {
+                                                               alert('Product not found. Please search manually on the store.')
+                                                           }
+                                                       } catch (err) {
+                                                           alert('Error finding product: ' + err.message)
+                                                       }
+                                                   }
                                                }}
-                                               target={item.handle ? '_blank' : undefined}
-                                               rel={item.handle ? 'noopener noreferrer' : undefined}
                                                className="flex items-center gap-4 bg-white rounded-xl p-4 text-sm hover:shadow-lg hover:border-coral transition-all border-2 border-transparent cursor-pointer">
-                                                <div className="flex-shrink-0 bg-gray-50 rounded-lg p-2">
-                                                    {item.image ? (
-                                                        <img src={item.image} alt={item.title} className="w-32 h-32 object-contain" />
-                                                    ) : (
-                                                        <div className="w-32 h-32 flex items-center justify-center text-4xl">📦</div>
-                                                    )}
-                                                </div>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="font-semibold text-charcoal text-base leading-snug">{item.title}</p>
-                                                    {item.variantTitle && <p className="text-xs text-gray-400 mt-2">{item.variantTitle}</p>}
-                                                    <p className="text-xs text-coral font-semibold mt-2">✓ Click to view product →</p>
-                                                </div>
-                                                <div className="text-right flex-shrink-0">
-                                                    <p className="text-sm text-gray-400">x{item.quantity}</p>
-                                                    <p className="font-bold text-coral text-lg">PKR {(parseFloat(item.price || 0) * item.quantity).toLocaleString()}</p>
+                                               <div className="flex-shrink-0 bg-gray-50 rounded-lg p-2">
+                                                   {item.image ? (
+                                                       <img src={item.image} alt={item.title} className="w-32 h-32 object-contain" />
+                                                   ) : (
+                                                       <div className="w-32 h-32 flex items-center justify-center text-4xl">📦</div>
+                                                   )}
+                                               </div>
+                                               <div className="flex-1 min-w-0">
+                                                   <p className="font-semibold text-charcoal text-base leading-snug">{item.title}</p>
+                                                   {item.variantTitle && <p className="text-xs text-gray-400 mt-2">{item.variantTitle}</p>}
+                                                   <p className="text-xs text-coral font-semibold mt-2">✓ Click to view product →</p>
+                                               </div>
+                                               <div className="text-right flex-shrink-0">
+                                                   <p className="text-sm text-gray-400">x{item.quantity}</p>
+                                                   <p className="font-bold text-coral text-lg">PKR {(parseFloat(item.price || 0) * item.quantity).toLocaleString()}</p>
                                                 </div>
                                             </a>
                                             )
@@ -464,6 +466,23 @@ export default function AdminOrders() {
                     </div>
                 </div>
             </div>
+
+            {/* Product Modal */}
+            {productModalHandle && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setProductModalHandle(null)}>
+                    <div className="bg-white rounded-3xl w-full max-w-4xl h-[90vh] flex flex-col shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                            <h2 className="font-display text-xl text-charcoal">Product Details</h2>
+                            <button onClick={() => setProductModalHandle(null)} className="text-gray-400 hover:text-coral text-2xl">✕</button>
+                        </div>
+                        <iframe
+                            src={`/products/${productModalHandle}`}
+                            className="flex-1 w-full border-0"
+                            title="Product Details"
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
