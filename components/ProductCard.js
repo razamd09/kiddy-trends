@@ -65,7 +65,7 @@ export default function ProductCard({ product }) {
           {image ? (
             <div className="absolute inset-0 bg-white flex items-center justify-center p-3">
               <img src={image} alt={product.title}
-                className="w-full h-full object-contain mix-blend-multiply" loading="lazy" />
+                className="w-full h-full object-contain" loading="lazy" />
             </div>
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-5xl bg-white">👕</div>
