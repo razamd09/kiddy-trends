@@ -326,15 +326,14 @@ export default function AdminOrders() {
                                         {getItems(selected).length === 0 ? (
                                             <p className="text-xs text-gray-400">No item details available</p>
                                         ) : getItems(selected).map((item, i) => {
-                                            const productUrl = item.handle ? `/products/${item.handle}` : `/api/product-search?q=${encodeURIComponent(item.title)}&id=${item.productId}`
-                                            const isApiLink = !item.handle
                                             return (
-                                            <a key={i} href={productUrl} target="_blank" rel="noopener noreferrer"
+                                            <a key={i} href={item.handle ? `/products/${item.handle}` : '#'} 
                                                onClick={async (e) => {
-                                                    if (isApiLink) {
+                                                    if (!item.handle) {
                                                         e.preventDefault()
                                                         try {
-                                                            const res = await fetch(`/api/product-search?q=${encodeURIComponent(item.title)}&id=${item.productId}`)
+                                                            const searchUrl = `/api/product-search?q=${encodeURIComponent(item.title)}${item.productId ? `&id=${item.productId}` : ''}`
+                                                            const res = await fetch(searchUrl)
                                                             const data = await res.json()
                                                             if (data.success && data.handle) {
                                                                 window.open(`/products/${data.handle}`, '_blank')
@@ -346,6 +345,8 @@ export default function AdminOrders() {
                                                         }
                                                     }
                                                }}
+                                               target={item.handle ? '_blank' : undefined}
+                                               rel={item.handle ? 'noopener noreferrer' : undefined}
                                                className="flex items-center gap-4 bg-white rounded-xl p-4 text-sm hover:shadow-lg hover:border-coral transition-all border-2 border-transparent cursor-pointer">
                                                 <div className="flex-shrink-0 bg-gray-50 rounded-lg p-2">
                                                     {item.image ? (
