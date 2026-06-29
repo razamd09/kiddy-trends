@@ -325,23 +325,32 @@ export default function AdminOrders() {
                                     <div className="space-y-2">
                                         {getItems(selected).length === 0 ? (
                                             <p className="text-xs text-gray-400">No item details available</p>
-                                        ) : getItems(selected).map((item, i) => (
-                                            <a key={i} href={item.handle ? `/products/${item.handle}` : '#'} target="_blank" rel="noopener noreferrer"
-                                               className="flex items-center gap-3 bg-white rounded-xl p-3 text-sm hover:shadow-md hover:border-coral transition-all border border-transparent cursor-pointer">
-                                                <div className="flex-shrink-0">
-                                                    {item.image && <img src={item.image} alt="" className="w-20 h-20 object-contain rounded-lg bg-gray-50 p-1" />}
+                                        ) : getItems(selected).map((item, i) => {
+                                            const productUrl = item.handle ? `/products/${item.handle}` : '#'
+                                            return (
+                                            <a key={i} href={productUrl} target="_blank" rel="noopener noreferrer"
+                                               className={'flex items-center gap-4 bg-white rounded-xl p-4 text-sm hover:shadow-lg hover:border-coral transition-all border-2 ' + (productUrl === '#' ? 'border-gray-200 opacity-75' : 'border-transparent cursor-pointer')}>
+                                                <div className="flex-shrink-0 bg-gray-50 rounded-lg p-2">
+                                                    {item.image ? (
+                                                        <img src={item.image} alt={item.title} className="w-32 h-32 object-contain" />
+                                                    ) : (
+                                                        <div className="w-32 h-32 flex items-center justify-center text-4xl">📦</div>
+                                                    )}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="font-semibold text-charcoal text-sm leading-snug">{item.title}</p>
-                                                    {item.variantTitle && <p className="text-xs text-gray-400 mt-1">{item.variantTitle}</p>}
-                                                    <p className="text-xs text-gray-500 mt-1">Click to view product →</p>
+                                                    <p className="font-semibold text-charcoal text-base leading-snug">{item.title}</p>
+                                                    {item.variantTitle && <p className="text-xs text-gray-400 mt-2">{item.variantTitle}</p>}
+                                                    {productUrl !== '#' && (
+                                                        <p className="text-xs text-coral font-semibold mt-2">✓ Click to view product →</p>
+                                                    )}
                                                 </div>
                                                 <div className="text-right flex-shrink-0">
-                                                    <p className="text-xs text-gray-400">x{item.quantity}</p>
-                                                    <p className="font-bold text-coral text-sm">PKR {(parseFloat(item.price || 0) * item.quantity).toLocaleString()}</p>
+                                                    <p className="text-sm text-gray-400">x{item.quantity}</p>
+                                                    <p className="font-bold text-coral text-lg">PKR {(parseFloat(item.price || 0) * item.quantity).toLocaleString()}</p>
                                                 </div>
                                             </a>
-                                        ))}
+                                            )
+                                        })}
                                     </div>
                                     <div className="border-t border-gray-100 mt-3 pt-3 space-y-1 text-sm">
                                         <div className="flex justify-between text-gray-400">
