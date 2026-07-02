@@ -148,7 +148,6 @@ export async function GET(request) {
         let variantQuery = supabase
             .from('products')
             .select('*')
-            .or('source.is.null,source.neq.' + DRAFT_SOURCE)
 
         if (category && category !== 'all') {
             variantQuery = variantQuery.eq('category', category)
@@ -208,7 +207,6 @@ export async function GET(request) {
             let fallbackVariant = supabase
                 .from('products')
                 .select('*')
-                .or('source.is.null,source.neq.' + DRAFT_SOURCE)
             if (category && category !== 'all') {
                 fallbackVariant = fallbackVariant.eq('category', category)
             }
@@ -269,35 +267,37 @@ export async function GET(request) {
 export async function POST(request) {
     try {
         const body = await request.json()
+            const token = request.headers.get('x-admin-token') || 'admin'
+            const isActive = typeof body.is_active !== 'undefined' ? !!body.is_active : (body.status ? String(body.status) === 'active' : true)
 
-        const { data, error } = await supabase
-            .from('products')
-            .insert([{
-                title:         body.title,
-                description:   body.description,
-                price:         parseFloat(body.price) || 0,
-                compare_price: body.compare_price ? parseFloat(body.compare_price) : null,
-                images:        Array.isArray(body.images) 
-                    ? body.images.map(img => typeof img === 'string' ? img : img.src)
-                    : (body.images || []),
-                category:      body.category,
-                product_type:  body.product_type,
-                tags:          Array.isArray(body.tags) ? body.tags : (body.tags || []),
-                variants:      body.variants || null,
-                stock:         parseInt(body.stock) || 0,
-                is_active:     true,
-                source:        'custom',
-                product_version: body.product_version || null,
-                shopify_handle: body.shopify_handle || null,
-                last_action_by: 'admin',
-                last_action_type: 'added',
-                last_action_at: new Date().toISOString(),
-            }])
-            .select()
-            .single()
+            const { data, error } = await supabase
+                .from('products')
+                .insert([{
+                    title:         body.title,
+                    description:   body.description,
+                    price:         parseFloat(body.price) || 0,
+                    compare_price: body.compare_price ? parseFloat(body.compare_price) : null,
+                    images:        Array.isArray(body.images) 
+                        ? body.images.map(img => typeof img === 'string' ? img : img.src)
+                        : (body.images || []),
+                    category:      body.category,
+                    product_type:  body.product_type,
+                    tags:          Array.isArray(body.tags) ? body.tags : (body.tags || []),
+                    variants:      body.variants || null,
+                    stock:         parseInt(body.stock) || 0,
+                    is_active:     isActive,
+                    source:        'custom',
+                    product_version: body.product_version || null,
+                    shopify_handle: body.shopify_handle || null,
+                    last_action_by: token,
+                    last_action_type: 'added',
+                    last_action_at: new Date().toISOString(),
+                }])
+                .select()
+                .single()
 
-        if (error) return Response.json({ error: error.message }, { status: 500 })
-        return Response.json({ success: true, product: data })
+            if (error) return Response.json({ error: error.message }, { status: 500 })
+            return Response.json({ success: true, product: data })
     } catch (err) {
         return Response.json({ error: err.message }, { status: 500 })
     }
@@ -312,10 +312,11 @@ export async function PUT(request) {
             return Response.json({ success: false, error: 'Product ID is required' }, { status: 400 })
         }
 
+        const token = request.headers.get('x-admin-token') || 'admin'
         const cleanUpdates = {
             ...updates,
             updated_at: new Date().toISOString(),
-            last_action_by: 'admin',
+            last_action_by: token,
             last_action_type: 'edited',
             last_action_at: new Date().toISOString(),
         }
@@ -360,6 +361,12 @@ export async function PUT(request) {
 
         if (updates.product_version !== undefined) {
             cleanUpdates.product_version = String(updates.product_version || '').trim()
+        }
+
+        if (updates.is_active !== undefined) {
+            cleanUpdates.is_active = !!updates.is_active
+        } else if (updates.status !== undefined) {
+            cleanUpdates.is_active = String(updates.status) === 'active'
         }
 
         const { data, error } = await supabase
