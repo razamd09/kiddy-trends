@@ -65,31 +65,45 @@ function getSupabaseStoragePath(url) {
 }
 
 async function resolveSignedImageUrl(url) {
+    if (!url || typeof url !== 'string') return ''
+    
     const storagePath = getSupabaseStoragePath(url)
-    if (!storagePath) return url
+    if (!storagePath) {
+        // If it's already a full URL (not a storage path), return as-is
+        if (url.startsWith('http')) return url
+        return ''
+    }
 
     const cached = signedUrlCache.get(storagePath)
     if (cached && cached.expiresAt > Date.now() + SIGNED_URL_BUFFER_MS) {
         return cached.url
     }
 
-    const { data: signedData, error: signError } = await supabase.storage
-        .from('products')
-        .createSignedUrl(storagePath, 60 * 60 * 24 * 30)
+    try {
+        const { data: signedData, error: signError } = await supabase.storage
+            .from('products')
+            .createSignedUrl(storagePath, 60 * 60 * 24 * 30)
 
-    if (signError || !signedData?.signedUrl) {
-        // Fallback to public URL if signing fails
-        const publicUrl = supabase.storage.from('products').getPublicUrl(storagePath).data?.publicUrl
-        if (publicUrl) return publicUrl
-        return url
+        if (!signError && signedData?.signedUrl) {
+            signedUrlCache.set(storagePath, {
+                url: signedData.signedUrl,
+                expiresAt: Date.now() + SIGNED_URL_TTL_MS,
+            })
+            return signedData.signedUrl
+        }
+    } catch (err) {
+        console.error('Error signing URL:', err)
     }
 
-    signedUrlCache.set(storagePath, {
-        url: signedData.signedUrl,
-        expiresAt: Date.now() + SIGNED_URL_TTL_MS,
-    })
+    // Fallback to public URL if signing fails
+    try {
+        const { data: publicUrlData } = supabase.storage.from('products').getPublicUrl(storagePath)
+        if (publicUrlData?.publicUrl) return publicUrlData.publicUrl
+    } catch (err) {
+        console.error('Error getting public URL:', err)
+    }
 
-    return signedData.signedUrl
+    return url
 }
 
 function seededNumericId(value) {
@@ -172,7 +186,7 @@ function transformProduct(product) {
     if (opt1Values.length > 0) options.push({ name: rawVariants[0]?.option1_name || 'Size', values: opt1Values })
     if (opt2Values.length > 0) options.push({ name: rawVariants[0]?.option2_name || 'Color', values: opt2Values })
 
-    const imageUrls = normalizeImages(product.images)
+    const imageUrls = normalizeImages(product.images).filter(url => url && url.trim())
 
     return {
         id: seededNumericId(product.id),
@@ -185,7 +199,12 @@ function transformProduct(product) {
         category: product.category || '',
         tags: normalizeTags(product.tags),
         created_at: product.created_at || new Date().toISOString(),
-        images: imageUrls.map((src) => ({ src })).filter((img) => img.src),
+        images: imageUrls
+            .map((src) => {
+                const trimmedSrc = String(src).trim()
+                return trimmedSrc ? { src: trimmedSrc } : null
+            })
+            .filter(Boolean),
         variants,
         options,
         stock: product.stock || 0,
