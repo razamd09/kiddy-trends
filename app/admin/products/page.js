@@ -1239,6 +1239,7 @@ export default function AdminProducts() {
                                                 <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Price</th>
                                                 <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Variants</th>
                                                 <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Stock</th>
+                                                <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Status</th>
                                                 <th className="px-4 py-3 text-left font-semibold text-xs text-gray-500">Last Action</th>
                                                 <th className="px-4 py-3 text-center font-semibold text-sm text-charcoal">Actions</th>
                                             </tr>
@@ -1284,11 +1285,14 @@ export default function AdminProducts() {
                                 {product.stock}
                               </span>
                                                     </td>
+                                                   <td className="px-4 py-3 text-sm text-gray-500">
+                                                           <span className={product.is_active ? "text-green-600 font-semibold" : "text-gray-400"}>{product.is_active ? "Active" : "Draft"}</span>
+                                                   </td>
                                                    <td className="px-4 py-3 text-xs text-gray-500">
                                                            <div className="space-y-1">
-                                                           <p>{product.last_action_type ? (product.last_action_type + ' by: ' + (product.last_action_by || '—')) : 'unknown'}</p>
-                                                           <p className="text-gray-400">{product.last_action_at ? new Date(product.last_action_at).toLocaleDateString() : '—'}</p>
-                                                       </div>
+                                                               <p>{product.last_action_type ? (product.last_action_type + ' by: ' + (product.last_action_by || '—')) : 'unknown'}</p>
+                                                               <p className="text-gray-400">{product.last_action_at ? new Date(product.last_action_at).toLocaleDateString() : '—'}</p>
+                                                           </div>
                                                    </td>
                                                    <td className="px-4 py-3 text-center">
                                                         <div className="flex items-center justify-center gap-2">
