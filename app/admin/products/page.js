@@ -196,12 +196,12 @@ export default function AdminProducts() {
 
     useEffect(() => {
         if (verified) fetchProducts()
-    }, [verified, page, searchTerm, categoryFilter, variantFilter, sortBy, sortDir, workspaceMode])
+    }, [verified, page, searchTerm, categoryFilter, variantFilter, sortBy, sortDir])
 
     useEffect(() => {
         if (!verified) return
         setPage(1)
-    }, [searchTerm, categoryFilter, variantFilter, sortBy, sortDir, workspaceMode, verified])
+    }, [searchTerm, categoryFilter, variantFilter, sortBy, sortDir, verified])
 
     const productsApiBase = '/api/admin/products'
 
