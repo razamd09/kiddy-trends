@@ -77,7 +77,12 @@ async function resolveSignedImageUrl(url) {
         .from('products')
         .createSignedUrl(storagePath, 60 * 60 * 24 * 30)
 
-    if (signError || !signedData?.signedUrl) return url
+    if (signError || !signedData?.signedUrl) {
+        // Fallback to public URL if signing fails
+        const publicUrl = supabase.storage.from('products').getPublicUrl(storagePath).data?.publicUrl
+        if (publicUrl) return publicUrl
+        return url
+    }
 
     signedUrlCache.set(storagePath, {
         url: signedData.signedUrl,
