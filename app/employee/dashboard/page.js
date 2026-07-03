@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import MonthlyAttendanceSummary from '../../../components/MonthlyAttendanceSummary'
 
 export default function EmployeeDashboard() {
     const [employee, setEmployee]     = useState(null)
@@ -213,36 +214,9 @@ export default function EmployeeDashboard() {
                     )}
                 </div>
 
-                {/* Monthly history */}
+                {/* Monthly summary */}
                 <div className="bg-white rounded-3xl p-5">
-                    <p className="font-display text-lg text-charcoal mb-4">This Month's Attendance</p>
-                    {history.length === 0 ? (
-                        <p className="text-center text-gray-400 text-sm py-4">No attendance records yet</p>
-                    ) : (
-                        <div className="space-y-2 max-h-64 overflow-y-auto">
-                            {history.map((record, i) => (
-                                <div key={i} className="flex items-center justify-between bg-cream rounded-xl px-4 py-3">
-                                    <div>
-                                        <p className="font-semibold text-sm text-charcoal">
-                                            {new Date(record.date).toLocaleDateString('en-PK', { weekday: 'short', month: 'short', day: 'numeric' })}
-                                        </p>
-                                        <p className="text-xs text-gray-400">
-                                            {formatPkTime(record.time_in)}
-                                            {' → '}
-                                            {record.time_out ? formatPkTime(record.time_out) : 'Not clocked out'}
-                                        </p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="font-bold text-coral text-sm">{formatDuration(record.duration_minutes)}</p>
-                                        <span className={'text-xs px-2 py-0.5 rounded-full font-semibold ' +
-                                            (record.time_out ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-500')}>
-                      {record.time_out ? 'Complete' : 'Incomplete'}
-                    </span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                    <MonthlyAttendanceSummary records={history} />
                 </div>
 
                 <div className="bg-white rounded-3xl p-5">

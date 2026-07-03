@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import MonthlyAttendanceSummary, { computeMonthlySummary } from '../../../components/MonthlyAttendanceSummary'
 
 function pad(n) { return String(n).padStart(2, '0') }
 function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) }
@@ -268,8 +269,65 @@ export default function AdminAttendance() {
                             </div>
                         )}
                     </div>
+                ) : period === 'monthly' ? (
+                    /* Employee-based monthly summary */
+                    selectedEmp !== 'all' ? (
+                        <div className="bg-white rounded-2xl p-6">
+                            <MonthlyAttendanceSummary records={attendance} monthDate={new Date(date + 'T00:00:00')} />
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-2xl overflow-hidden">
+                            <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                                <p className="font-display text-lg text-charcoal">
+                                    Monthly Summary
+                                    <span className="text-sm font-body text-gray-400 ml-2">
+                                        {new Date(date + 'T00:00:00').toLocaleDateString('en-PK', { month: 'long', year: 'numeric' })}
+                                    </span>
+                                </p>
+                                <button onClick={fetchAttendance} className="text-xs text-gray-400 hover:text-coral">🔄 Refresh</button>
+                            </div>
+                            {roster.length === 0 ? (
+                                <div className="p-12 text-center text-gray-400">
+                                    <p className="text-4xl mb-2">👥</p>
+                                    <p>No employees found</p>
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-cream">
+                                        <tr>
+                                            <th className="text-left p-4 font-semibold text-charcoal">Employee</th>
+                                            <th className="p-4 font-semibold text-charcoal text-center">Present</th>
+                                            <th className="p-4 font-semibold text-charcoal text-center">Absent</th>
+                                            <th className="p-4 font-semibold text-charcoal text-center">Too Early</th>
+                                            <th className="p-4 font-semibold text-charcoal text-center">Avg Hrs/Day</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        {roster.map((emp, ri) => {
+                                            const empRecords = attendance.filter(a => a.employee_id === emp.id)
+                                            const s = computeMonthlySummary(empRecords, new Date(date + 'T00:00:00'))
+                                            return (
+                                                <tr key={emp.id} className={ri % 2 === 0 ? 'bg-white' : 'bg-cream/50'}>
+                                                    <td className="p-4">
+                                                        <p className="font-semibold text-charcoal">{emp.name}</p>
+                                                        <p className="text-xs text-gray-400">{emp.id}</p>
+                                                    </td>
+                                                    <td className="p-4 text-center font-bold text-green-600">{s.present}</td>
+                                                    <td className="p-4 text-center font-bold text-red-500">{s.absent}</td>
+                                                    <td className="p-4 text-center font-bold text-orange-500">{s.tooEarly}</td>
+                                                    <td className="p-4 text-center font-bold text-coral">{formatDuration(s.avgMinutes)}</td>
+                                                </tr>
+                                            )
+                                        })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    )
                 ) : (
-                    /* Flat record table for daily / monthly / yearly */
+                    /* Flat record table for daily / yearly */
                     <div className="bg-white rounded-2xl overflow-hidden">
                         <div className="p-4 border-b border-gray-100 flex items-center justify-between">
                             <p className="font-display text-lg text-charcoal">
