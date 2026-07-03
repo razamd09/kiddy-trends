@@ -3,12 +3,30 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
+function pad(n) { return String(n).padStart(2, '0') }
+function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) }
+
+// The 7 days (Sunday → Saturday) of the week containing the given YYYY-MM-DD date.
+// Matches the weekly window used by /api/admin/attendance.
+function getWeekDays(dateStr) {
+    const base  = new Date(dateStr + 'T00:00:00')
+    const start = new Date(base)
+    start.setDate(base.getDate() - base.getDay())
+    const days = []
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(start)
+        d.setDate(start.getDate() + i)
+        days.push(d)
+    }
+    return days
+}
+
 export default function AdminAttendance() {
     const [attendance, setAttendance]   = useState([])
     const [employees, setEmployees]     = useState([])
     const [loading, setLoading]         = useState(true)
     const [verified, setVerified]       = useState(false)
-    const [period, setPeriod]           = useState('daily')
+    const [period, setPeriod]           = useState('weekly')
     const [selectedEmp, setSelectedEmp] = useState('all')
     const [date, setDate]               = useState(new Date().toISOString().split('T')[0])
     const router = useRouter()
@@ -63,14 +81,40 @@ export default function AdminAttendance() {
         return h + 'h ' + m + 'm'
     }
 
+    function shiftWeek(deltaDays) {
+        const d = new Date(date + 'T00:00:00')
+        d.setDate(d.getDate() + deltaDays)
+        setDate(ymd(d))
+    }
+
     function logout() {
         localStorage.removeItem('admin_token')
         router.push('/admin')
     }
 
+    // Build the employee-based roster: every employee (even absent ones), plus any
+    // employee_id that appears in attendance but isn't in the employees list.
+    const empNameMap = new Map()
+    employees.forEach(e => empNameMap.set(e.employee_id, e.name))
+    attendance.forEach(a => { if (!empNameMap.has(a.employee_id)) empNameMap.set(a.employee_id, a.employee_name) })
+    let roster = [...empNameMap.entries()].map(([id, name]) => ({ id, name: name || id }))
+    if (selectedEmp !== 'all') roster = roster.filter(r => r.id === selectedEmp)
+    roster.sort((a, b) => String(a.name).localeCompare(String(b.name)))
+
+    // Index attendance by employee then date for quick cell lookup.
+    const byEmpDate = {}
+    attendance.forEach(a => {
+        if (!byEmpDate[a.employee_id]) byEmpDate[a.employee_id] = {}
+        byEmpDate[a.employee_id][a.date] = a
+    })
+
+    const weekDays  = getWeekDays(date)
+    const weekLabel = weekDays[0].toLocaleDateString('en-PK', { month: 'short', day: 'numeric' }) +
+        ' – ' + weekDays[6].toLocaleDateString('en-PK', { month: 'short', day: 'numeric', year: 'numeric' })
+
     const totalHours     = attendance.reduce((s, a) => s + (a.duration_minutes || 0), 0)
     const presentCount   = attendance.filter(a => a.time_in).length
-    const completedCount = attendance.filter(a => a.time_out).length
+    const activeEmployees = roster.filter(r => byEmpDate[r.id]).length
 
     if (!verified) return (
         <div className="min-h-screen bg-cream flex items-center justify-center">
@@ -101,6 +145,15 @@ export default function AdminAttendance() {
                             </button>
                         ))}
                     </div>
+                    {period === 'weekly' && (
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => shiftWeek(-7)}
+                                    className="px-3 py-2 rounded-full bg-cream text-charcoal text-sm font-semibold hover:bg-coral/10">← Prev</button>
+                            <span className="text-sm font-semibold text-charcoal whitespace-nowrap">{weekLabel}</span>
+                            <button onClick={() => shiftWeek(7)}
+                                    className="px-3 py-2 rounded-full bg-cream text-charcoal text-sm font-semibold hover:bg-coral/10">Next →</button>
+                        </div>
+                    )}
                     <input type="date" value={date} onChange={e => setDate(e.target.value)}
                            className="px-4 py-2 rounded-full border-2 border-gray-100 focus:border-coral focus:outline-none text-sm bg-cream" />
                     <select value={selectedEmp} onChange={e => setSelectedEmp(e.target.value)}
@@ -119,10 +172,10 @@ export default function AdminAttendance() {
                 {/* Summary cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                     {[
-                        { label: 'Total Records', value: attendance.length,        icon: '📋', color: 'bg-skyblue/20' },
-                        { label: 'Present',       value: presentCount,             icon: '✅', color: 'bg-green-50' },
-                        { label: 'Completed',     value: completedCount,           icon: '🎯', color: 'bg-mint/20' },
-                        { label: 'Total Hours',   value: formatDuration(totalHours), icon: '⏱️', color: 'bg-sunny/20' },
+                        { label: 'Employees',    value: roster.length,             icon: '👥', color: 'bg-skyblue/20' },
+                        { label: 'Present',      value: activeEmployees,           icon: '✅', color: 'bg-green-50' },
+                        { label: 'Check-ins',    value: presentCount,              icon: '📋', color: 'bg-mint/20' },
+                        { label: 'Total Hours',  value: formatDuration(totalHours), icon: '⏱️', color: 'bg-sunny/20' },
                     ].map((stat, i) => (
                         <div key={i} className={'rounded-2xl p-4 ' + stat.color}>
                             <p className="text-2xl mb-1">{stat.icon}</p>
@@ -132,71 +185,154 @@ export default function AdminAttendance() {
                     ))}
                 </div>
 
-                {/* Attendance table */}
-                <div className="bg-white rounded-2xl overflow-hidden">
-                    <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-                        <p className="font-display text-lg text-charcoal">
-                            Attendance Records
-                            <span className="text-sm font-body text-gray-400 ml-2">({attendance.length} records)</span>
-                        </p>
-                        <button onClick={fetchAttendance} className="text-xs text-gray-400 hover:text-coral">🔄 Refresh</button>
+                {loading ? (
+                    <div className="bg-white rounded-2xl p-8 text-center text-gray-400">
+                        <p className="animate-pulse">Loading attendance...</p>
                     </div>
+                ) : period === 'weekly' ? (
+                    /* Employee-based weekly grid */
+                    <div className="bg-white rounded-2xl overflow-hidden">
+                        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                            <p className="font-display text-lg text-charcoal">
+                                Weekly Attendance
+                                <span className="text-sm font-body text-gray-400 ml-2">{weekLabel}</span>
+                            </p>
+                            <button onClick={fetchAttendance} className="text-xs text-gray-400 hover:text-coral">🔄 Refresh</button>
+                        </div>
 
-                    {loading ? (
-                        <div className="p-8 text-center text-gray-400">
-                            <p className="animate-pulse">Loading attendance...</p>
-                        </div>
-                    ) : attendance.length === 0 ? (
-                        <div className="p-12 text-center text-gray-400">
-                            <p className="text-4xl mb-2">📅</p>
-                            <p>No attendance records found</p>
-                            <p className="text-xs mt-1">Try changing the date or period filter</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead className="bg-cream">
-                                <tr>
-                                    <th className="text-left p-4 font-semibold text-charcoal">Employee</th>
-                                    <th className="text-left p-4 font-semibold text-charcoal">Date</th>
-                                    <th className="text-left p-4 font-semibold text-charcoal">Time In</th>
-                                    <th className="text-left p-4 font-semibold text-charcoal">Time Out</th>
-                                    <th className="text-left p-4 font-semibold text-charcoal">Duration</th>
-                                    <th className="text-left p-4 font-semibold text-charcoal">Status</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                {attendance.map((record, i) => (
-                                    <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-cream/50'}>
-                                        <td className="p-4">
-                                            <p className="font-semibold text-charcoal">{record.employee_name}</p>
-                                            <p className="text-xs text-gray-400">{record.employee_id}</p>
-                                        </td>
-                                        <td className="p-4 text-gray-600">
-                                            {new Date(record.date).toLocaleDateString('en-PK', { weekday: 'short', month: 'short', day: 'numeric' })}
-                                        </td>
-                                        <td className="p-4 font-semibold text-coral">
-                                            {record.time_in ? new Date(record.time_in).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' }) : '—'}
-                                        </td>
-                                        <td className="p-4 font-semibold text-charcoal">
-                                            {record.time_out ? new Date(record.time_out).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' }) : '—'}
-                                        </td>
-                                        <td className="p-4 font-bold text-coral">
-                                            {formatDuration(record.duration_minutes)}
-                                        </td>
-                                        <td className="p-4">
-                        <span className={'text-xs px-2 py-1 rounded-full font-bold ' +
-                            (record.time_out ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-500')}>
-                          {record.time_out ? '✅ Complete' : '⏳ Active'}
-                        </span>
-                                        </td>
+                        {roster.length === 0 ? (
+                            <div className="p-12 text-center text-gray-400">
+                                <p className="text-4xl mb-2">👥</p>
+                                <p>No employees found</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-cream">
+                                    <tr>
+                                        <th className="text-left p-3 font-semibold text-charcoal sticky left-0 bg-cream z-10">Employee</th>
+                                        {weekDays.map((d, i) => (
+                                            <th key={i} className="p-3 font-semibold text-charcoal text-center whitespace-nowrap">
+                                                {d.toLocaleDateString('en-PK', { weekday: 'short' })}
+                                                <span className="block text-xs font-body text-gray-400">
+                                                    {d.toLocaleDateString('en-PK', { day: 'numeric', month: 'short' })}
+                                                </span>
+                                            </th>
+                                        ))}
+                                        <th className="p-3 font-semibold text-charcoal text-center whitespace-nowrap">Total</th>
                                     </tr>
-                                ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody>
+                                    {roster.map((emp, ri) => {
+                                        const days = weekDays.map(d => byEmpDate[emp.id]?.[ymd(d)] || null)
+                                        const presentDays = days.filter(r => r && r.time_in).length
+                                        const empMinutes  = days.reduce((s, r) => s + (r?.duration_minutes || 0), 0)
+                                        return (
+                                            <tr key={emp.id} className={ri % 2 === 0 ? 'bg-white' : 'bg-cream/40'}>
+                                                <td className="p-3 sticky left-0 z-10 whitespace-nowrap"
+                                                    style={{ background: ri % 2 === 0 ? '#ffffff' : 'rgba(245,242,235,0.4)' }}>
+                                                    <p className="font-semibold text-charcoal">{emp.name}</p>
+                                                    <p className="text-xs text-gray-400">{emp.id}</p>
+                                                </td>
+                                                {days.map((rec, di) => (
+                                                    <td key={di} className="p-3 text-center">
+                                                        {rec && rec.time_in ? (
+                                                            rec.time_out ? (
+                                                                <div title={
+                                                                    'In: ' + new Date(rec.time_in).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' }) +
+                                                                    ' · Out: ' + new Date(rec.time_out).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' })
+                                                                }>
+                                                                    <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-600 font-bold">✓</span>
+                                                                    <span className="block text-xs text-gray-500 mt-1">{formatDuration(rec.duration_minutes)}</span>
+                                                                </div>
+                                                            ) : (
+                                                                <div title={'In: ' + new Date(rec.time_in).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' })}>
+                                                                    <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-500 font-bold">⏳</span>
+                                                                    <span className="block text-xs text-gray-400 mt-1">Active</span>
+                                                                </div>
+                                                            )
+                                                        ) : (
+                                                            <span className="text-gray-300">—</span>
+                                                        )}
+                                                    </td>
+                                                ))}
+                                                <td className="p-3 text-center whitespace-nowrap">
+                                                    <p className="font-bold text-coral">{presentDays}/7</p>
+                                                    <p className="text-xs text-gray-400">{formatDuration(empMinutes)}</p>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    /* Flat record table for daily / monthly / yearly */
+                    <div className="bg-white rounded-2xl overflow-hidden">
+                        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                            <p className="font-display text-lg text-charcoal">
+                                Attendance Records
+                                <span className="text-sm font-body text-gray-400 ml-2">({attendance.length} records)</span>
+                            </p>
+                            <button onClick={fetchAttendance} className="text-xs text-gray-400 hover:text-coral">🔄 Refresh</button>
                         </div>
-                    )}
-                </div>
+
+                        {attendance.length === 0 ? (
+                            <div className="p-12 text-center text-gray-400">
+                                <p className="text-4xl mb-2">📅</p>
+                                <p>No attendance records found</p>
+                                <p className="text-xs mt-1">Try changing the date or period filter</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-cream">
+                                    <tr>
+                                        <th className="text-left p-4 font-semibold text-charcoal">Employee</th>
+                                        <th className="text-left p-4 font-semibold text-charcoal">Date</th>
+                                        <th className="text-left p-4 font-semibold text-charcoal">Time In</th>
+                                        <th className="text-left p-4 font-semibold text-charcoal">Time Out</th>
+                                        <th className="text-left p-4 font-semibold text-charcoal">Duration</th>
+                                        <th className="text-left p-4 font-semibold text-charcoal">Status</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {[...attendance]
+                                        .sort((a, b) => String(a.employee_name).localeCompare(String(b.employee_name)) || String(b.date).localeCompare(String(a.date)))
+                                        .map((record, i) => (
+                                        <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-cream/50'}>
+                                            <td className="p-4">
+                                                <p className="font-semibold text-charcoal">{record.employee_name}</p>
+                                                <p className="text-xs text-gray-400">{record.employee_id}</p>
+                                            </td>
+                                            <td className="p-4 text-gray-600">
+                                                {new Date(record.date).toLocaleDateString('en-PK', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                            </td>
+                                            <td className="p-4 font-semibold text-coral">
+                                                {record.time_in ? new Date(record.time_in).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                                            </td>
+                                            <td className="p-4 font-semibold text-charcoal">
+                                                {record.time_out ? new Date(record.time_out).toLocaleTimeString('en-PK', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                                            </td>
+                                            <td className="p-4 font-bold text-coral">
+                                                {formatDuration(record.duration_minutes)}
+                                            </td>
+                                            <td className="p-4">
+                                                <span className={'text-xs px-2 py-1 rounded-full font-bold ' +
+                                                    (record.time_out ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-500')}>
+                                                    {record.time_out ? '✅ Complete' : '⏳ Active'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     )
