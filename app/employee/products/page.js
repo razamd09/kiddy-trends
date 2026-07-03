@@ -176,7 +176,7 @@ export default function EmployeeProducts() {
             const token = localStorage.getItem('admin_token') || ''
             if (!token) {
                 const employee = localStorage.getItem('employee')
-                if (!employee) { router.push('/employee'); return }
+                if (!employee) { router.push('/admin'); return }
                 setVerified(true)
                 return
             }
@@ -186,14 +186,14 @@ export default function EmployeeProducts() {
                 if (!data.valid) {
                     localStorage.removeItem('admin_token')
                     const employee = localStorage.getItem('employee')
-                    if (!employee) { router.push('/employee'); return }
+                    if (!employee) { router.push('/admin'); return }
                     setVerified(true)
                 } else {
                     setVerified(true)
                 }
             } catch {
                 const employee = localStorage.getItem('employee')
-                if (!employee) { router.push('/employee'); return }
+                if (!employee) { router.push('/admin'); return }
                 setVerified(true)
             }
         }
@@ -687,7 +687,7 @@ export default function EmployeeProducts() {
     function logout() {
         localStorage.removeItem('employee')
         localStorage.removeItem('admin_token')
-        router.push('/employee')
+        router.push('/admin')
     }
 
     const variantFilterOptions = Array.from(new Set([

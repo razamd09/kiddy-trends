@@ -43,17 +43,17 @@ export function useEmployeeAuth() {
 
     useEffect(() => {
         const stored = localStorage.getItem('employee')
-        if (!stored) { router.push('/employee'); return }
+        if (!stored) { router.push('/admin'); return }
         try {
             setEmployee(JSON.parse(stored))
         } catch {
-            router.push('/employee')
+            router.push('/admin')
         }
     }, [])
 
     function logout() {
         localStorage.removeItem('employee')
-        router.push('/employee')
+        router.push('/admin')
     }
 
     return { employee, logout }

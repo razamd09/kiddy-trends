@@ -46,7 +46,7 @@ export default function EmployeeOrdersPage() {
 
     useEffect(() => {
         const stored = localStorage.getItem('employee')
-        if (!stored) { router.push('/employee'); return }
+        if (!stored) { router.push('/admin'); return }
         const emp = JSON.parse(stored)
         setEmployee(emp)
         setReady(true)
@@ -168,7 +168,7 @@ export default function EmployeeOrdersPage() {
 
     function logout() {
         localStorage.removeItem('employee')
-        router.push('/employee')
+        router.push('/admin')
     }
 
     if (!employee) return null

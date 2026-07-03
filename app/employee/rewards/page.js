@@ -11,7 +11,7 @@ export default function EmployeeRewardsPage() {
 
     useEffect(() => {
         const stored = localStorage.getItem('employee')
-        if (!stored) { router.push('/employee'); return }
+        if (!stored) { router.push('/admin'); return }
         const emp = JSON.parse(stored)
         setEmployee(emp)
         fetchRewards()

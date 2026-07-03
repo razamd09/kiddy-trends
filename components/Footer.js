@@ -164,7 +164,7 @@ export default function Footer() {
             <Link href="/refund-policy" className="hover:text-coral transition-colors">Refund Policy</Link>
             <Link href="/size-chart" className="hover:text-coral transition-colors">Size Chart</Link>
             <Link href="/feedback" className="hover:text-coral transition-colors">Feedback</Link>
-            <a href="/employee" className="hover:text-coral transition-colors">Staff Login</a>
+            <a href="/admin" className="hover:text-coral transition-colors">Staff Login</a>
           </div>
         </div>
       </div>

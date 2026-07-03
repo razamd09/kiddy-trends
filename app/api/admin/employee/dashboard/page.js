@@ -14,7 +14,7 @@ export default function EmployeeDashboard() {
 
     useEffect(() => {
         const stored = localStorage.getItem('employee')
-        if (!stored) { router.push('/employee'); return }
+        if (!stored) { router.push('/admin'); return }
         const emp = JSON.parse(stored)
         setEmployee(emp)
         fetchTodayAttendance(emp.employee_id)
@@ -82,7 +82,7 @@ export default function EmployeeDashboard() {
 
     function handleLogout() {
         localStorage.removeItem('employee')
-        router.push('/employee')
+        router.push('/admin')
     }
 
     if (!employee) return null
