@@ -240,6 +240,29 @@ export default function AdminProducts() {
         setLoading(false)
     }
 
+    // Toggle a product between Active and Draft straight from the list.
+    async function toggleStatus(product) {
+        const newActive = !product.is_active
+        // Optimistic update
+        setProducts(prev => prev.map(p => p.id === product.id ? { ...p, is_active: newActive } : p))
+        try {
+            const token = localStorage.getItem('admin_token')
+            const res = await fetch(productsApiBase, {
+                method:  'PUT',
+                headers: { 'Content-Type': 'application/json', 'x-admin-token': token || '' },
+                body:    JSON.stringify({ id: product.id, is_active: newActive }),
+            })
+            const data = await res.json()
+            if (!data.success) throw new Error(data.error || 'Update failed')
+            // Sync server-computed fields (last action, etc.)
+            setProducts(prev => prev.map(p => p.id === product.id ? { ...p, ...data.product } : p))
+        } catch (err) {
+            // Revert on failure
+            setProducts(prev => prev.map(p => p.id === product.id ? { ...p, is_active: product.is_active } : p))
+            alert('Failed to update status: ' + (err.message || 'Unknown error'))
+        }
+    }
+
     async function handleDuplicate(product) {
         setDuplicatingId(product.id)
         const token = localStorage.getItem('admin_token')
@@ -1286,7 +1309,20 @@ export default function AdminProducts() {
                               </span>
                                                     </td>
                                                    <td className="px-4 py-3 text-sm text-gray-500">
-                                                           <span className={product.is_active ? "text-green-600 font-semibold" : "text-gray-400"}>{product.is_active ? "Active" : "Draft"}</span>
+                                                           <div className="flex items-center gap-2">
+                                                               <button type="button" role="switch"
+                                                                       aria-checked={!!product.is_active}
+                                                                       onClick={() => toggleStatus(product)}
+                                                                       title={product.is_active ? 'Active — click to set Draft' : 'Draft — click to set Active'}
+                                                                       className={'relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none ' +
+                                                                           (product.is_active ? 'bg-green-500' : 'bg-gray-300')}>
+                                                                   <span className={'inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ' +
+                                                                       (product.is_active ? 'translate-x-5' : 'translate-x-1')} />
+                                                               </button>
+                                                               <span className={product.is_active ? 'text-green-600 font-semibold' : 'text-gray-400 font-semibold'}>
+                                                                   {product.is_active ? 'Active' : 'Draft'}
+                                                               </span>
+                                                           </div>
                                                    </td>
                                                    <td className="px-4 py-3 text-xs text-gray-500">
                                                            <div className="space-y-1">
