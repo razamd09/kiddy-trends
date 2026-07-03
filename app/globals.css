@@ -25,3 +25,17 @@
     @apply transition-all duration-300 hover:scale-105 hover:shadow-xl;
   }
 }
+
+/* Kiddy Trends branded loader animations */
+@keyframes kt-pop {
+  0%   { transform: scale(0.55); opacity: 0; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
+}
+@keyframes kt-ring-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes kt-bounce-dot {
+  0%, 80%, 100% { transform: translateY(0);    opacity: 0.4; }
+  40%           { transform: translateY(-9px); opacity: 1;   }
+}

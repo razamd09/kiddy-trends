@@ -6,6 +6,7 @@ import CartDrawer from '../components/CartDrawer'
 import Script from 'next/script'
 import LiveNotifications from '../components/LiveNotifications'
 import BottomNav from '../components/BottomNav'
+import SplashScreen from '../components/SplashScreen'
 
 export const metadata = {
   title: 'Kiddy Trends – Fun Fashion for Little Ones',
@@ -42,6 +43,7 @@ export default function RootLayout({ children }) {
   return (
       <html lang="en">
       <body>
+      <SplashScreen />
       {/* Google Analytics */}
       <Script src="https://www.googletagmanager.com/gtag/js?id=G-RWMHQN9PL4" strategy="afterInteractive" />
       <Script id="google-analytics" strategy="afterInteractive">

@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import MonthlyAttendanceSummary, { computeMonthlySummary } from '../../../components/MonthlyAttendanceSummary'
+import MonthlyAttendanceSummary, { computeMonthlySummary, absentDatesTooltip } from '../../../components/MonthlyAttendanceSummary'
 
 function pad(n) { return String(n).padStart(2, '0') }
 function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) }
@@ -314,7 +314,7 @@ export default function AdminAttendance() {
                                                         <p className="text-xs text-gray-400">{emp.id}</p>
                                                     </td>
                                                     <td className="p-4 text-center font-bold text-green-600">{s.present}</td>
-                                                    <td className="p-4 text-center font-bold text-red-500">{s.absent}</td>
+                                                    <td className="p-4 text-center font-bold text-red-500 cursor-help" title={absentDatesTooltip(s)}>{s.absent}</td>
                                                     <td className="p-4 text-center font-bold text-orange-500">{s.tooEarly}</td>
                                                     <td className="p-4 text-center font-bold text-coral">{formatDuration(s.avgMinutes)}</td>
                                                 </tr>

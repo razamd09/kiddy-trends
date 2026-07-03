@@ -73,6 +73,15 @@ const STATUS_BADGE = {
     off:        { label: 'Off',        cls: 'bg-gray-100 text-gray-400' },
 }
 
+// Human-readable list of absent dates for a computed summary — used for the
+// "Absent" hover tooltip on both roles' screens.
+export function absentDatesTooltip(summary) {
+    const dates = summary.days
+        .filter(d => d.status === 'absent')
+        .map(d => d.dateObj.toLocaleDateString('en-PK', { weekday: 'short', month: 'short', day: 'numeric' }))
+    return dates.length ? 'Absent on:\n' + dates.join('\n') : 'No absences 🎉'
+}
+
 // Reusable monthly attendance summary — used on both the employee dashboard and
 // the admin attendance screen.
 export default function MonthlyAttendanceSummary({ records, monthDate = new Date(), showDays = true }) {
@@ -81,7 +90,7 @@ export default function MonthlyAttendanceSummary({ records, monthDate = new Date
 
     const cards = [
         { label: 'Present',      value: s.present,                    icon: '✅', color: 'bg-green-50' },
-        { label: 'Absent',       value: s.absent,                     icon: '❌', color: 'bg-red-50' },
+        { label: 'Absent',       value: s.absent,                     icon: '❌', color: 'bg-red-50', title: absentDatesTooltip(s) },
         { label: 'Too Early',    value: s.tooEarly,                   icon: '⏰', color: 'bg-orange-50' },
         { label: 'Avg Hrs/Day',  value: formatDuration(s.avgMinutes), icon: '⏱️', color: 'bg-sunny/20' },
     ]
@@ -95,7 +104,8 @@ export default function MonthlyAttendanceSummary({ records, monthDate = new Date
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                 {cards.map((c, i) => (
-                    <div key={i} className={'rounded-2xl p-4 text-center ' + c.color}>
+                    <div key={i} title={c.title}
+                         className={'rounded-2xl p-4 text-center ' + c.color + (c.title ? ' cursor-help' : '')}>
                         <p className="text-xl mb-1">{c.icon}</p>
                         <p className="font-display text-2xl text-charcoal">{c.value}</p>
                         <p className="text-xs text-gray-500">{c.label}</p>
