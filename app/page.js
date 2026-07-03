@@ -11,9 +11,34 @@ import DiscountBanner from '../components/DiscountBanner'
 
 const SUMMER_NEW_ARRIVALS_TARGET = 10
 const SUMMER_NEW_ARRIVALS_MATCHER = /summer\s+new\s+arrivals?\s+2026/i
+const SHUFFLE_WINDOW_MS = 6 * 60 * 60 * 1000 // reshuffle every 6 hours
 
 function isSummerNewArrival2026(product) {
   return SUMMER_NEW_ARRIVALS_MATCHER.test(String(product?.title || ''))
+}
+
+// Small seeded PRNG so every visitor in the same 6-hour window sees the same
+// order, and the order changes when the window rolls over.
+function mulberry32(seed) {
+  let a = seed >>> 0
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+// Deterministic Fisher-Yates shuffle seeded by the current 6-hour window.
+function shuffleForCurrentWindow(items) {
+  const seed = Math.floor(Date.now() / SHUFFLE_WINDOW_MS)
+  const rand = mulberry32(seed)
+  const arr = [...items]
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1))
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
 }
 
 const categories = [
@@ -55,9 +80,12 @@ export default function Home() {
           uniqueProducts.push(product)
         }
 
-        const onlySummerNewArrivals = uniqueProducts
-          .filter(isSummerNewArrival2026)
-          .slice(0, SUMMER_NEW_ARRIVALS_TARGET)
+        // Same criteria (Summer New Arrivals 2026 only), but shuffle the pool
+        // per 6-hour window so the shown set/order rotates and feels freshly
+        // available to customers.
+        const onlySummerNewArrivals = shuffleForCurrentWindow(
+          uniqueProducts.filter(isSummerNewArrival2026)
+        ).slice(0, SUMMER_NEW_ARRIVALS_TARGET)
 
         setProducts(onlySummerNewArrivals)
         setLoadingProducts(false)
