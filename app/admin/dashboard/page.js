@@ -90,12 +90,12 @@ export default function AdminDashboard() {
 
                 {/* Quick Links */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-                        { label: 'Shipping Rates',  href: '/admin/shipping-rates', icon: '🚚', color: 'bg-indigo-500 text-white' },
                     {[
                         { label: 'Manage Orders',   href: '/admin/orders',     icon: '📦', color: 'bg-coral text-white' },
                         { label: 'Manage Products', href: '/admin/products',   icon: '👕', color: 'bg-charcoal text-white' },
                         { label: 'Employees',       href: '/admin/employees',  icon: '👥', color: 'bg-skyblue text-white' },
                         { label: 'Attendance',      href: '/admin/attendance', icon: '📅', color: 'bg-mint text-white' },
+                        { label: 'Shipping Rates',  href: '/admin/shipping-rates', icon: '🚚', color: 'bg-indigo-500 text-white' },
                         { label: 'Rewards Points',  href: '/admin/rewards',    icon: '⭐', color: 'bg-sunny text-charcoal' },
                         { label: 'Discount Codes',  href: '/admin/discount-codes', icon: '🎟️', color: 'bg-green-500 text-white' },
                         { label: 'Feedback', href: '/admin/feedback', icon: '💝', color: 'bg-pink-400 text-white' },
