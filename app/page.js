@@ -11,6 +11,7 @@ import DiscountBanner from '../components/DiscountBanner'
 const SUMMER_NEW_ARRIVALS_TARGET = 10
 const SUMMER_NEW_ARRIVALS_MATCHER = /summer\s+new\s+arrivals?\s+2026/i
 const SHUFFLE_WINDOW_MS = 6 * 60 * 60 * 1000 // reshuffle every 6 hours
+const FLASH_SALE_RIGHT_OFFSET_Y = 0
 
 function isSummerNewArrival2026(product) {
   return SUMMER_NEW_ARRIVALS_MATCHER.test(String(product?.title || ''))
@@ -133,7 +134,7 @@ export default function Home() {
 
         {/* FLASH SALE TIMER */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6 pt-6">
-          <FlashSaleBanner />
+          <FlashSaleBanner rightSideOffsetY={FLASH_SALE_RIGHT_OFFSET_Y} />
         </section>
 
         {/* SHOP BY CATEGORY */}

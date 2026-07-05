@@ -10,7 +10,7 @@ function getEndTime() {
   return end
 }
 
-export default function FlashSaleBanner() {
+export default function FlashSaleBanner({ rightSideOffsetY = 0 }) {
   const [time, setTime] = useState({ h: '00', m: '00', s: '00' })
 
   useEffect(() => {
@@ -41,7 +41,10 @@ export default function FlashSaleBanner() {
           <p className="text-gray-300 text-sm">Up to 50% OFF on kids clothing — Don't miss out!</p>
         </div>
       </div>
-      <div className="flex items-center gap-3 flex-shrink-0">
+      <div
+        className="flex items-center gap-3 flex-shrink-0"
+        style={{ transform: `translateY(${rightSideOffsetY}px)` }}
+      >
         {/* Countdown */}
         <div className="flex items-center gap-1">
           <div className="bg-coral rounded-xl px-3 py-2 text-center min-w-[3rem]">

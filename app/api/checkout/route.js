@@ -13,6 +13,13 @@ function toNumber(value) {
     return Number.isFinite(parsed) ? parsed : 0
 }
 
+function computeShipping(subtotal, rate) {
+    const flatPrice = Math.max(0, toNumber(rate?.flat_price ?? 250))
+    const shippingPercentage = Math.max(0, toNumber(rate?.shipping_percentage ?? 0))
+    const calculated = flatPrice + (Math.max(0, toNumber(subtotal)) * shippingPercentage) / 100
+    return Math.max(0, Math.round(calculated))
+}
+
 function normalizePkPhoneDigits(value) {
     let digits = String(value || '').replace(/\D/g, '')
     if (digits.startsWith('92') && digits.length > 10) digits = digits.slice(2)
@@ -177,7 +184,6 @@ export async function POST(request) {
         const subtotalFromItems = (cartItems || []).reduce((s, i) => s + (parseFloat(i.price || 0) * (i.quantity || 1)), 0)
         const subtotalFromCustomer = Math.max(0, toNumber(customer?.order_subtotal || 0))
         const subtotal = subtotalFromCustomer > 0 ? subtotalFromCustomer : subtotalFromItems
-        const shipping = Math.max(0, toNumber(customer?.order_shipping || 250))
         const promoDiscount = Math.max(0, toNumber(customer?.discount || 0))
         const redeemRequested = Math.max(0, toNumber(customer?.rewards?.redeem || 0))
 
@@ -185,6 +191,16 @@ export async function POST(request) {
             process.env.NEXT_PUBLIC_SUPABASE_URL,
             process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
         )
+
+        const { data: activeRates } = await supabase
+            .from('shipping_rates')
+            .select('flat_price, shipping_percentage')
+            .eq('is_active', true)
+            .order('updated_at', { ascending: false })
+            .limit(1)
+
+        const shippingRate = activeRates?.[0] || { flat_price: 250, shipping_percentage: 0 }
+        const shipping = computeShipping(subtotal, shippingRate)
 
         let rewardsSummary = null
         let redeemedPoints = 0

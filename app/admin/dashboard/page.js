@@ -90,6 +90,7 @@ export default function AdminDashboard() {
 
                 {/* Quick Links */}
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+                        { label: 'Shipping Rates',  href: '/admin/shipping-rates', icon: '🚚', color: 'bg-indigo-500 text-white' },
                     {[
                         { label: 'Manage Orders',   href: '/admin/orders',     icon: '📦', color: 'bg-coral text-white' },
                         { label: 'Manage Products', href: '/admin/products',   icon: '👕', color: 'bg-charcoal text-white' },

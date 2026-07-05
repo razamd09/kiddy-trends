@@ -14,6 +14,18 @@ const ORDER_NOTIFICATION_EMAIL =
 const SPIN_STORAGE_KEY = 'kt_spin_wheel_state'
 const GIFT_FLASH_SEEN_KEY = 'kt_checkout_reward_flash_seen'
 
+function toNumber(value) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function computeShippingAmount(subtotal, rate) {
+  const flatPrice = Math.max(0, toNumber(rate?.flat_price ?? 250))
+  const shippingPercentage = Math.max(0, toNumber(rate?.shipping_percentage ?? 0))
+  const calculated = flatPrice + (toNumber(subtotal) * shippingPercentage) / 100
+  return Math.max(0, Math.round(calculated))
+}
+
 const cities = [
   'Karachi','Lahore','Islamabad','Rawalpindi','Faisalabad',
   'Multan','Peshawar','Quetta','Sialkot','Gujranwala',
@@ -55,12 +67,17 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   const [discountCodeError, setDiscountCodeError] = useState('')
   const [rewards, setRewards]         = useState({ userId: '', points: 0, redeemed: 0 })
   const [showGiftFlash, setShowGiftFlash] = useState(false)
+  const [shippingRate, setShippingRate] = useState({
+    flat_price: 250,
+    shipping_percentage: 0,
+  })
 
   const price          = isCart ? cartTotal : parseFloat(variant?.price || 0)
   const comparePrice   = parseFloat(variant?.compare_at_price || 0)
   const isOnSale       = !isCart && comparePrice > price
   const image          = product?.images?.[0]?.src
-  const shipping       = discount?.type === 'shipping' ? 0 : 250
+  const baseShipping   = computeShippingAmount(price, shippingRate)
+  const shipping       = discount?.type === 'shipping' ? 0 : baseShipping
   const discountAmount = discount
     ? discount.type === 'percent' ? Math.round(price * discount.value / 100)
     : discount.type === 'fixed'   ? Math.min(discount.value, price)
@@ -90,6 +107,26 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
       }
     } catch {}
   }, [discount])
+
+  useEffect(() => {
+    let mounted = true
+
+    async function fetchShippingRate() {
+      try {
+        const res = await fetch('/api/shipping-rates', { cache: 'no-store' })
+        if (!res.ok) return
+        const data = await res.json()
+        if (!mounted || !data?.rate) return
+        setShippingRate({
+          flat_price: toNumber(data.rate.flat_price),
+          shipping_percentage: toNumber(data.rate.shipping_percentage),
+        })
+      } catch {}
+    }
+
+    fetchShippingRate()
+    return () => { mounted = false }
+  }, [])
 
   useEffect(() => {
     try {
@@ -450,7 +487,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                       <p className="text-coral font-bold">PKR {price.toLocaleString()}</p>
                       {isOnSale && <p className="text-gray-400 text-xs line-through">PKR {comparePrice.toLocaleString()}</p>}
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">+ PKR {shipping} shipping</p>
+                    <p className="text-xs text-gray-400 mt-1">+ PKR {shipping.toLocaleString()} shipping</p>
                   </div>
                 </div>
               )}
@@ -629,8 +666,8 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Shipping</span>
                   {discount?.type === 'shipping'
-                    ? <div className="flex gap-2"><span className="line-through text-gray-400">PKR 250</span><span className="text-green-600 font-semibold">FREE</span></div>
-                    : <span className="font-semibold">PKR 250</span>
+                    ? <div className="flex gap-2"><span className="line-through text-gray-400">PKR {baseShipping.toLocaleString()}</span><span className="text-green-600 font-semibold">FREE</span></div>
+                    : <span className="font-semibold">PKR {baseShipping.toLocaleString()}</span>
                   }
                 </div>
                 <div className="flex justify-between border-t border-gray-200 pt-2">
