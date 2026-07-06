@@ -14,6 +14,12 @@ const ORDER_NOTIFICATION_EMAIL =
 const SPIN_STORAGE_KEY = 'kt_spin_wheel_state'
 const GIFT_FLASH_SEEN_KEY = 'kt_checkout_reward_flash_seen'
 
+function notifySpinWheelStateChange() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('kt-spin-wheel-updated'))
+  }
+}
+
 function toNumber(value) {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : 0
@@ -148,6 +154,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
         consumed: true,
         activeDiscount: 0,
       }))
+      notifySpinWheelStateChange()
     } catch {}
   }
 

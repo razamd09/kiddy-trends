@@ -61,6 +61,9 @@ function readState(now) {
 
 function saveState(state) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('kt-spin-wheel-updated'))
+  }
 }
 
 function pickWeightedSegment() {
