@@ -19,6 +19,8 @@ function getEditorPreviewBackgroundStyle(color) {
 }
 
 export default function EmployeeProducts() {
+    const DRAFT_MODE = 'draft'
+    const PRODUCTION_MODE = 'production'
     const [products, setProducts]     = useState([])
     const [loading, setLoading]       = useState(true)
     const [verified, setVerified]     = useState(false)
@@ -34,6 +36,14 @@ export default function EmployeeProducts() {
     const [submitting, setSubmitting] = useState(false)
     const [duplicatingId, setDuplicatingId] = useState(null)
     const [deleteConfirm, setDeleteConfirm] = useState(null)
+    const [selectedIds, setSelectedIds] = useState([])
+    const [bulkProcessing, setBulkProcessing] = useState(false)
+    const [bulkEditOpen, setBulkEditOpen] = useState(false)
+    const [bulkEditForm, setBulkEditForm] = useState({
+        category: '',
+        product_version: '',
+        status: '',
+    })
     const [importFile, setImportFile] = useState(null)
     const [importing, setImporting] = useState(false)
     const [importSummary, setImportSummary] = useState(null)
@@ -44,7 +54,8 @@ export default function EmployeeProducts() {
     const [loadingCdnStatus, setLoadingCdnStatus] = useState(false)
     const [form, setForm] = useState({
         title: '', description: '', price: '', compare_price: '',
-        category: '', product_type: '', tags: '', stock: ''
+        category: '', product_type: '', tags: '', stock: '',
+        product_version: 'Old Packs', status: 'active'
     })
     const [formImages, setFormImages] = useState([])   // [{url, rotating}]
     const [formVariants, setFormVariants] = useState([]) // [{option1_name,option1_value,option2_name,option2_value,price,stock,sku}]
@@ -259,13 +270,34 @@ export default function EmployeeProducts() {
         setLoading(false)
     }
 
+    function toggleSelectProduct(productId) {
+        setSelectedIds(prev => prev.includes(productId)
+            ? prev.filter(id => id !== productId)
+            : [...prev, productId]
+        )
+    }
+
+    function toggleSelectAllProducts(list) {
+        const ids = list.map(product => product.id)
+        const allSelected = ids.length > 0 && ids.every(id => selectedIds.includes(id))
+        if (allSelected) {
+            setSelectedIds(prev => prev.filter(id => !ids.includes(id)))
+        } else {
+            setSelectedIds(prev => Array.from(new Set([...prev, ...ids])))
+        }
+    }
+
+    function clearSelection() {
+        setSelectedIds([])
+    }
+
     function handleHeaderSort(nextSortBy) {
         if (sortBy === nextSortBy) {
             setSortDir(prev => prev === 'asc' ? 'desc' : 'asc')
             return
         }
         setSortBy(nextSortBy)
-        setSortDir(nextSortBy === 'title' || nextSortBy === 'category' ? 'asc' : 'desc')
+        setSortDir(nextSortBy === 'title' || nextSortBy === 'category' || nextSortBy === 'status' ? 'asc' : 'desc')
     }
 
     function renderSortableHeader(label, key, align = 'left') {
@@ -302,6 +334,8 @@ export default function EmployeeProducts() {
                 images: normalizeImages(product.images),
                 variants: Array.isArray(product.variants) ? product.variants : null,
                 shopify_handle: baseHandle ? (baseHandle + '-copy-' + Date.now()) : null,
+                product_version: product.product_version || 'Old Packs',
+                is_active: product.is_active !== false,
             }
 
             const res = await fetch('/api/admin/products', {
@@ -321,8 +355,27 @@ export default function EmployeeProducts() {
         setDuplicatingId(null)
     }
 
+    async function toggleStatus(product) {
+        const newActive = !product.is_active
+        setProducts(prev => prev.map(p => p.id === product.id ? { ...p, is_active: newActive } : p))
+        const token = localStorage.getItem('admin_token') || ''
+        try {
+            const res = await fetch('/api/admin/products', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'x-admin-token': token || '' },
+                body: JSON.stringify({ id: product.id, is_active: newActive }),
+            })
+            const data = await readApiJson(res)
+            if (!data.success) throw new Error(data.error || 'Update failed')
+            setProducts(prev => prev.map(p => p.id === product.id ? { ...p, ...data.product } : p))
+        } catch (err) {
+            setProducts(prev => prev.map(p => p.id === product.id ? { ...p, is_active: product.is_active } : p))
+            alert('Failed to update status: ' + (err.message || 'Unknown error'))
+        }
+    }
+
     function resetForm() {
-        setForm({ title: '', description: '', price: '', compare_price: '', category: '', product_type: '', tags: '', stock: '' })
+        setForm({ title: '', description: '', price: '', compare_price: '', category: '', product_type: '', tags: '', stock: '', product_version: 'Old Packs', status: 'active' })
         setFormImages([])
         setFormVariants([])
         setEditingId(null)
@@ -361,6 +414,8 @@ export default function EmployeeProducts() {
             product_type:  product.product_type  || '',
             tags:          (product.tags || []).join(', '),
             stock:         product.stock         || '',
+            product_version: product.product_version || 'Old Packs',
+            status: product.is_active === false ? DRAFT_MODE : 'active',
         })
         setEditingId(product.id)
         setShowForm(true)
@@ -401,6 +456,8 @@ export default function EmployeeProducts() {
                 .map(img => img.url)
                 .filter((url) => typeof url === 'string' && url.trim() && !url.startsWith('blob:')),
             variants:      variants.length > 0 ? variants : null,
+            product_version: form.product_version,
+            is_active: form.status === 'active',
         }
 
         const method = editingId ? 'PUT' : 'POST'
@@ -444,6 +501,94 @@ export default function EmployeeProducts() {
         } catch (err) {
             alert('Error: ' + err.message)
         }
+    }
+
+    async function handleBulkSetDraft() {
+        if (selectedIds.length === 0) return
+        if (!window.confirm('Set ' + selectedIds.length + ' selected product(s) to Draft?')) return
+
+        const token = localStorage.getItem('admin_token') || ''
+        setBulkProcessing(true)
+        try {
+            await Promise.all(selectedIds.map(async (id) => {
+                const res = await fetch('/api/admin/products', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+                    body: JSON.stringify({ id, is_active: false }),
+                })
+                const data = await readApiJson(res)
+                if (!res.ok || !data.success) {
+                    throw new Error(data.error || ('Failed for product ' + id))
+                }
+            }))
+            clearSelection()
+            fetchProducts()
+        } catch (err) {
+            alert('Bulk draft failed: ' + (err.message || 'Unknown error'))
+        }
+        setBulkProcessing(false)
+    }
+
+    async function handleBulkDelete() {
+        if (selectedIds.length === 0) return
+        if (!window.confirm('Delete ' + selectedIds.length + ' selected product(s)? This cannot be undone.')) return
+
+        const token = localStorage.getItem('admin_token') || ''
+        setBulkProcessing(true)
+        try {
+            await Promise.all(selectedIds.map(async (id) => {
+                const res = await fetch('/api/admin/products?id=' + id, {
+                    method: 'DELETE',
+                    headers: { 'x-admin-token': token },
+                })
+                const data = await readApiJson(res)
+                if (!res.ok || !data.success) {
+                    throw new Error(data.error || ('Failed for product ' + id))
+                }
+            }))
+            clearSelection()
+            fetchProducts()
+        } catch (err) {
+            alert('Bulk delete failed: ' + (err.message || 'Unknown error'))
+        }
+        setBulkProcessing(false)
+    }
+
+    async function handleBulkEditSubmit() {
+        if (selectedIds.length === 0) return
+
+        const updates = {}
+        if (bulkEditForm.category) updates.category = bulkEditForm.category
+        if (bulkEditForm.product_version) updates.product_version = bulkEditForm.product_version
+        if (bulkEditForm.status) updates.is_active = bulkEditForm.status === 'active'
+
+        if (Object.keys(updates).length === 0) {
+            alert('Select at least one field to update in bulk edit.')
+            return
+        }
+
+        const token = localStorage.getItem('admin_token') || ''
+        setBulkProcessing(true)
+        try {
+            await Promise.all(selectedIds.map(async (id) => {
+                const res = await fetch('/api/admin/products', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+                    body: JSON.stringify({ id, ...updates }),
+                })
+                const data = await readApiJson(res)
+                if (!res.ok || !data.success) {
+                    throw new Error(data.error || ('Failed for product ' + id))
+                }
+            }))
+            setBulkEditOpen(false)
+            setBulkEditForm({ category: '', product_version: '', status: '' })
+            clearSelection()
+            fetchProducts()
+        } catch (err) {
+            alert('Bulk edit failed: ' + (err.message || 'Unknown error'))
+        }
+        setBulkProcessing(false)
     }
 
     async function handleImportCsv() {
@@ -929,6 +1074,25 @@ export default function EmployeeProducts() {
                                         </select>
                                     </div>
                                     <div>
+                                        <label className="block font-semibold text-xs text-charcoal mb-1">Product Version</label>
+                                        <select required value={form.product_version}
+                                                onChange={e => setForm({...form, product_version: e.target.value})}
+                                                className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm">
+                                            <option value="">Select version</option>
+                                            <option value="new arrivals">new arrivals</option>
+                                            <option value="Old Packs">Old Packs</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block font-semibold text-xs text-charcoal mb-1">Status</label>
+                                        <select value={form.status}
+                                                onChange={e => setForm({...form, status: e.target.value})}
+                                                className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm">
+                                            <option value="active">Active</option>
+                                            <option value={DRAFT_MODE}>Draft</option>
+                                        </select>
+                                    </div>
+                                    <div>
                                         <label className="block font-semibold text-xs text-charcoal mb-1">Product Type</label>
                                         <input type="text" value={form.product_type}
                                                onChange={e => setForm({...form, product_type: e.target.value})}
@@ -1228,11 +1392,13 @@ export default function EmployeeProducts() {
                                 >
                                     <option value="created_at">Created At</option>
                                     <option value="updated_at">Updated At</option>
+                                    <option value="last_action_at">Last Action</option>
                                     <option value="price">Price</option>
                                     <option value="title">Title</option>
                                     <option value="category">Category</option>
                                     <option value="variant_count">Variants</option>
                                     <option value="stock">Stock</option>
+                                    <option value="is_active">Status</option>
                                 </select>
                                 <select
                                     value={sortDir}
@@ -1244,6 +1410,44 @@ export default function EmployeeProducts() {
                                 </select>
                             </div>
                         </div>
+
+                        {selectedIds.length > 0 && (
+                            <div className="mb-4 rounded-xl border border-gray-200 bg-white px-4 py-3 flex flex-wrap items-center gap-2">
+                                <span className="text-sm font-semibold text-charcoal">{selectedIds.length} selected</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setBulkEditOpen(true)}
+                                    disabled={bulkProcessing}
+                                    className="px-3 py-1.5 bg-charcoal text-white text-xs rounded-lg hover:bg-charcoal/90 disabled:opacity-50"
+                                >
+                                    Bulk Edit
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleBulkSetDraft}
+                                    disabled={bulkProcessing}
+                                    className="px-3 py-1.5 bg-orange-500 text-white text-xs rounded-lg hover:bg-orange-600 disabled:opacity-50"
+                                >
+                                    Set As Draft
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleBulkDelete}
+                                    disabled={bulkProcessing}
+                                    className="px-3 py-1.5 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 disabled:opacity-50"
+                                >
+                                    Delete
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={clearSelection}
+                                    disabled={bulkProcessing}
+                                    className="px-3 py-1.5 bg-gray-200 text-charcoal text-xs rounded-lg hover:bg-gray-300 disabled:opacity-50"
+                                >
+                                    Clear
+                                </button>
+                            </div>
+                        )}
 
                         {loading ? (
                             <div className="text-center py-8 text-gray-400 animate-pulse">Loading products...</div>
@@ -1259,11 +1463,22 @@ export default function EmployeeProducts() {
                                         <table className="w-full">
                                             <thead className="bg-cream border-b-2 border-gray-100">
                                             <tr>
+                                                <th className="px-3 py-3 text-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={filtered.length > 0 && filtered.every(p => selectedIds.includes(p.id))}
+                                                        onChange={() => toggleSelectAllProducts(filtered)}
+                                                        className="w-4 h-4 accent-coral"
+                                                        aria-label="Select all products"
+                                                    />
+                                                </th>
                                                 <th className="px-4 py-3 text-left text-sm">{renderSortableHeader('Product', 'title')}</th>
                                                 <th className="px-4 py-3 text-left text-sm">{renderSortableHeader('Category', 'category')}</th>
                                                 <th className="px-4 py-3 text-left text-sm">{renderSortableHeader('Price', 'price')}</th>
                                                 <th className="px-4 py-3 text-left text-sm">{renderSortableHeader('Variants', 'variant_count')}</th>
                                                 <th className="px-4 py-3 text-left text-sm">{renderSortableHeader('Stock', 'stock')}</th>
+                                                <th className="px-4 py-3 text-left text-sm">{renderSortableHeader('Status', 'is_active')}</th>
+                                                <th className="px-4 py-3 text-left text-xs">{renderSortableHeader('Last Action', 'last_action_at')}</th>
                                                 <th className="px-4 py-3 text-center font-semibold text-sm text-charcoal">Actions</th>
                                             </tr>
                                             </thead>
@@ -1271,7 +1486,16 @@ export default function EmployeeProducts() {
                                             {filtered.map(product => {
                                                 const firstImage = normalizeImages(product.images)[0]
                                                 return (
-                                                <tr key={product.id} className="border-b border-gray-100 hover:bg-cream transition-colors">
+                                                <tr key={product.id} className={'border-b border-gray-100 transition-colors ' + (selectedIds.includes(product.id) ? 'bg-coral/5' : 'hover:bg-cream')}>
+                                                    <td className="px-3 py-3 text-center align-top">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedIds.includes(product.id)}
+                                                            onChange={() => toggleSelectProduct(product.id)}
+                                                            className="w-4 h-4 accent-coral"
+                                                            aria-label={'Select ' + product.title}
+                                                        />
+                                                    </td>
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center gap-3">
                                                             {firstImage && (
@@ -1307,6 +1531,28 @@ export default function EmployeeProducts() {
                               <span className={product.stock > 0 ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
                                 {product.stock}
                               </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-sm text-gray-500">
+                                                        <div className="flex items-center gap-2">
+                                                            <button type="button" role="switch"
+                                                                    aria-checked={!!product.is_active}
+                                                                    onClick={() => toggleStatus(product)}
+                                                                    title={product.is_active ? 'Active — click to set Draft' : 'Draft — click to set Active'}
+                                                                    className={'relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none ' +
+                                                                        (product.is_active ? 'bg-green-500' : 'bg-gray-300')}>
+                                                                <span className={'inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ' +
+                                                                    (product.is_active ? 'translate-x-5' : 'translate-x-1')} />
+                                                            </button>
+                                                            <span className={product.is_active ? 'text-green-600 font-semibold' : 'text-gray-400 font-semibold'}>
+                                                                {product.is_active ? 'Active' : 'Draft'}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-xs text-gray-500">
+                                                        <div className="space-y-1">
+                                                            <p>{product.last_action_type ? (product.last_action_type + ' by: ' + (product.last_action_by || '—')) : 'unknown'}</p>
+                                                            <p className="text-gray-400">{product.last_action_at ? new Date(product.last_action_at).toLocaleDateString() : '—'}</p>
+                                                        </div>
                                                     </td>
                                                     <td className="px-4 py-3 text-center">
                                                         <div className="flex items-center justify-center gap-2">
@@ -1520,6 +1766,74 @@ export default function EmployeeProducts() {
                             </button>
                             <button onClick={() => setDeleteConfirm(null)}
                                     className="flex-1 px-4 py-2 bg-gray-200 text-charcoal text-sm font-semibold rounded-xl hover:bg-gray-300">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {bulkEditOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/50" onClick={() => setBulkEditOpen(false)} />
+                    <div className="relative bg-white rounded-2xl w-full max-w-md p-5 shadow-xl">
+                        <h3 className="font-display text-xl text-charcoal mb-2">Bulk Edit Products</h3>
+                        <p className="text-sm text-gray-500 mb-4">Updating {selectedIds.length} selected product(s)</p>
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-xs font-semibold text-charcoal mb-1">Category</label>
+                                <select
+                                    value={bulkEditForm.category}
+                                    onChange={e => setBulkEditForm(prev => ({ ...prev, category: e.target.value }))}
+                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
+                                >
+                                    <option value="">No change</option>
+                                    {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-charcoal mb-1">Product Version</label>
+                                <select
+                                    value={bulkEditForm.product_version}
+                                    onChange={e => setBulkEditForm(prev => ({ ...prev, product_version: e.target.value }))}
+                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
+                                >
+                                    <option value="">No change</option>
+                                    <option value="new arrivals">new arrivals</option>
+                                    <option value="Old Packs">Old Packs</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-charcoal mb-1">Status</label>
+                                <select
+                                    value={bulkEditForm.status}
+                                    onChange={e => setBulkEditForm(prev => ({ ...prev, status: e.target.value }))}
+                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
+                                >
+                                    <option value="">No change</option>
+                                    <option value="active">Active</option>
+                                    <option value={DRAFT_MODE}>Draft</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="mt-5 flex gap-2">
+                            <button
+                                type="button"
+                                onClick={handleBulkEditSubmit}
+                                disabled={bulkProcessing}
+                                className="flex-1 px-4 py-2 bg-coral text-white text-sm font-semibold rounded-xl hover:bg-opacity-90 disabled:opacity-50"
+                            >
+                                {bulkProcessing ? 'Updating...' : 'Apply Bulk Edit'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setBulkEditOpen(false)}
+                                className="flex-1 px-4 py-2 bg-gray-200 text-charcoal text-sm font-semibold rounded-xl hover:bg-gray-300"
+                            >
                                 Cancel
                             </button>
                         </div>
