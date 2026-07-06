@@ -21,6 +21,14 @@ export default function AdminProducts() {
     const [submitting, setSubmitting] = useState(false)
     const [duplicatingId, setDuplicatingId] = useState(null)
     const [deleteConfirm, setDeleteConfirm] = useState(null)
+    const [selectedIds, setSelectedIds] = useState([])
+    const [bulkProcessing, setBulkProcessing] = useState(false)
+    const [bulkEditOpen, setBulkEditOpen] = useState(false)
+    const [bulkEditForm, setBulkEditForm] = useState({
+        category: '',
+        product_version: '',
+        status: '',
+    })
     const [importFile, setImportFile] = useState(null)
     const [importing, setImporting] = useState(false)
     const [importSummary, setImportSummary] = useState(null)
@@ -240,6 +248,28 @@ export default function AdminProducts() {
         setLoading(false)
     }
 
+    function toggleSelectProduct(productId) {
+        setSelectedIds(prev => prev.includes(productId)
+            ? prev.filter(id => id !== productId)
+            : [...prev, productId]
+        )
+    }
+
+    function toggleSelectAllProducts(list) {
+        const ids = list.map(p => p.id)
+        if (ids.length === 0) return
+        const allSelected = ids.every(id => selectedIds.includes(id))
+        if (allSelected) {
+            setSelectedIds(prev => prev.filter(id => !ids.includes(id)))
+        } else {
+            setSelectedIds(prev => Array.from(new Set([...prev, ...ids])))
+        }
+    }
+
+    function clearSelection() {
+        setSelectedIds([])
+    }
+
     // Toggle a product between Active and Draft straight from the list.
     async function toggleStatus(product) {
         const newActive = !product.is_active
@@ -428,6 +458,94 @@ export default function AdminProducts() {
         } catch (err) {
             alert('Error: ' + err.message)
         }
+    }
+
+    async function handleBulkSetDraft() {
+        if (selectedIds.length === 0) return
+        if (!window.confirm('Set ' + selectedIds.length + ' selected product(s) to Draft?')) return
+
+        const token = localStorage.getItem('admin_token') || ''
+        setBulkProcessing(true)
+        try {
+            await Promise.all(selectedIds.map(async (id) => {
+                const res = await fetch(productsApiBase, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+                    body: JSON.stringify({ id, is_active: false }),
+                })
+                const data = await readApiJson(res)
+                if (!res.ok || !data.success) {
+                    throw new Error(data.error || ('Failed for product ' + id))
+                }
+            }))
+            clearSelection()
+            fetchProducts()
+        } catch (err) {
+            alert('Bulk draft failed: ' + (err.message || 'Unknown error'))
+        }
+        setBulkProcessing(false)
+    }
+
+    async function handleBulkDelete() {
+        if (selectedIds.length === 0) return
+        if (!window.confirm('Delete ' + selectedIds.length + ' selected product(s)? This cannot be undone.')) return
+
+        const token = localStorage.getItem('admin_token') || ''
+        setBulkProcessing(true)
+        try {
+            await Promise.all(selectedIds.map(async (id) => {
+                const res = await fetch(productsApiBase + '?id=' + id, {
+                    method: 'DELETE',
+                    headers: { 'x-admin-token': token },
+                })
+                const data = await readApiJson(res)
+                if (!res.ok || !data.success) {
+                    throw new Error(data.error || ('Failed for product ' + id))
+                }
+            }))
+            clearSelection()
+            fetchProducts()
+        } catch (err) {
+            alert('Bulk delete failed: ' + (err.message || 'Unknown error'))
+        }
+        setBulkProcessing(false)
+    }
+
+    async function handleBulkEditSubmit() {
+        if (selectedIds.length === 0) return
+
+        const updates = {}
+        if (bulkEditForm.category) updates.category = bulkEditForm.category
+        if (bulkEditForm.product_version) updates.product_version = bulkEditForm.product_version
+        if (bulkEditForm.status) updates.is_active = bulkEditForm.status === 'active'
+
+        if (Object.keys(updates).length === 0) {
+            alert('Select at least one field to update in bulk edit.')
+            return
+        }
+
+        const token = localStorage.getItem('admin_token') || ''
+        setBulkProcessing(true)
+        try {
+            await Promise.all(selectedIds.map(async (id) => {
+                const res = await fetch(productsApiBase, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+                    body: JSON.stringify({ id, ...updates }),
+                })
+                const data = await readApiJson(res)
+                if (!res.ok || !data.success) {
+                    throw new Error(data.error || ('Failed for product ' + id))
+                }
+            }))
+            setBulkEditOpen(false)
+            setBulkEditForm({ category: '', product_version: '', status: '' })
+            clearSelection()
+            fetchProducts()
+        } catch (err) {
+            alert('Bulk edit failed: ' + (err.message || 'Unknown error'))
+        }
+        setBulkProcessing(false)
     }
 
 
@@ -1243,6 +1361,44 @@ export default function AdminProducts() {
                             </div>
                         </div>
 
+                        {selectedIds.length > 0 && (
+                            <div className="mb-4 rounded-xl border border-gray-200 bg-white px-4 py-3 flex flex-wrap items-center gap-2">
+                                <span className="text-sm font-semibold text-charcoal">{selectedIds.length} selected</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setBulkEditOpen(true)}
+                                    disabled={bulkProcessing}
+                                    className="px-3 py-1.5 bg-charcoal text-white text-xs rounded-lg hover:bg-charcoal/90 disabled:opacity-50"
+                                >
+                                    Bulk Edit
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleBulkSetDraft}
+                                    disabled={bulkProcessing}
+                                    className="px-3 py-1.5 bg-orange-500 text-white text-xs rounded-lg hover:bg-orange-600 disabled:opacity-50"
+                                >
+                                    Set As Draft
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleBulkDelete}
+                                    disabled={bulkProcessing}
+                                    className="px-3 py-1.5 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 disabled:opacity-50"
+                                >
+                                    Delete
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={clearSelection}
+                                    disabled={bulkProcessing}
+                                    className="px-3 py-1.5 bg-gray-200 text-charcoal text-xs rounded-lg hover:bg-gray-300 disabled:opacity-50"
+                                >
+                                    Clear
+                                </button>
+                            </div>
+                        )}
+
                         {loading ? (
                             <div className="text-center py-8 text-gray-400 animate-pulse">Loading products...</div>
                         ) : filtered.length === 0 ? (
@@ -1257,6 +1413,15 @@ export default function AdminProducts() {
                                         <table className="w-full">
                                             <thead className="bg-cream border-b-2 border-gray-100">
                                             <tr>
+                                                <th className="px-3 py-3 text-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={filtered.length > 0 && filtered.every(p => selectedIds.includes(p.id))}
+                                                        onChange={() => toggleSelectAllProducts(filtered)}
+                                                        className="w-4 h-4 accent-coral"
+                                                        aria-label="Select all products"
+                                                    />
+                                                </th>
                                                 <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Product</th>
                                                 <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Category</th>
                                                 <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Price</th>
@@ -1271,7 +1436,16 @@ export default function AdminProducts() {
                                             {filtered.map(product => {
                                                 const firstImage = normalizeImages(product.images)[0]
                                                 return (
-                                                <tr key={product.id} className="border-b border-gray-100 hover:bg-cream transition-colors">
+                                                <tr key={product.id} className={'border-b border-gray-100 transition-colors ' + (selectedIds.includes(product.id) ? 'bg-coral/5' : 'hover:bg-cream')}>
+                                                    <td className="px-3 py-3 text-center align-top">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedIds.includes(product.id)}
+                                                            onChange={() => toggleSelectProduct(product.id)}
+                                                            className="w-4 h-4 accent-coral"
+                                                            aria-label={'Select ' + product.title}
+                                                        />
+                                                    </td>
                                                     <td className="px-4 py-3">
                                                         <div className="flex items-center gap-3">
                                                             {firstImage && (
@@ -1507,6 +1681,75 @@ export default function AdminProducts() {
                             </button>
                             <button onClick={() => setDeleteConfirm(null)}
                                     className="flex-1 px-4 py-2 bg-gray-200 text-charcoal text-sm font-semibold rounded-xl hover:bg-gray-300">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {bulkEditOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/50" onClick={() => setBulkEditOpen(false)} />
+                    <div className="relative bg-white rounded-2xl w-full max-w-md p-5 shadow-xl">
+                        <h3 className="font-display text-xl text-charcoal mb-2">Bulk Edit Products</h3>
+                        <p className="text-sm text-gray-500 mb-4">Updating {selectedIds.length} selected product(s)</p>
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-xs font-semibold text-charcoal mb-1">Category</label>
+                                <select
+                                    value={bulkEditForm.category}
+                                    onChange={e => setBulkEditForm(prev => ({ ...prev, category: e.target.value }))}
+                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
+                                >
+                                    <option value="">No change</option>
+                                    {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-charcoal mb-1">Product Version</label>
+                                <select
+                                    value={bulkEditForm.product_version}
+                                    onChange={e => setBulkEditForm(prev => ({ ...prev, product_version: e.target.value }))}
+                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
+                                >
+                                    <option value="">No change</option>
+                                    <option value="new arrivals">new arrivals</option>
+                                    <option value="Old Packs">Old Packs</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-charcoal mb-1">Status</label>
+                                <select
+                                    value={bulkEditForm.status}
+                                    onChange={e => setBulkEditForm(prev => ({ ...prev, status: e.target.value }))}
+                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
+                                >
+                                    <option value="">No change</option>
+                                    <option value="active">Active</option>
+                                    <option value="draft">Draft</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="mt-5 grid grid-cols-2 gap-2">
+                            <button
+                                type="button"
+                                onClick={handleBulkEditSubmit}
+                                disabled={bulkProcessing}
+                                className="px-4 py-2 bg-coral text-white text-sm font-semibold rounded-lg hover:bg-opacity-90 disabled:opacity-50"
+                            >
+                                {bulkProcessing ? 'Applying...' : 'Apply Bulk Edit'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setBulkEditOpen(false)}
+                                disabled={bulkProcessing}
+                                className="px-4 py-2 bg-gray-200 text-charcoal text-sm font-semibold rounded-lg hover:bg-gray-300 disabled:opacity-50"
+                            >
                                 Cancel
                             </button>
                         </div>
