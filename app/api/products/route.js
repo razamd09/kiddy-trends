@@ -5,111 +5,79 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_KEY
 )
 const DRAFT_SOURCE = 'draft_workspace'
-const signedUrlCache = new Map()
-const SIGNED_URL_TTL_MS = 29 * 24 * 60 * 60 * 1000
-const SIGNED_URL_BUFFER_MS = 5 * 60 * 1000
 
-function normalizeImages(images) {
-    if (Array.isArray(images)) {
-        return images
-            .map((img) => {
-                if (typeof img === 'string') return img
-                return img?.src || img?.url || img?.image || ''
-            })
-            .filter(Boolean)
+function collectImageUrls(value, urls) {
+    if (Array.isArray(value)) {
+        value.forEach((item) => collectImageUrls(item, urls))
+        return urls
     }
 
-    if (typeof images === 'string') {
-        const trimmed = images.trim()
-        if (!trimmed) return []
+    if (typeof value === 'string') {
+        const trimmed = value.trim()
+        if (!trimmed) return urls
 
         try {
             const parsed = JSON.parse(trimmed)
-            if (Array.isArray(parsed)) {
-                return parsed
-                    .map((img) => {
-                        if (typeof img === 'string') return img
-                        return img?.src || img?.url || img?.image || ''
-                    })
-                    .filter(Boolean)
+            if (parsed && parsed !== value) {
+                collectImageUrls(parsed, urls)
+                return urls
             }
         } catch {}
 
         if (trimmed.includes('\n')) {
-            return trimmed.split('\n').map((s) => s.trim()).filter(Boolean)
+            trimmed
+                .split('\n')
+                .map((entry) => entry.trim())
+                .filter(Boolean)
+                .forEach((entry) => urls.push(entry))
+            return urls
         }
 
-        return [trimmed]
+        urls.push(trimmed)
+        return urls
     }
 
-    return []
+    if (value && typeof value === 'object') {
+        const directFields = [
+            value.src,
+            value.url,
+            value.image,
+            value.path,
+            value.publicUrl,
+            value.signedUrl,
+            value.original,
+            value.originalUrl,
+            value.editedUrl,
+        ]
+
+        const hadDirectField = directFields.some((entry) => typeof entry === 'string' && entry.trim())
+        if (hadDirectField) {
+            directFields.forEach((entry) => collectImageUrls(entry, urls))
+            return urls
+        }
+
+        if (Array.isArray(value.images)) {
+            collectImageUrls(value.images, urls)
+        }
+    }
+
+    return urls
+}
+
+function normalizeImages(images) {
+    return Array.from(new Set(collectImageUrls(images, []).filter(Boolean)))
+}
+
+function toImageProxyUrl(src) {
+    const trimmed = String(src || '').trim()
+    if (!trimmed) return ''
+    return '/api/image?src=' + encodeURIComponent(trimmed)
 }
 
 function normalizeTags(tags) {
     if (Array.isArray(tags)) return tags.map((t) => String(t).trim()).filter(Boolean)
     if (typeof tags === 'string') return tags.split(',').map((t) => t.trim()).filter(Boolean)
     return []
-}
-
-function getSupabaseStoragePath(url) {
-    if (typeof url !== 'string') return null
-
-    const publicMarker = '/storage/v1/object/public/products/'
-    const signedMarker = '/storage/v1/object/sign/products/'
-    let path = null
-
-    if (url.includes(publicMarker)) {
-        path = url.split(publicMarker)[1]
-    } else if (url.includes(signedMarker)) {
-        path = url.split(signedMarker)[1]
-    } else if (url.startsWith('images/')) {
-        path = url
-    }
-
-    if (!path) return null
-    return path.split('?')[0]
-}
-
-async function resolveSignedImageUrl(url) {
-    if (!url || typeof url !== 'string') return ''
-    
-    const storagePath = getSupabaseStoragePath(url)
-    if (!storagePath) {
-        // If it's already a full URL (not a storage path), return as-is
-        if (url.startsWith('http')) return url
-        return ''
-    }
-
-    const cached = signedUrlCache.get(storagePath)
-    if (cached && cached.expiresAt > Date.now() + SIGNED_URL_BUFFER_MS) {
-        return cached.url
-    }
-
-    try {
-        const { data: signedData, error: signError } = await supabase.storage
-            .from('products')
-            .createSignedUrl(storagePath, 60 * 60 * 24 * 30)
-
-        if (!signError && signedData?.signedUrl) {
-            signedUrlCache.set(storagePath, {
-                url: signedData.signedUrl,
-                expiresAt: Date.now() + SIGNED_URL_TTL_MS,
-            })
-            return signedData.signedUrl
-        }
-    } catch (err) {
-        console.error('Error signing URL:', err)
-    }
-
-    // Fallback to public URL if signing fails
-    try {
-        const { data: publicUrlData } = supabase.storage.from('products').getPublicUrl(storagePath)
-        if (publicUrlData?.publicUrl) return publicUrlData.publicUrl
-    } catch (err) {
-        console.error('Error getting public URL:', err)
-    }
-
-    return url
 }
 
 function seededNumericId(value) {
@@ -340,14 +308,13 @@ export async function GET(request) {
             })
         }
 
-        const productsWithSignedUrls = await Promise.all(filtered.map(async (product) => {
+        const productsWithStableImageUrls = filtered.map((product) => {
             const imageUrls = normalizeImages(product.images)
-            const signedUrls = await Promise.all(imageUrls.map(resolveSignedImageUrl))
+            const proxiedUrls = imageUrls.map(toImageProxyUrl).filter(Boolean)
+            return { ...product, images: proxiedUrls }
+        })
 
-            return { ...product, images: signedUrls }
-        }))
-
-        const transformedProducts = productsWithSignedUrls
+        const transformedProducts = productsWithStableImageUrls
             .map(transformProduct)
             .sort((a, b) => {
                 function versionPriority(p) {
