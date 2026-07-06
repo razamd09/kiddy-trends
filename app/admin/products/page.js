@@ -263,6 +263,32 @@ export default function AdminProducts() {
         setLoading(false)
     }
 
+    function handleHeaderSort(nextSortBy) {
+        if (sortBy === nextSortBy) {
+            setSortDir(prev => prev === 'asc' ? 'desc' : 'asc')
+            return
+        }
+        setSortBy(nextSortBy)
+        setSortDir(nextSortBy === 'title' || nextSortBy === 'category' || nextSortBy === 'status' ? 'asc' : 'desc')
+    }
+
+    function renderSortableHeader(label, key, align = 'left') {
+        const isActive = sortBy === key
+        const arrow = isActive ? (sortDir === 'asc' ? '↑' : '↓') : '↕'
+        const alignClass = align === 'center' ? 'justify-center text-center' : 'justify-start text-left'
+
+        return (
+            <button
+                type="button"
+                onClick={() => handleHeaderSort(key)}
+                className={'inline-flex items-center gap-1 font-semibold transition-colors hover:text-coral ' + alignClass + ' ' + (isActive ? 'text-coral' : 'text-charcoal')}
+            >
+                <span>{label}</span>
+                <span className="text-xs">{arrow}</span>
+            </button>
+        )
+    }
+
     function toggleSelectProduct(productId) {
         setSelectedIds(prev => prev.includes(productId)
             ? prev.filter(id => id !== productId)
@@ -1361,9 +1387,13 @@ export default function AdminProducts() {
                                 >
                                     <option value="created_at">Created At</option>
                                     <option value="updated_at">Updated At</option>
+                                    <option value="last_action_at">Last Action</option>
                                     <option value="price">Price</option>
                                     <option value="title">Title</option>
+                                    <option value="category">Category</option>
+                                    <option value="variant_count">Variants</option>
                                     <option value="stock">Stock</option>
+                                    <option value="is_active">Status</option>
                                 </select>
                                 <select
                                     value={sortDir}
@@ -1437,13 +1467,13 @@ export default function AdminProducts() {
                                                         aria-label="Select all products"
                                                     />
                                                 </th>
-                                                <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Product</th>
-                                                <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Category</th>
-                                                <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Price</th>
-                                                <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Variants</th>
-                                                <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Stock</th>
-                                                <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Status</th>
-                                                <th className="px-4 py-3 text-left font-semibold text-xs text-gray-500">Last Action</th>
+                                                <th className="px-4 py-3 text-left text-sm">{renderSortableHeader('Product', 'title')}</th>
+                                                <th className="px-4 py-3 text-left text-sm">{renderSortableHeader('Category', 'category')}</th>
+                                                <th className="px-4 py-3 text-left text-sm">{renderSortableHeader('Price', 'price')}</th>
+                                                <th className="px-4 py-3 text-left text-sm">{renderSortableHeader('Variants', 'variant_count')}</th>
+                                                <th className="px-4 py-3 text-left text-sm">{renderSortableHeader('Stock', 'stock')}</th>
+                                                <th className="px-4 py-3 text-left text-sm">{renderSortableHeader('Status', 'is_active')}</th>
+                                                <th className="px-4 py-3 text-left text-xs">{renderSortableHeader('Last Action', 'last_action_at')}</th>
                                                 <th className="px-4 py-3 text-center font-semibold text-sm text-charcoal">Actions</th>
                                             </tr>
                                             </thead>

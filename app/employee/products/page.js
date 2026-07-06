@@ -259,6 +259,32 @@ export default function EmployeeProducts() {
         setLoading(false)
     }
 
+    function handleHeaderSort(nextSortBy) {
+        if (sortBy === nextSortBy) {
+            setSortDir(prev => prev === 'asc' ? 'desc' : 'asc')
+            return
+        }
+        setSortBy(nextSortBy)
+        setSortDir(nextSortBy === 'title' || nextSortBy === 'category' ? 'asc' : 'desc')
+    }
+
+    function renderSortableHeader(label, key, align = 'left') {
+        const isActive = sortBy === key
+        const arrow = isActive ? (sortDir === 'asc' ? '↑' : '↓') : '↕'
+        const alignClass = align === 'center' ? 'justify-center text-center' : 'justify-start text-left'
+
+        return (
+            <button
+                type="button"
+                onClick={() => handleHeaderSort(key)}
+                className={'inline-flex items-center gap-1 font-semibold transition-colors hover:text-coral ' + alignClass + ' ' + (isActive ? 'text-coral' : 'text-charcoal')}
+            >
+                <span>{label}</span>
+                <span className="text-xs">{arrow}</span>
+            </button>
+        )
+    }
+
     async function handleDuplicate(product) {
         setDuplicatingId(product.id)
         const token = localStorage.getItem('admin_token') || ''
@@ -1204,6 +1230,8 @@ export default function EmployeeProducts() {
                                     <option value="updated_at">Updated At</option>
                                     <option value="price">Price</option>
                                     <option value="title">Title</option>
+                                    <option value="category">Category</option>
+                                    <option value="variant_count">Variants</option>
                                     <option value="stock">Stock</option>
                                 </select>
                                 <select
@@ -1231,11 +1259,11 @@ export default function EmployeeProducts() {
                                         <table className="w-full">
                                             <thead className="bg-cream border-b-2 border-gray-100">
                                             <tr>
-                                                <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Product</th>
-                                                <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Category</th>
-                                                <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Price</th>
-                                                <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Variants</th>
-                                                <th className="px-4 py-3 text-left font-semibold text-sm text-charcoal">Stock</th>
+                                                <th className="px-4 py-3 text-left text-sm">{renderSortableHeader('Product', 'title')}</th>
+                                                <th className="px-4 py-3 text-left text-sm">{renderSortableHeader('Category', 'category')}</th>
+                                                <th className="px-4 py-3 text-left text-sm">{renderSortableHeader('Price', 'price')}</th>
+                                                <th className="px-4 py-3 text-left text-sm">{renderSortableHeader('Variants', 'variant_count')}</th>
+                                                <th className="px-4 py-3 text-left text-sm">{renderSortableHeader('Stock', 'stock')}</th>
                                                 <th className="px-4 py-3 text-center font-semibold text-sm text-charcoal">Actions</th>
                                             </tr>
                                             </thead>

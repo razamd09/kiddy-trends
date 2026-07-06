@@ -84,6 +84,34 @@ function normalizeImages(images) {
     return []
 }
 
+function sortProductsList(list, sortBy, ascending) {
+    const direction = ascending ? 1 : -1
+    const items = Array.isArray(list) ? [...list] : []
+
+    return items.sort((a, b) => {
+        if (sortBy === 'variant_count') {
+            return (parseVariants(a?.variants).length - parseVariants(b?.variants).length) * direction
+        }
+
+        if (sortBy === 'price' || sortBy === 'stock') {
+            return ((Number(a?.[sortBy]) || 0) - (Number(b?.[sortBy]) || 0)) * direction
+        }
+
+        if (sortBy === 'is_active') {
+            return (((a?.is_active ? 1 : 0) - (b?.is_active ? 1 : 0)) * direction)
+        }
+
+        if (sortBy === 'created_at' || sortBy === 'updated_at' || sortBy === 'last_action_at') {
+            return (((new Date(a?.[sortBy] || 0).getTime() || 0) - (new Date(b?.[sortBy] || 0).getTime() || 0)) * direction)
+        }
+
+        return String(a?.[sortBy] || '').localeCompare(String(b?.[sortBy] || ''), undefined, {
+            sensitivity: 'base',
+            numeric: true,
+        }) * direction
+    })
+}
+
 function getSupabaseStoragePath(url) {
     if (typeof url !== 'string') return null
 
@@ -136,9 +164,10 @@ export async function GET(request) {
     const variant = (searchParams.get('variant') || '').trim()
     const sortByRaw = (searchParams.get('sortBy') || 'created_at').trim()
     const sortDirRaw = (searchParams.get('sortDir') || 'desc').trim().toLowerCase()
-    const sortByAllowed = ['created_at', 'updated_at', 'price', 'title', 'stock']
+    const sortByAllowed = ['created_at', 'updated_at', 'price', 'title', 'stock', 'category', 'is_active', 'last_action_at', 'variant_count']
     const sortBy = sortByAllowed.includes(sortByRaw) ? sortByRaw : 'created_at'
     const ascending = sortDirRaw === 'asc'
+    const needsComputedSort = sortBy === 'variant_count'
 
     let data = []
     let error = null
@@ -156,7 +185,7 @@ export async function GET(request) {
             variantQuery = variantQuery.ilike('title', '%' + search + '%')
         }
 
-        variantQuery = variantQuery.order(sortBy, { ascending })
+        variantQuery = variantQuery.order(needsComputedSort ? 'id' : sortBy, { ascending })
         let variantResult = await variantQuery
         if (variantResult.error && /(created_at|updated_at)/i.test(variantResult.error.message || '')) {
             let fallbackVariantQuery = supabase
@@ -178,8 +207,9 @@ export async function GET(request) {
             const variantFiltered = (variantResult.data || []).filter((product) =>
                 productMatchesVariant(product.variants, variant)
             )
-            count = variantFiltered.length
-            data = variantFiltered.slice(offset, offset + limit)
+            const sortedVariantFiltered = sortProductsList(variantFiltered, sortBy, ascending)
+            count = sortedVariantFiltered.length
+            data = sortedVariantFiltered.slice(offset, offset + limit)
         }
     } else {
         let query = supabase
@@ -192,13 +222,20 @@ export async function GET(request) {
         if (search) {
             query = query.ilike('title', '%' + search + '%')
         }
-        query = query
-            .order(sortBy, { ascending })
-            .range(offset, offset + limit - 1)
+        query = query.order(needsComputedSort ? 'id' : sortBy, { ascending })
+        if (!needsComputedSort) {
+            query = query.range(offset, offset + limit - 1)
+        }
         const result = await query
         data = result.data
         error = result.error
         count = result.count
+
+        if (!error && needsComputedSort) {
+            const sorted = sortProductsList(data || [], sortBy, ascending)
+            data = sorted.slice(offset, offset + limit)
+            count = sorted.length
+        }
     }
 
     // Some older tables may not have created_at/updated_at; fallback to id ordering.
@@ -218,8 +255,9 @@ export async function GET(request) {
                 const variantFiltered = (fallbackResult.data || []).filter((product) =>
                     productMatchesVariant(product.variants, variant)
                 )
-                data = variantFiltered.slice(offset, offset + limit)
-                count = variantFiltered.length
+                const sortedVariantFiltered = sortProductsList(variantFiltered, sortBy, ascending)
+                data = sortedVariantFiltered.slice(offset, offset + limit)
+                count = sortedVariantFiltered.length
                 error = null
             } else {
                 error = fallbackResult.error
@@ -235,13 +273,17 @@ export async function GET(request) {
             if (search) {
                 fallback = fallback.ilike('title', '%' + search + '%')
             }
-            fallback = fallback
-                .order('id', { ascending: false })
-                .range(offset, offset + limit - 1)
+            fallback = fallback.order('id', { ascending: false })
             const fallbackResult = await fallback
             data = fallbackResult.data
             error = fallbackResult.error
-            count = fallbackResult.count
+            if (!fallbackResult.error) {
+                const sortedFallback = sortProductsList(fallbackResult.data || [], sortBy, ascending)
+                data = sortedFallback.slice(offset, offset + limit)
+                count = sortedFallback.length
+            } else {
+                count = fallbackResult.count
+            }
         }
     }
 
