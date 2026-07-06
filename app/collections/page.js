@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import ProductCard from '../../components/ProductCard'
 
 const categories = [
@@ -84,20 +85,96 @@ function productMatchesFilter(product, catId, subId, subFilters, gender) {
   return true
 }
 
+function getProductText(product) {
+  return [
+    product.title,
+    product.product_type,
+    ...(product.tags || []),
+    ...(product.variants || []).map(v =>
+      [v.title, v.option1, v.option2, v.option3].filter(Boolean).join(' ')
+    ),
+    ...(product.options || []).flatMap(o => o.values || [])
+  ].join(' ').toLowerCase()
+}
+
+function productMatchesAnyAges(product, ageIds) {
+  if (!Array.isArray(ageIds) || ageIds.length === 0) return true
+
+  const text = getProductText(product)
+  const keywordByAgeId = {}
+  categories.forEach((cat) => {
+    ;(cat.subFilters || []).forEach((sub) => {
+      keywordByAgeId[sub.id] = sub.keywords || []
+    })
+  })
+
+  return ageIds.some((ageId) =>
+    (keywordByAgeId[ageId] || []).some((kw) => text.includes(String(kw).toLowerCase()))
+  )
+}
+
+function productMatchesAnyGenders(product, genders) {
+  if (!Array.isArray(genders) || genders.length === 0 || genders.length >= 2) return true
+
+  const title = (product.title || '').toLowerCase()
+  const wantsBoys = genders.includes('boys')
+  const wantsGirls = genders.includes('girls')
+  const hasBoys = /\bboys?\b/.test(title)
+  const hasGirls = /\bgirls?\b/.test(title)
+
+  if (wantsBoys && !wantsGirls) return hasBoys
+  if (!wantsBoys && wantsGirls) return hasGirls
+  return true
+}
+
 // Cache products in module scope so they persist between renders
 let cachedProducts = []
 let cacheTime = 0
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 
 export default function Collections() {
+  const searchParams = useSearchParams()
   const [products, setProducts]   = useState(cachedProducts)
   const [loading, setLoading]     = useState(cachedProducts.length === 0)
   const [activeCat, setActiveCat] = useState('all')
   const [activeGender, setActiveGender] = useState(null)
   const [activeSub, setActiveSub] = useState(null)
+  const [queryGenders, setQueryGenders] = useState([])
+  const [queryAges, setQueryAges] = useState([])
   const [sort, setSort]           = useState('new')
   const [page, setPage]           = useState(1)
   const ITEMS_PER_PAGE = 40
+
+  useEffect(() => {
+    const queryCat = searchParams.get('cat')
+    const querySub = searchParams.get('sub')
+    const queryGender = searchParams.get('gender')
+    const queryAges = (searchParams.get('ages') || '')
+      .split(',')
+      .map((x) => x.trim())
+      .filter(Boolean)
+    const queryGenders = (searchParams.get('genders') || '')
+      .split(',')
+      .map((x) => x.trim())
+      .filter((x) => x === 'boys' || x === 'girls')
+
+    const validCat = categories.some((c) => c.id === queryCat) ? queryCat : null
+    const catId = validCat || 'all'
+    const activeCategory = categories.find((c) => c.id === catId)
+
+    const validGender = queryGender === 'boys' || queryGender === 'girls' ? queryGender : null
+    const validSub = activeCategory?.subFilters?.some((s) => s.id === querySub) ? querySub : null
+
+    if (queryCat || querySub || queryGender) {
+      setActiveCat(catId)
+      setActiveGender(validGender)
+      setActiveSub(validSub)
+      setPage(1)
+    }
+
+    setQueryAges(queryAges)
+    setQueryGenders(queryGenders)
+  }, [searchParams])
 
   useEffect(() => {
     // Use cache if fresh
@@ -143,6 +220,14 @@ export default function Collections() {
   let filtered = activeCat === 'all'
     ? products
     : products.filter(p => productMatchesFilter(p, activeCat, activeSub, subFilters, activeGender))
+
+  if (queryGenders.length > 0) {
+    filtered = filtered.filter((p) => productMatchesAnyGenders(p, queryGenders))
+  }
+
+  if (queryAges.length > 0) {
+    filtered = filtered.filter((p) => productMatchesAnyAges(p, queryAges))
+  }
 
   if (sort === 'low')          filtered = [...filtered].sort((a,b) => parseFloat(a.variants[0]?.price) - parseFloat(b.variants[0]?.price))
   if (sort === 'high')         filtered = [...filtered].sort((a,b) => parseFloat(b.variants[0]?.price) - parseFloat(a.variants[0]?.price))

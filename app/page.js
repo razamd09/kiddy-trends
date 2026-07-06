@@ -7,6 +7,7 @@ import FlashSaleBanner from '../components/FlashSaleBanner'
 import RewardsChecker from '../components/RewardsChecker'
 import SpinWheelPopup from '../components/SpinWheelPopup'
 import DiscountBanner from '../components/DiscountBanner'
+import LandingPreferencePopup from '../components/LandingPreferencePopup'
 
 const SUMMER_NEW_ARRIVALS_TARGET = 10
 const SUMMER_NEW_ARRIVALS_MATCHER = /summer\s+new\s+arrivals?\s+2026/i
@@ -96,6 +97,7 @@ export default function Home() {
 
   return (
       <>
+        <LandingPreferencePopup />
         <SpinWheelPopup />
         <DiscountBanner />
         {/* HERO */}
