@@ -3,6 +3,21 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
+const MONOCHROME_BG_COLORS = ['transparent', '#000000', '#1f2937', '#374151', '#6b7280', '#9ca3af', '#ffffff']
+const STANDARD_BG_COLORS = ['#991b1b', '#7c7a00', '#166534', '#0f766e', '#1d4ed8', '#6b21a8', '#ea580c', '#ec4899']
+
+function getEditorPreviewBackgroundStyle(color) {
+    if (String(color || '').trim().toLowerCase() === 'transparent') {
+        return {
+            backgroundImage: 'linear-gradient(45deg, #e5e7eb 25%, transparent 25%), linear-gradient(-45deg, #e5e7eb 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e7eb 75%), linear-gradient(-45deg, transparent 75%, #e5e7eb 75%)',
+            backgroundSize: '20px 20px',
+            backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
+            backgroundColor: '#ffffff',
+        }
+    }
+    return { background: color }
+}
+
 async function readApiJson(res) {
     const text = await res.text()
     if (!text) return {}
@@ -417,7 +432,7 @@ export default function BulkImagesPage() {
                             <div className="lg:col-span-3 bg-gray-100 p-4 flex items-center justify-center">
                                 <div
                                     className="w-full max-w-2xl aspect-square rounded-xl overflow-hidden border border-gray-200"
-                                    style={{ background: imageEditor.fit === 'contain' ? imageEditor.background : '#f3f4f6' }}
+                                    style={imageEditor.fit === 'contain' ? getEditorPreviewBackgroundStyle(imageEditor.background) : { background: '#f3f4f6' }}
                                 >
                                     <img
                                         src={imageUrl}
@@ -485,10 +500,45 @@ export default function BulkImagesPage() {
                                     {imageEditor.fit === 'contain' && (
                                         <div>
                                             <label className="text-xs font-semibold text-gray-500">Background Color</label>
-                                            <div className="flex gap-2 mt-1">
+                                            <div className="mt-2 space-y-3">
+                                                <div>
+                                                    <p className="text-[11px] font-semibold text-gray-500 mb-1">Monochrome</p>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {MONOCHROME_BG_COLORS.map((color) => (
+                                                            <button
+                                                                key={color}
+                                                                type="button"
+                                                                onClick={() => setImageEditor(prev => ({ ...prev, background: color }))}
+                                                                title={color}
+                                                                className={'w-8 h-8 rounded-lg border-2 ' + (imageEditor.background === color ? 'border-coral' : 'border-gray-200')}
+                                                                style={color === 'transparent' ? getEditorPreviewBackgroundStyle(color) : { background: color }}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <p className="text-[11px] font-semibold text-gray-500 mb-1">Standard Colors</p>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {STANDARD_BG_COLORS.map((color) => (
+                                                            <button
+                                                                key={color}
+                                                                type="button"
+                                                                onClick={() => setImageEditor(prev => ({ ...prev, background: color }))}
+                                                                title={color}
+                                                                className={'w-8 h-8 rounded-lg border-2 ' + (imageEditor.background === color ? 'border-coral' : 'border-gray-200')}
+                                                                style={{ background: color }}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <p className="text-[11px] font-semibold text-gray-500">Custom</p>
+                                            </div>
+                                            <div className="flex gap-2 mt-2">
                                                 <input
                                                     type="color"
-                                                    value={imageEditor.background}
+                                                    value={imageEditor.background === 'transparent' ? '#ffffff' : imageEditor.background}
                                                     onChange={e => setImageEditor(prev => ({ ...prev, background: e.target.value }))}
                                                     className="h-10 w-14 rounded border border-gray-200"
                                                 />

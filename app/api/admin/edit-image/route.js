@@ -18,10 +18,21 @@ function getSupabaseStoragePath(url) {
 }
 
 function parseHexColor(hex) {
-    const value = String(hex || '').trim().replace('#', '')
-    if (!/^[0-9a-fA-F]{6}$/.test(value)) {
+    const normalized = String(hex || '').trim().toLowerCase()
+    if (!normalized) return { r: 255, g: 255, b: 255, alpha: 1 }
+    if (normalized === 'transparent') {
+        return { r: 255, g: 255, b: 255, alpha: 0 }
+    }
+
+    let value = normalized.replace('#', '')
+    if (/^[0-9a-f]{3}$/.test(value)) {
+        value = value.split('').map((c) => c + c).join('')
+    }
+
+    if (!/^[0-9a-f]{6}$/.test(value)) {
         return { r: 255, g: 255, b: 255, alpha: 1 }
     }
+
     return {
         r: parseInt(value.slice(0, 2), 16),
         g: parseInt(value.slice(2, 4), 16),
