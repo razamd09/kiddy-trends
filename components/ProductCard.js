@@ -25,10 +25,18 @@ export default function ProductCard({ product }) {
   const [selectedVariant, setSelectedVariant] = useState(product.variants?.[0])
   const [added, setAdded]               = useState(false)
   const [showCheckout, setShowCheckout] = useState(false)
+  const [imageIndex, setImageIndex]     = useState(0)
+  const [imageFailed, setImageFailed]   = useState(false)
 
   const price        = parseFloat(selectedVariant?.price || 0)
   const comparePrice = parseFloat(selectedVariant?.compare_at_price || 0)
-  const image        = product.images?.[0]?.src
+  const imageCandidates = (Array.isArray(product.images) ? product.images : [])
+    .map((img) => {
+      if (typeof img === 'string') return img
+      return img?.src || img?.url || img?.image || ''
+    })
+    .filter(Boolean)
+  const image = imageCandidates[imageIndex] || null
   const isSoldOut    = selectedVariant ? selectedVariant.available === false : false
   const availableStock = Number.isFinite(Number(selectedVariant?.inventory_quantity))
     ? Number(selectedVariant.inventory_quantity)
@@ -65,9 +73,20 @@ export default function ProductCard({ product }) {
           {image ? (
             <div className="absolute inset-0 bg-white flex items-center justify-center p-3">
               <img src={image} alt={product.title}
-                className="w-full h-full object-contain" loading="lazy" decoding="async" />
+                className="w-full h-full object-contain" loading="lazy" decoding="async"
+                onError={() => {
+                  if (imageIndex < imageCandidates.length - 1) {
+                    setImageIndex(prev => prev + 1)
+                  } else {
+                    setImageFailed(true)
+                  }
+                }} />
             </div>
           ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-5xl bg-white">👕</div>
+          )}
+
+          {imageFailed && (
             <div className="absolute inset-0 flex items-center justify-center text-5xl bg-white">👕</div>
           )}
 

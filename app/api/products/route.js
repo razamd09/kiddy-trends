@@ -12,7 +12,10 @@ const SIGNED_URL_BUFFER_MS = 5 * 60 * 1000
 function normalizeImages(images) {
     if (Array.isArray(images)) {
         return images
-            .map((img) => (typeof img === 'string' ? img : img?.src))
+            .map((img) => {
+                if (typeof img === 'string') return img
+                return img?.src || img?.url || img?.image || ''
+            })
             .filter(Boolean)
     }
 
@@ -24,7 +27,10 @@ function normalizeImages(images) {
             const parsed = JSON.parse(trimmed)
             if (Array.isArray(parsed)) {
                 return parsed
-                    .map((img) => (typeof img === 'string' ? img : img?.src))
+                    .map((img) => {
+                        if (typeof img === 'string') return img
+                        return img?.src || img?.url || img?.image || ''
+                    })
                     .filter(Boolean)
             }
         } catch {}
