@@ -5,6 +5,28 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_KEY
 )
 
+function getSupabaseOrigin() {
+    const raw = String(process.env.NEXT_PUBLIC_SUPABASE_URL || '').trim()
+    if (!raw) return ''
+
+    try {
+        return new URL(raw).origin
+    } catch {
+        return raw.replace(/\/rest\/v1\/?$/, '').replace(/\/$/, '')
+    }
+}
+
+function toAbsoluteUrl(url) {
+    const trimmed = String(url || '').trim()
+    if (!trimmed) return ''
+    if (/^https?:\/\//i.test(trimmed)) return trimmed
+    if (trimmed.startsWith('/')) {
+        const origin = getSupabaseOrigin()
+        return origin ? origin + trimmed : trimmed
+    }
+    return trimmed
+}
+
 function getSupabaseStoragePath(url) {
     if (typeof url !== 'string') return null
 
@@ -28,7 +50,8 @@ function getSupabaseStoragePath(url) {
 }
 
 function redirectWithCache(url) {
-    const response = Response.redirect(url, 307)
+    const target = toAbsoluteUrl(url)
+    const response = Response.redirect(target, 307)
     response.headers.set('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=86400')
     return response
 }
