@@ -51,9 +51,13 @@ function getSupabaseStoragePath(url) {
 
 function redirectWithCache(url) {
     const target = toAbsoluteUrl(url)
-    const response = Response.redirect(target, 307)
-    response.headers.set('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=86400')
-    return response
+    return new Response(null, {
+        status: 307,
+        headers: {
+            Location: target,
+            'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=86400',
+        },
+    })
 }
 
 export async function GET(request) {

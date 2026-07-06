@@ -68,10 +68,33 @@ function normalizeImages(images) {
     return Array.from(new Set(collectImageUrls(images, []).filter(Boolean)))
 }
 
+function getSupabaseStoragePath(url) {
+    if (typeof url !== 'string') return null
+
+    const trimmed = url.trim()
+    if (!trimmed) return null
+
+    const publicMarker = '/storage/v1/object/public/products/'
+    const signedMarker = '/storage/v1/object/sign/products/'
+
+    if (trimmed.startsWith('images/')) {
+        return trimmed.split('?')[0]
+    }
+    if (trimmed.includes(publicMarker)) {
+        return trimmed.split(publicMarker)[1].split('?')[0]
+    }
+    if (trimmed.includes(signedMarker)) {
+        return trimmed.split(signedMarker)[1].split('?')[0]
+    }
+
+    return null
+}
+
 function toImageProxyUrl(src) {
     const trimmed = String(src || '').trim()
     if (!trimmed) return ''
-    return '/api/image?src=' + encodeURIComponent(trimmed)
+    const storagePath = getSupabaseStoragePath(trimmed)
+    return '/api/image?src=' + encodeURIComponent(storagePath || trimmed)
 }
 
 function normalizeTags(tags) {
