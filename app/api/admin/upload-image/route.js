@@ -18,9 +18,14 @@ export async function POST(request) {
         const fileBuffer = await file.arrayBuffer()
         const fileName = file.name
 
-        // Optimize image
+        // Normalize every uploaded product image to a square canvas.
         const optimized = await sharp(fileBuffer)
-            .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+            .rotate()
+            .resize(1200, 1200, {
+                fit: 'contain',
+                background: { r: 255, g: 255, b: 255, alpha: 1 },
+                withoutEnlargement: false,
+            })
             .webp({ quality: 82, effort: 4 })
             .toBuffer()
 

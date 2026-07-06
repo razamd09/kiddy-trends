@@ -108,13 +108,17 @@ export async function POST(request) {
         }
 
         let image = sharp(buffer)
-        const metadata = await image.metadata()
 
         const rotateValue = Number(rotate) || 0
         if (rotateValue !== 0) image = image.rotate(rotateValue)
         if (flipHorizontal) image = image.flop()
         if (flipVertical) image = image.flip()
 
+        if (removeBackground) {
+            image = await removeNearWhiteBackground(image, sharp)
+        }
+
+        const metadata = await image.metadata()
         if (fit === 'contain' && metadata.width && metadata.height) {
             const side = Math.max(metadata.width, metadata.height)
             image = image.resize(side, side, {
@@ -122,10 +126,6 @@ export async function POST(request) {
                 background: parseHexColor(background),
                 withoutEnlargement: false,
             })
-        }
-
-        if (removeBackground) {
-            image = await removeNearWhiteBackground(image, sharp)
         }
 
         const edited = await image

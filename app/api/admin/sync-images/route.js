@@ -20,7 +20,12 @@ async function downloadImage(imageUrl) {
 async function optimizeAndUploadImage(imageBuffer, fileName) {
     try {
         const optimized = await sharp(imageBuffer)
-            .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+            .rotate()
+            .resize(1200, 1200, {
+                fit: 'contain',
+                background: { r: 255, g: 255, b: 255, alpha: 1 },
+                withoutEnlargement: false,
+            })
             .webp({ quality: 85 })
             .toBuffer()
 

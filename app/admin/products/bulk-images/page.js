@@ -35,6 +35,8 @@ export default function BulkImagesPage() {
     const [rotating, setRotating] = useState({})
     const [uploading, setUploading] = useState({})
     const [savedMsg, setSavedMsg] = useState({})
+    const [paddingAll, setPaddingAll] = useState(false)
+    const [bulkPadResult, setBulkPadResult] = useState(null)
     const [imageEditor, setImageEditor] = useState({
         open: false,
         productId: null,
@@ -42,7 +44,7 @@ export default function BulkImagesPage() {
         rotate: 0,
         flipHorizontal: false,
         flipVertical: false,
-        fit: 'cover',
+        fit: 'contain',
         background: '#ffffff',
         saving: false,
     })
@@ -113,10 +115,33 @@ export default function BulkImagesPage() {
             rotate: 0,
             flipHorizontal: false,
             flipVertical: false,
-            fit: 'cover',
+            fit: 'contain',
             background: '#ffffff',
             saving: false,
         })
+    }
+
+    async function padAllImagesToSquare() {
+        if (!window.confirm('Pad all existing product images to square with white background?')) return
+        setPaddingAll(true)
+        setBulkPadResult(null)
+        const token = localStorage.getItem('admin_token')
+        try {
+            const res = await fetch('/api/admin/products/pad-square', {
+                method: 'POST',
+                headers: { 'x-admin-token': token || '' },
+            })
+            const data = await readApiJson(res)
+            if (!res.ok || !data.success) {
+                alert('Bulk square-padding failed: ' + (data.error || 'Unknown error'))
+            } else {
+                setBulkPadResult(data.results || null)
+                await loadProducts()
+            }
+        } catch (err) {
+            alert('Bulk square-padding failed: ' + err.message)
+        }
+        setPaddingAll(false)
     }
 
     function closeImageEditor() {
@@ -227,6 +252,21 @@ export default function BulkImagesPage() {
 
             <div className="max-w-7xl mx-auto px-4 py-6">
                 <div className="mb-4">
+                    <div className="mb-3 flex flex-wrap items-center gap-3">
+                        <button
+                            type="button"
+                            onClick={padAllImagesToSquare}
+                            disabled={paddingAll}
+                            className="px-4 py-2 bg-coral text-white text-sm font-semibold rounded-xl hover:bg-opacity-90 disabled:opacity-50"
+                        >
+                            {paddingAll ? 'Padding all images...' : 'Pad All Product Images To Square'}
+                        </button>
+                        {bulkPadResult && (
+                            <p className="text-xs text-gray-500">
+                                Processed {bulkPadResult.processedImages || 0} images, skipped {bulkPadResult.skippedImages || 0}, failed {bulkPadResult.failedImages || 0}
+                            </p>
+                        )}
+                    </div>
                     <input
                         type="text"
                         placeholder="🔍 Search products..."
@@ -279,7 +319,7 @@ export default function BulkImagesPage() {
                                                             <img
                                                                 src={imgUrl}
                                                                 alt={`Image ${idx + 1}`}
-                                                                className="w-full h-full object-cover rounded-lg"
+                                                                className="w-full h-full object-contain rounded-lg bg-white"
                                                                 onError={e => e.target.style.opacity = '0.3'}
                                                             />
                                                             {idx === 0 && (

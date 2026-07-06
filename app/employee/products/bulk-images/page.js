@@ -42,7 +42,7 @@ export default function BulkImagesPage() {
         rotate: 0,
         flipHorizontal: false,
         flipVertical: false,
-        fit: 'cover',
+        fit: 'contain',
         background: '#ffffff',
         saving: false,
     })
@@ -127,7 +127,7 @@ export default function BulkImagesPage() {
             rotate: 0,
             flipHorizontal: false,
             flipVertical: false,
-            fit: 'cover',
+            fit: 'contain',
             background: '#ffffff',
             saving: false,
         })
