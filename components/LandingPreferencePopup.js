@@ -90,42 +90,50 @@ export default function LandingPreferencePopup() {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[70] bg-charcoal/50 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-lg rounded-3xl bg-white shadow-2xl border border-charcoal/10 p-6 md:p-8">
-        <p className="text-sm font-semibold uppercase tracking-wide text-coral mb-1">{greeting} Pakistan</p>
-        <h2 className="font-display text-2xl md:text-3xl text-charcoal mb-2">What size you want to explore for your kid?</h2>
-        <p className="text-gray-500 mb-6">Choose gender and age, and we will directly take you to matching products.</p>
+    <div className="fixed inset-0 z-[70] bg-gradient-to-br from-coral/35 via-skyblue/30 to-mint/35 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="relative w-full max-w-2xl rounded-[2rem] bg-gradient-to-br from-white via-cream to-sunny/30 shadow-2xl border border-white/70 p-6 md:p-8 overflow-hidden">
+        <div className="pointer-events-none absolute -top-12 -right-10 w-44 h-44 rounded-full bg-coral/25 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-14 -left-10 w-52 h-52 rounded-full bg-skyblue/30 blur-2xl" />
 
-        <div className="grid gap-4">
+        <div className="relative">
+          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-coral bg-white/85 border border-coral/20 rounded-full px-3 py-1 mb-3">
+            <span>✨</span>
+            {greeting}
+          </p>
+          <h2 className="font-display text-2xl md:text-4xl text-charcoal mb-2 leading-tight">What size you want to explore for your kid?</h2>
+          <p className="text-charcoal/70 mb-6">Pick one or many options. We will instantly show matching products for your choices.</p>
+        </div>
+
+        <div className="grid gap-5 relative">
           <div>
             <label className="block text-sm font-semibold text-charcoal mb-2">Girl / Boy</label>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={() => toggleGender('girls')}
-                className={'rounded-xl border-2 px-4 py-3 font-semibold transition-all ' + (selectedGenders.includes('girls') ? 'border-coral bg-coral text-white' : 'border-gray-200 text-charcoal hover:border-coral/40')}
+                className={'rounded-2xl border-2 px-4 py-3 font-semibold transition-all duration-200 ' + (selectedGenders.includes('girls') ? 'border-coral bg-gradient-to-r from-coral to-[#ff8b7a] text-white shadow-md scale-[1.02]' : 'border-coral/20 bg-white/85 text-charcoal hover:border-coral/50')}
               >
-                Girl
+                👧 Girl
               </button>
               <button
                 type="button"
                 onClick={() => toggleGender('boys')}
-                className={'rounded-xl border-2 px-4 py-3 font-semibold transition-all ' + (selectedGenders.includes('boys') ? 'border-coral bg-coral text-white' : 'border-gray-200 text-charcoal hover:border-coral/40')}
+                className={'rounded-2xl border-2 px-4 py-3 font-semibold transition-all duration-200 ' + (selectedGenders.includes('boys') ? 'border-skyblue bg-gradient-to-r from-skyblue to-[#70d4ff] text-charcoal shadow-md scale-[1.02]' : 'border-skyblue/30 bg-white/85 text-charcoal hover:border-skyblue/60')}
               >
-                Boy
+                🧒 Boy
               </button>
             </div>
           </div>
 
           <div>
             <label className="block text-sm font-semibold text-charcoal mb-2">Age --&gt;</label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-52 overflow-auto rounded-xl border-2 border-gray-200 p-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-auto rounded-2xl border-2 border-charcoal/10 bg-white/85 p-2.5">
               {AGE_OPTIONS.map((opt) => (
                 <button
                   key={opt.sub}
                   type="button"
                   onClick={() => toggleAge(opt.sub)}
-                  className={'rounded-lg px-3 py-2 text-sm font-semibold text-left transition-all border ' + (selectedAges.includes(opt.sub) ? 'bg-charcoal text-white border-charcoal' : 'bg-white text-charcoal border-gray-200 hover:border-charcoal/40')}
+                  className={'rounded-xl px-3 py-2 text-sm font-semibold text-left transition-all border ' + (selectedAges.includes(opt.sub) ? 'bg-gradient-to-r from-charcoal to-[#3b4b58] text-white border-charcoal shadow-sm' : 'bg-white text-charcoal border-gray-200 hover:border-coral/40')}
                 >
                   {opt.label}
                 </button>
@@ -134,21 +142,21 @@ export default function LandingPreferencePopup() {
           </div>
         </div>
 
-        <div className="mt-6 grid sm:grid-cols-2 gap-3">
+        <div className="mt-6 grid sm:grid-cols-2 gap-3 relative">
           <button
             type="button"
             onClick={goToSelectedProducts}
             disabled={selectedGenders.length === 0 || selectedAges.length === 0}
-            className="rounded-xl bg-coral text-white font-semibold px-4 py-3 hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-2xl bg-gradient-to-r from-coral to-[#ff8a6f] text-white font-semibold px-4 py-3 hover:opacity-95 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Explore Products
+            Explore Products 🎯
           </button>
           <button
             type="button"
             onClick={goToAllCollections}
-            className="rounded-xl border-2 border-charcoal/20 text-charcoal font-semibold px-4 py-3 hover:border-charcoal/40"
+            className="rounded-2xl border-2 border-charcoal/20 bg-white/85 text-charcoal font-semibold px-4 py-3 hover:border-charcoal/40"
           >
-            Explore All
+            Explore All 🌈
           </button>
         </div>
       </div>
