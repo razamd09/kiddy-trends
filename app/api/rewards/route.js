@@ -31,7 +31,7 @@ export async function GET(request) {
 
 // POST — create user
 export async function POST(request) {
-  const { userId, name, phone } = await request.json()
+  const { userId, name, phone, whatsapp } = await request.json()
   const id = userId?.toLowerCase().trim()
   if (!id) return Response.json({ error: 'User ID required' }, { status: 400 })
 
@@ -46,7 +46,7 @@ export async function POST(request) {
 
   const { data, error } = await supabase
     .from('rewards')
-    .insert([{ user_id: id, name, phone, points: 0, total_spent: 0 }])
+    .insert([{ user_id: id, name, phone, whatsapp: whatsapp || phone || '', points: 0, total_spent: 0 }])
     .select()
     .single()
 

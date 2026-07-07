@@ -17,8 +17,8 @@ function normalizePkPhone(phone) {
     }
 }
 
-async function resolveUserPhone(userId, rewardsPhone) {
-    const direct = normalizePkPhone(rewardsPhone)
+async function resolveUserPhone(userId, rewardsWhatsApp, rewardsPhone) {
+    const direct = normalizePkPhone(rewardsWhatsApp) || normalizePkPhone(rewardsPhone)
     if (direct) return direct
 
     const [notesOrderRes, emailOrderRes] = await Promise.all([
@@ -105,7 +105,11 @@ async function sendWhatsAppPromotion({ to, name, points }) {
 
     const payload = await response.json().catch(() => null)
     if (!response.ok) {
+        const errorCode = payload?.error?.code
         const errorMsg = payload?.error?.message || 'Failed to send WhatsApp promotion.'
+        if (errorCode === 131030) {
+            throw new Error('Recipient phone is not in Meta allowed test list. Add and verify this number in WhatsApp API Setup > Step 1 Try it out.')
+        }
         throw new Error(errorMsg)
     }
 
@@ -134,7 +138,7 @@ export async function POST(request) {
 
         const { data: rewardUser, error: rewardError } = await supabase
             .from('rewards')
-            .select('user_id, name, phone, points')
+            .select('user_id, name, phone, whatsapp, points')
             .eq('user_id', userId)
             .single()
 
@@ -147,7 +151,7 @@ export async function POST(request) {
             return Response.json({ error: 'No available points to promote' }, { status: 400 })
         }
 
-        const targetPhone = await resolveUserPhone(userId, rewardUser.phone)
+        const targetPhone = await resolveUserPhone(userId, rewardUser.whatsapp, rewardUser.phone)
         if (!targetPhone) {
             return Response.json({ error: 'No valid customer phone/WhatsApp number found' }, { status: 400 })
         }

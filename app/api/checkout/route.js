@@ -31,6 +31,18 @@ function buildPhoneVariants(phoneDigits) {
     return ['+92' + phoneDigits, '92' + phoneDigits, '0' + phoneDigits, phoneDigits]
 }
 
+function normalizeWhatsApp(value) {
+    const raw = String(value || '').trim()
+    if (!raw) return ''
+
+    const digits = raw.replace(/\D/g, '')
+    if (!digits) return ''
+    if (digits.startsWith('92')) return '+' + digits
+    if (digits.startsWith('0')) return '+92' + digits.slice(1)
+    if (digits.length === 10) return '+92' + digits
+    return raw
+}
+
 async function sendOrderNotification({ orderNumber, customer, cartItems, subtotal, shipping, discount, total }) {
     if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
         console.log('Order email skipped: missing EmailJS configuration')
@@ -164,6 +176,7 @@ export async function GET(request) {
                 user_id: rewardsUser.user_id,
                 points: Number(rewardsUser.points || 0),
                 phone: rewardsUser.phone || '',
+                whatsapp: rewardsUser.whatsapp || '',
             } : null,
         }, { headers: { 'Cache-Control': 'no-store' } })
     } catch (error) {
@@ -229,12 +242,16 @@ export async function POST(request) {
                 const bonusAwarded = pointsBeforeBonus >= BONUS_THRESHOLD && !rewardsUser.bonus_notified
                 const finalPoints = pointsBeforeBonus + (bonusAwarded ? BONUS_POINTS : 0)
                 const totalSpent = Math.max(0, toNumber(rewardsUser.total_spent) + payableAfterDiscount)
+                const latestPhone = normalizeWhatsApp(customer?.phone || customer?.whatsapp || '')
+                const latestWhatsApp = normalizeWhatsApp(customer?.whatsapp || customer?.phone || '')
 
                 const { error: rewardsUpdateError } = await supabase
                     .from('rewards')
                     .update({
                         points: finalPoints,
                         total_spent: totalSpent,
+                        phone: latestPhone || rewardsUser.phone || '',
+                        whatsapp: latestWhatsApp || rewardsUser.whatsapp || '',
                         bonus_notified: bonusAwarded ? true : !!rewardsUser.bonus_notified,
                         updated_at: new Date().toISOString(),
                     })

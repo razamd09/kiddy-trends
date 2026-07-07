@@ -158,6 +158,7 @@ export default function AdminRewardsPage() {
                                 <thead className="bg-cream text-gray-500">
                                     <tr>
                                         <th className="text-left px-4 py-3 font-semibold">User</th>
+                                        <th className="text-left px-4 py-3 font-semibold">WhatsApp</th>
                                         <th className="text-left px-4 py-3 font-semibold">Total Points</th>
                                         <th className="text-left px-4 py-3 font-semibold">Redeemed</th>
                                         <th className="text-left px-4 py-3 font-semibold">Available</th>
@@ -174,6 +175,7 @@ export default function AdminRewardsPage() {
                                                 <p className="font-semibold text-charcoal">{u.name || u.user_id}</p>
                                                 <p className="text-xs text-gray-400">{u.user_id}</p>
                                             </td>
+                                            <td className="px-4 py-3 text-charcoal font-medium">{u.whatsapp || u.phone || '-'}</td>
                                             <td className="px-4 py-3 font-semibold text-charcoal">{u.total_earned_points || 0} pts</td>
                                             <td className="px-4 py-3 font-semibold text-coral">{u.redeemed_points || 0} pts</td>
                                             <td className="px-4 py-3 font-semibold text-green-600">{u.available_points || 0} pts</td>
