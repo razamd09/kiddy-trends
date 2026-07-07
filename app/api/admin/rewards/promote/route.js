@@ -55,12 +55,25 @@ async function resolveUserPhone(userId, rewardsPhone) {
 }
 
 async function sendWhatsAppPromotion({ to, name, points }) {
-    const accessToken = process.env.WHATSAPP_CLOUD_API_TOKEN
-    const phoneNumberId = process.env.WHATSAPP_CLOUD_PHONE_NUMBER_ID
+    const accessToken = [
+        process.env.WHATSAPP_CLOUD_API_TOKEN,
+        process.env.WHATSAPP_ACCESS_TOKEN,
+        process.env.META_WHATSAPP_ACCESS_TOKEN,
+    ].find((value) => typeof value === 'string' && value.trim())
+
+    const phoneNumberId = [
+        process.env.WHATSAPP_CLOUD_PHONE_NUMBER_ID,
+        process.env.WHATSAPP_PHONE_NUMBER_ID,
+        process.env.META_WHATSAPP_PHONE_NUMBER_ID,
+    ].find((value) => typeof value === 'string' && value.trim())
+
     const shopUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || 'https://kiddy-trends.vercel.app/collections'
 
-    if (!accessToken || !phoneNumberId) {
-        throw new Error('WhatsApp API is not configured. Set WHATSAPP_CLOUD_API_TOKEN and WHATSAPP_CLOUD_PHONE_NUMBER_ID.')
+    const missingVars = []
+    if (!accessToken) missingVars.push('WHATSAPP_CLOUD_API_TOKEN')
+    if (!phoneNumberId) missingVars.push('WHATSAPP_CLOUD_PHONE_NUMBER_ID')
+    if (missingVars.length > 0) {
+        throw new Error('WhatsApp API is not configured. Missing: ' + missingVars.join(', '))
     }
 
     const safePoints = Math.max(0, Number(points || 0))
