@@ -1741,7 +1741,14 @@ export default function AdminProducts() {
 
                                 <button
                                     type="button"
-                                    onClick={() => setImageEditor(prev => ({ ...prev, removeBackground: !prev.removeBackground }))}
+                                    onClick={() => setImageEditor(prev => {
+                                        const nextEnabled = !prev.removeBackground
+                                        return {
+                                            ...prev,
+                                            removeBackground: nextEnabled,
+                                            background: nextEnabled ? '#ffffff' : prev.background,
+                                        }
+                                    })}
                                     className={'block w-full text-center px-3 py-2 text-sm rounded-lg ' + (imageEditor.removeBackground ? 'bg-purple-700 text-white' : 'bg-purple-500 text-white hover:bg-purple-600')}
                                 >
                                     {imageEditor.removeBackground ? 'Background Removal: ON' : 'Enable Background Removal'}
