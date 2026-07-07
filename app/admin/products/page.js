@@ -38,8 +38,10 @@ export default function AdminProducts() {
     const [deleteConfirm, setDeleteConfirm] = useState(null)
     const [selectedIds, setSelectedIds] = useState([])
     const [bulkProcessing, setBulkProcessing] = useState(false)
+    const [recentBgRemoving, setRecentBgRemoving] = useState(false)
     const [bulkEditOpen, setBulkEditOpen] = useState(false)
     const [bulkEditForm, setBulkEditForm] = useState({
+        title: '',
         category: '',
         product_version: '',
         status: '',
@@ -579,6 +581,7 @@ export default function AdminProducts() {
         if (selectedIds.length === 0) return
 
         const updates = {}
+        if (bulkEditForm.title.trim()) updates.title = bulkEditForm.title.trim()
         if (bulkEditForm.category) updates.category = bulkEditForm.category
         if (bulkEditForm.product_version) updates.product_version = bulkEditForm.product_version
         if (bulkEditForm.status) updates.is_active = bulkEditForm.status === 'active'
@@ -603,13 +606,36 @@ export default function AdminProducts() {
                 }
             }))
             setBulkEditOpen(false)
-            setBulkEditForm({ category: '', product_version: '', status: '' })
+            setBulkEditForm({ title: '', category: '', product_version: '', status: '' })
             clearSelection()
             fetchProducts()
         } catch (err) {
             alert('Bulk edit failed: ' + (err.message || 'Unknown error'))
         }
         setBulkProcessing(false)
+    }
+
+    async function handleRecentBackgroundRemoval() {
+        if (!window.confirm('Remove background and set white background for all product images uploaded in last 5 days?')) return
+
+        setRecentBgRemoving(true)
+        try {
+            const res = await fetch('/api/admin/products/recent-background-removal', {
+                method: 'POST',
+                headers: getActorHeaders(true),
+                body: JSON.stringify({ days: 5 }),
+            })
+            const data = await readApiJson(res)
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Failed to process recent images')
+            }
+            const summary = 'Processed ' + (data.processedImages || 0) + ' image(s) across ' + (data.processedProducts || 0) + ' product(s).'
+            alert(summary)
+            fetchProducts()
+        } catch (err) {
+            alert('Recent background removal failed: ' + (err.message || 'Unknown error'))
+        }
+        setRecentBgRemoving(false)
     }
 
 
@@ -926,6 +952,16 @@ export default function AdminProducts() {
                     <Link href="/admin/products/bulk-images" className="px-4 py-2 bg-purple-600 text-white font-display text-sm rounded-full hover:bg-purple-700">
                         🖼️ Bulk Images
                     </Link>
+                    {!showForm && (
+                        <button
+                            type="button"
+                            onClick={handleRecentBackgroundRemoval}
+                            disabled={recentBgRemoving || bulkProcessing}
+                            className="px-4 py-2 bg-emerald-600 text-white font-display text-sm rounded-full hover:bg-emerald-700 disabled:opacity-60"
+                        >
+                            {recentBgRemoving ? 'Removing BG...' : '⚡ Remove BG (Last 5 Days)'}
+                        </button>
+                    )}
                     <button onClick={() => { resetForm(); setShowForm(!showForm) }}
                             className="px-5 py-2 bg-coral text-white font-display text-sm rounded-full hover:bg-opacity-90">
                         {showForm ? '← Back' : '+ Add Product'}
@@ -1806,6 +1842,18 @@ export default function AdminProducts() {
                         <p className="text-sm text-gray-500 mb-4">Updating {selectedIds.length} selected product(s)</p>
 
                         <div className="space-y-3">
+                            <div>
+                                <label className="block text-xs font-semibold text-charcoal mb-1">Title</label>
+                                <input
+                                    type="text"
+                                    value={bulkEditForm.title}
+                                    onChange={e => setBulkEditForm(prev => ({ ...prev, title: e.target.value }))}
+                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
+                                    placeholder="No change"
+                                />
+                                <p className="mt-1 text-[11px] text-gray-500">If set, the same title is applied to all selected products.</p>
+                            </div>
+
                             <div>
                                 <label className="block text-xs font-semibold text-charcoal mb-1">Category</label>
                                 <select
