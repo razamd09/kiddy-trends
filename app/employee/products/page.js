@@ -317,6 +317,29 @@ export default function EmployeeProducts() {
         )
     }
 
+    function getActorHeaders(includeJson = false) {
+        const headers = {}
+        if (includeJson) headers['Content-Type'] = 'application/json'
+
+        const token = localStorage.getItem('admin_token') || ''
+        if (token) headers['x-admin-token'] = token
+
+        try {
+            const employee = JSON.parse(localStorage.getItem('employee') || '{}')
+            const actorId = String(employee?.employee_id || employee?.id || '').trim()
+            const actorRole = String(employee?.role || (token ? 'admin' : 'employee')).trim()
+            if (actorId) headers['x-actor-id'] = actorId
+            if (actorRole) headers['x-actor-role'] = actorRole
+        } catch {
+            if (token) {
+                headers['x-actor-id'] = 'admin'
+                headers['x-actor-role'] = 'admin'
+            }
+        }
+
+        return headers
+    }
+
     async function handleDuplicate(product) {
         setDuplicatingId(product.id)
         const token = localStorage.getItem('admin_token') || ''
@@ -340,7 +363,7 @@ export default function EmployeeProducts() {
 
             const res = await fetch('/api/admin/products', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+                headers: getActorHeaders(true),
                 body: JSON.stringify(duplicatePayload),
             })
             const data = await readApiJson(res)
@@ -362,7 +385,7 @@ export default function EmployeeProducts() {
         try {
             const res = await fetch('/api/admin/products', {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json', 'x-admin-token': token || '' },
+                headers: getActorHeaders(true),
                 body: JSON.stringify({ id: product.id, is_active: newActive }),
             })
             const data = await readApiJson(res)
@@ -466,7 +489,7 @@ export default function EmployeeProducts() {
         try {
             const res  = await fetch('/api/admin/products', {
                 method,
-                headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+                headers: getActorHeaders(true),
                 body:    JSON.stringify(payload)
             })
             const data = await readApiJson(res)
@@ -489,7 +512,7 @@ export default function EmployeeProducts() {
         try {
             const res  = await fetch('/api/admin/products?id=' + id, {
                 method:  'DELETE',
-                headers: { 'x-admin-token': token }
+                headers: getActorHeaders(false)
             })
             const data = await readApiJson(res)
             if (data.success) {
@@ -513,7 +536,7 @@ export default function EmployeeProducts() {
             await Promise.all(selectedIds.map(async (id) => {
                 const res = await fetch('/api/admin/products', {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+                    headers: getActorHeaders(true),
                     body: JSON.stringify({ id, is_active: false }),
                 })
                 const data = await readApiJson(res)
@@ -539,7 +562,7 @@ export default function EmployeeProducts() {
             await Promise.all(selectedIds.map(async (id) => {
                 const res = await fetch('/api/admin/products?id=' + id, {
                     method: 'DELETE',
-                    headers: { 'x-admin-token': token },
+                    headers: getActorHeaders(false),
                 })
                 const data = await readApiJson(res)
                 if (!res.ok || !data.success) {
@@ -573,7 +596,7 @@ export default function EmployeeProducts() {
             await Promise.all(selectedIds.map(async (id) => {
                 const res = await fetch('/api/admin/products', {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+                    headers: getActorHeaders(true),
                     body: JSON.stringify({ id, ...updates }),
                 })
                 const data = await readApiJson(res)
@@ -1392,7 +1415,7 @@ export default function EmployeeProducts() {
                                 >
                                     <option value="created_at">Created At</option>
                                     <option value="updated_at">Updated At</option>
-                                    <option value="last_action_at">Last Action</option>
+                                    <option value="created_at">Product Added By</option>
                                     <option value="price">Price</option>
                                     <option value="title">Title</option>
                                     <option value="category">Category</option>
@@ -1478,7 +1501,7 @@ export default function EmployeeProducts() {
                                                 <th className="px-4 py-3 text-left text-sm">{renderSortableHeader('Variants', 'variant_count')}</th>
                                                 <th className="px-4 py-3 text-left text-sm">{renderSortableHeader('Stock', 'stock')}</th>
                                                 <th className="px-4 py-3 text-left text-sm">{renderSortableHeader('Status', 'is_active')}</th>
-                                                <th className="px-4 py-3 text-left text-xs">{renderSortableHeader('Last Action', 'last_action_at')}</th>
+                                                <th className="px-4 py-3 text-left text-xs">{renderSortableHeader('Product Added By', 'created_at')}</th>
                                                 <th className="px-4 py-3 text-center font-semibold text-sm text-charcoal">Actions</th>
                                             </tr>
                                             </thead>
@@ -1550,8 +1573,8 @@ export default function EmployeeProducts() {
                                                     </td>
                                                     <td className="px-4 py-3 text-xs text-gray-500">
                                                         <div className="space-y-1">
-                                                            <p>{product.last_action_type ? (product.last_action_type + ' by: ' + (product.last_action_by || '—')) : 'unknown'}</p>
-                                                            <p className="text-gray-400">{product.last_action_at ? new Date(product.last_action_at).toLocaleDateString() : '—'}</p>
+                                                            <p>{product.last_action_by || '—'}</p>
+                                                            <p className="text-gray-400">{product.created_at ? new Date(product.created_at).toLocaleDateString() : '—'}</p>
                                                         </div>
                                                     </td>
                                                     <td className="px-4 py-3 text-center">

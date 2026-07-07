@@ -154,6 +154,18 @@ async function resolveSignedImageUrl(url) {
     return signedData.signedUrl
 }
 
+function getActorIdentity(request) {
+    const actorId = String(request.headers.get('x-actor-id') || '').trim()
+    const actorRole = String(request.headers.get('x-actor-role') || '').trim().toLowerCase()
+
+    if (actorId) {
+        if (actorRole) return actorId + ' (' + actorRole + ')'
+        return actorId
+    }
+
+    return 'admin (admin)'
+}
+
 export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const page   = Math.max(parseInt(searchParams.get('page') || '1', 10), 1)
@@ -309,7 +321,7 @@ export async function GET(request) {
 export async function POST(request) {
     try {
         const body = await request.json()
-            const token = request.headers.get('x-admin-token') || 'admin'
+            const actorIdentity = getActorIdentity(request)
             const isActive = typeof body.is_active !== 'undefined' ? !!body.is_active : (body.status ? String(body.status) === 'active' : true)
 
             const { data, error } = await supabase
@@ -331,7 +343,7 @@ export async function POST(request) {
                     source:        'custom',
                     product_version: body.product_version || null,
                     shopify_handle: body.shopify_handle || null,
-                    last_action_by: token,
+                    last_action_by: actorIdentity,
                     last_action_type: 'added',
                     last_action_at: new Date().toISOString(),
                 }])
@@ -354,12 +366,11 @@ export async function PUT(request) {
             return Response.json({ success: false, error: 'Product ID is required' }, { status: 400 })
         }
 
-        const token = request.headers.get('x-admin-token') || 'admin'
+        const actorIdentity = getActorIdentity(request)
         const cleanUpdates = {
             ...updates,
             updated_at: new Date().toISOString(),
-            last_action_by: token,
-            last_action_type: 'edited',
+            last_action_type: 'edited by ' + actorIdentity,
             last_action_at: new Date().toISOString(),
         }
 
