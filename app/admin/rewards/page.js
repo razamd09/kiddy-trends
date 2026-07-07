@@ -11,6 +11,8 @@ export default function AdminRewardsPage() {
     const [historyLoading, setHistoryLoading] = useState(false)
     const [historyUser, setHistoryUser] = useState(null)
     const [historyRows, setHistoryRows] = useState([])
+    const [promotingUserId, setPromotingUserId] = useState('')
+    const [promotionStatus, setPromotionStatus] = useState({})
     const router = useRouter()
 
     useEffect(() => {
@@ -61,6 +63,44 @@ export default function AdminRewardsPage() {
             setHistoryRows([])
         }
         setHistoryLoading(false)
+    }
+
+    async function sendPromotion(user) {
+        const token = localStorage.getItem('admin_token')
+        if (!token) return
+        const userId = String(user.user_id || '').toLowerCase().trim()
+        if (!userId) return
+
+        try {
+            setPromotingUserId(userId)
+            setPromotionStatus((prev) => ({ ...prev, [userId]: '' }))
+
+            const res = await fetch('/api/admin/rewards/promote', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-admin-token': token,
+                },
+                body: JSON.stringify({ userId }),
+            })
+
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) {
+                throw new Error(data?.error || 'Failed to send promotion')
+            }
+
+            setPromotionStatus((prev) => ({
+                ...prev,
+                [userId]: 'Sent to ' + (data?.sentTo || 'customer number'),
+            }))
+        } catch (error) {
+            setPromotionStatus((prev) => ({
+                ...prev,
+                [userId]: error.message || 'Failed to send promotion',
+            }))
+        } finally {
+            setPromotingUserId('')
+        }
     }
 
     if (!verified) return (
@@ -122,11 +162,13 @@ export default function AdminRewardsPage() {
                                         <th className="text-left px-4 py-3 font-semibold">Redeemed</th>
                                         <th className="text-left px-4 py-3 font-semibold">Available</th>
                                         <th className="text-left px-4 py-3 font-semibold">Date</th>
-                                        <th className="text-left px-4 py-3 font-semibold">Details</th>
+                                        <th className="text-left px-4 py-3 font-semibold">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {users.map((u) => (
+                                    {users.map((u) => {
+                                        const rowUserId = String(u.user_id || '').toLowerCase().trim()
+                                        return (
                                         <tr key={u.user_id} className="border-t border-gray-100">
                                             <td className="px-4 py-3">
                                                 <p className="font-semibold text-charcoal">{u.name || u.user_id}</p>
@@ -139,15 +181,30 @@ export default function AdminRewardsPage() {
                                                 {u.last_activity_at ? new Date(u.last_activity_at).toLocaleString('en-PK') : '-'}
                                             </td>
                                             <td className="px-4 py-3">
-                                                <button
-                                                    onClick={() => openHistory(u)}
-                                                    className="px-3 py-1.5 rounded-xl bg-cream text-charcoal text-xs font-semibold hover:bg-sunny/40"
-                                                >
-                                                    View
-                                                </button>
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <button
+                                                        onClick={() => openHistory(u)}
+                                                        className="px-3 py-1.5 rounded-xl bg-cream text-charcoal text-xs font-semibold hover:bg-sunny/40"
+                                                    >
+                                                        View
+                                                    </button>
+                                                    <button
+                                                        onClick={() => sendPromotion(u)}
+                                                        disabled={promotingUserId === rowUserId || (u.available_points || 0) <= 0}
+                                                        className="px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-500"
+                                                    >
+                                                        {promotingUserId === rowUserId ? 'Sending...' : 'Promote'}
+                                                    </button>
+                                                </div>
+                                                {promotionStatus[rowUserId] && (
+                                                    <p className={"text-[11px] mt-1 " + (promotionStatus[rowUserId].startsWith('Sent') ? 'text-green-600' : 'text-coral')}>
+                                                        {promotionStatus[rowUserId]}
+                                                    </p>
+                                                )}
                                             </td>
                                         </tr>
-                                    ))}
+                                        )
+                                    })}
                                 </tbody>
                             </table>
                         </div>
