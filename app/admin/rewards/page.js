@@ -15,6 +15,27 @@ export default function AdminRewardsPage() {
     const [promotionStatus, setPromotionStatus] = useState({})
     const router = useRouter()
 
+    function normalizeWhatsAppToWaMe(value) {
+        const digits = String(value || '').replace(/\D/g, '')
+        if (!digits) return ''
+        if (digits.startsWith('92')) return digits
+        if (digits.startsWith('0')) return '92' + digits.slice(1)
+        if (digits.length === 10) return '92' + digits
+        return digits
+    }
+
+    function buildRewardMessage(user) {
+        const points = Math.max(0, Number(user?.available_points || 0))
+        const name = (user?.name || user?.user_id || 'Customer').trim()
+        const shopUrl = 'https://kiddy-trends.vercel.app/collections'
+        return [
+            'Assalam o Alaikum ' + name + '!',
+            'You have ' + points + ' reward points available.',
+            'You can use these as PKR ' + points.toLocaleString() + ' discount on your next order.',
+            'Shop now - our new arrivals are live: ' + shopUrl,
+        ].join('\n')
+    }
+
     useEffect(() => {
         async function verifyAndLoad() {
             const token = localStorage.getItem('admin_token')
@@ -66,8 +87,6 @@ export default function AdminRewardsPage() {
     }
 
     async function sendPromotion(user) {
-        const token = localStorage.getItem('admin_token')
-        if (!token) return
         const userId = String(user.user_id || '').toLowerCase().trim()
         if (!userId) return
 
@@ -75,23 +94,18 @@ export default function AdminRewardsPage() {
             setPromotingUserId(userId)
             setPromotionStatus((prev) => ({ ...prev, [userId]: '' }))
 
-            const res = await fetch('/api/admin/rewards/promote', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-admin-token': token,
-                },
-                body: JSON.stringify({ userId }),
-            })
-
-            const data = await res.json().catch(() => ({}))
-            if (!res.ok) {
-                throw new Error(data?.error || 'Failed to send promotion')
+            const waNumber = normalizeWhatsAppToWaMe(user.whatsapp || user.phone || '')
+            if (!waNumber) {
+                throw new Error('No valid WhatsApp number found for this user')
             }
+
+            const message = buildRewardMessage(user)
+            const waUrl = 'https://wa.me/' + waNumber + '?text=' + encodeURIComponent(message)
+            window.open(waUrl, '_blank', 'noopener,noreferrer')
 
             setPromotionStatus((prev) => ({
                 ...prev,
-                [userId]: 'Sent to ' + (data?.sentTo || 'customer number'),
+                [userId]: 'WhatsApp chat opened for ' + waNumber,
             }))
         } catch (error) {
             setPromotionStatus((prev) => ({
