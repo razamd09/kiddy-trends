@@ -131,6 +131,10 @@ async function backfillCustomersFromOrders() {
     return rows.length
 }
 
+function hasMissingNames(rows) {
+    return (rows || []).some((row) => !String(row?.first_name || '').trim() && !String(row?.last_name || '').trim())
+}
+
 export async function GET(request) {
     try {
         const valid = await validateAdmin(request)
@@ -155,7 +159,7 @@ export async function GET(request) {
         let { data, error, count } = await query
         if (error) return Response.json({ error: error.message }, { status: 500 })
 
-        if (!queryText && page === 1 && (count || 0) === 0) {
+        if (!queryText && page === 1 && ((count || 0) === 0 || hasMissingNames(data))) {
             try {
                 const imported = await backfillCustomersFromOrders()
                 if (imported > 0) {
