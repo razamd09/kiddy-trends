@@ -43,6 +43,26 @@ function toTimestampWithoutTzInTz(date, timeZone = BUSINESS_TIMEZONE) {
     return p.year + '-' + pad(p.month) + '-' + pad(p.day) + 'T' + pad(p.hour) + ':' + pad(p.minute) + ':' + pad(p.second)
 }
 
+function parseTimestampWithoutTz(value) {
+    const s = String(value || '').trim()
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})(?::(\d{2}))?$/)
+    if (!m) return null
+    const year = Number(m[1])
+    const month = Number(m[2])
+    const day = Number(m[3])
+    const hour = Number(m[4])
+    const minute = Number(m[5])
+    const second = Number(m[6] || 0)
+    return Date.UTC(year, month - 1, day, hour, minute, second)
+}
+
+function durationMinutesFromLocalTimestamps(startTs, endTs) {
+    const start = parseTimestampWithoutTz(startTs)
+    const end = parseTimestampWithoutTz(endTs)
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return 0
+    return Math.round((end - start) / 60000)
+}
+
 async function getInternetNow() {
     try {
         const res = await fetch('https://worldtimeapi.org/api/timezone/Asia/Karachi', { cache: 'no-store' })
@@ -140,14 +160,13 @@ export async function PUT(request) {
     if (!existing) return Response.json({ error: 'No time-in record found' }, { status: 404 })
     if (existing.time_out) return Response.json({ error: 'Already timed out today' }, { status: 400 })
 
-    const timeOut = internetNow
-    const timeIn   = new Date(existing.time_in)
-    const duration = Math.round((timeOut - timeIn) / 60000)
+    const timeOut = toTimestampWithoutTzInTz(internetNow)
+    const duration = durationMinutesFromLocalTimestamps(existing.time_in, timeOut)
 
     const { data, error } = await supabase
         .from('attendance')
         .update({
-            time_out:         toTimestampWithoutTzInTz(timeOut),
+            time_out:         timeOut,
             duration_minutes: duration,
         })
         .eq('id', existing.id)
