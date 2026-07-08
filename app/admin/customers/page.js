@@ -53,6 +53,11 @@ function normalizeHeader(value) {
     return String(value || '').toLowerCase().replace(/[^a-z0-9]/g, '')
 }
 
+function looksLikePhone(value) {
+    const digits = String(value || '').replace(/\D/g, '')
+    return digits.length >= 10 && digits.length <= 14
+}
+
 function mapCsvToCustomers(text) {
     const table = parseCsv(text)
     if (!table.length) return []
@@ -64,9 +69,22 @@ function mapCsvToCustomers(text) {
 
     const hasHeader = firstIdx >= 0 || lastIdx >= 0 || phoneIdx >= 0
     const start = hasHeader ? 1 : 0
-    const firstCol = hasHeader ? firstIdx : 0
-    const lastCol = hasHeader ? lastIdx : 1
-    const phoneCol = hasHeader ? phoneIdx : 2
+
+    let firstCol = hasHeader ? firstIdx : 0
+    let lastCol = hasHeader ? lastIdx : 1
+    let phoneCol = hasHeader ? phoneIdx : 2
+
+    if (!hasHeader) {
+        const sampleRow = table.find((row) => row.some((cell) => String(cell || '').trim() !== '')) || []
+        const samplePhoneIdx = sampleRow.findIndex((cell) => looksLikePhone(cell))
+
+        if (samplePhoneIdx >= 0) {
+            phoneCol = samplePhoneIdx
+            const remaining = [0, 1, 2].filter((idx) => idx !== phoneCol)
+            firstCol = remaining[0] ?? 0
+            lastCol = remaining[1] ?? 1
+        }
+    }
 
     const rows = []
     for (let i = start; i < table.length; i++) {
