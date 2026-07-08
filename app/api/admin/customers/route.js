@@ -31,6 +31,15 @@ function normalizePhone(value) {
     return '+' + digits
 }
 
+function normalizeOrderSource(value) {
+    const v = String(value || '').trim().toLowerCase()
+    if (v === 'insta' || v === 'instagram') return 'Insta'
+    if (v === 'facebook' || v === 'fb') return 'Facebook'
+    if (v === 'whatsapp' || v === 'wa') return 'Whatsapp'
+    if (v === 'website' || v === 'web' || v === 'site') return 'Website'
+    return 'Website'
+}
+
 function splitName(name) {
     const normalized = String(name || '').trim().replace(/\s+/g, ' ')
     if (!normalized) return { first_name: '', last_name: '' }
@@ -49,8 +58,33 @@ function normalizeCsvRow(row) {
         first_name: firstName,
         last_name: lastName,
         phone,
+        order_source: normalizeOrderSource(row?.order_source || row?.orderSource || row?.source),
         updated_at: new Date().toISOString(),
     }
+}
+
+async function upsertCustomers(rows) {
+    if (!rows?.length) return null
+
+    const firstAttempt = await supabase
+        .from('customers')
+        .upsert(rows, { onConflict: 'phone' })
+
+    if (!firstAttempt.error) return null
+
+    const message = String(firstAttempt.error.message || '').toLowerCase()
+    if (!message.includes('order_source')) return firstAttempt.error
+
+    const fallbackRows = rows.map((r) => {
+        const { order_source, ...rest } = r
+        return rest
+    })
+
+    const fallback = await supabase
+        .from('customers')
+        .upsert(fallbackRows, { onConflict: 'phone' })
+
+    return fallback.error || null
 }
 
 async function buildCustomersFromOrders() {
@@ -75,6 +109,7 @@ async function buildCustomersFromOrders() {
             byPhone.set(phone, {
                 ...name,
                 phone,
+                order_source: 'Website',
                 updated_at: new Date().toISOString(),
             })
         })
@@ -90,9 +125,7 @@ async function backfillCustomersFromOrders() {
     const rows = await buildCustomersFromOrders()
     if (rows.length === 0) return 0
 
-    const { error } = await supabase
-        .from('customers')
-        .upsert(rows, { onConflict: 'phone' })
+    const error = await upsertCustomers(rows)
 
     if (error) throw new Error(error.message)
     return rows.length
@@ -178,13 +211,33 @@ export async function POST(request) {
                 return Response.json({ success: true, imported: 0, source: 'csv' })
             }
 
-            const { error } = await supabase
-                .from('customers')
-                .upsert(rows, { onConflict: 'phone' })
+            const error = await upsertCustomers(rows)
 
             if (error) return Response.json({ error: error.message }, { status: 500 })
 
             return Response.json({ success: true, imported: rows.length, source: 'csv' })
+        }
+
+        if (action === 'add-customer') {
+            const first_name = String(body?.first_name || body?.firstName || '').trim()
+            const last_name = String(body?.last_name || body?.lastName || '').trim()
+            const phone = normalizePhone(body?.phone || '')
+            const order_source = normalizeOrderSource(body?.order_source || body?.orderSource)
+
+            if (!phone) {
+                return Response.json({ error: 'Valid phone is required' }, { status: 400 })
+            }
+
+            const error = await upsertCustomers([{
+                    first_name,
+                    last_name,
+                    phone,
+                    order_source,
+                    updated_at: new Date().toISOString(),
+                }])
+
+            if (error) return Response.json({ error: error.message }, { status: 500 })
+            return Response.json({ success: true, source: 'manual' })
         }
 
         return Response.json({ error: 'Unsupported action' }, { status: 400 })

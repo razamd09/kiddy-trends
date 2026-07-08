@@ -61,12 +61,21 @@ async function syncCustomerSnapshot(supabase, customer) {
         first_name: firstName,
         last_name: lastName,
         phone,
+        order_source: 'Website',
         updated_at: new Date().toISOString(),
     }
 
-    const { error } = await supabase
+    let { error } = await supabase
         .from('customers')
         .upsert([payload], { onConflict: 'phone' })
+
+    if (error && String(error.message || '').toLowerCase().includes('order_source')) {
+        const { order_source, ...fallbackPayload } = payload
+        const fallback = await supabase
+            .from('customers')
+            .upsert([fallbackPayload], { onConflict: 'phone' })
+        error = fallback.error || null
+    }
 
     if (error) {
         console.log('Customers sync error:', error.message)
