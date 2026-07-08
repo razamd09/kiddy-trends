@@ -63,6 +63,23 @@ function durationMinutesFromLocalTimestamps(startTs, endTs) {
     return Math.round((end - start) / 60000)
 }
 
+function normalizeDuration(record) {
+    if (!record?.time_in || !record?.time_out) {
+        return Math.max(0, Number(record?.duration_minutes) || 0)
+    }
+
+    const fromLocal = durationMinutesFromLocalTimestamps(record.time_in, record.time_out)
+    if (fromLocal > 0) return fromLocal
+
+    const start = Date.parse(record.time_in)
+    const end = Date.parse(record.time_out)
+    if (Number.isFinite(start) && Number.isFinite(end) && end >= start) {
+        return Math.round((end - start) / 60000)
+    }
+
+    return Math.max(0, Number(record?.duration_minutes) || 0)
+}
+
 async function getInternetNow() {
     try {
         const res = await fetch('https://worldtimeapi.org/api/timezone/Asia/Karachi', { cache: 'no-store' })
@@ -109,7 +126,13 @@ export async function GET(request) {
 
     const { data, error } = await query
     if (error) return Response.json({ error: error.message }, { status: 500 })
-    return Response.json({ attendance: data })
+
+    const attendance = (data || []).map((row) => ({
+        ...row,
+        duration_minutes: normalizeDuration(row),
+    }))
+
+    return Response.json({ attendance })
 }
 
 // POST — time in

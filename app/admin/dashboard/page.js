@@ -94,6 +94,7 @@ export default function AdminDashboard() {
                         { label: 'Manage Orders',   href: '/admin/orders',     icon: '📦', color: 'bg-coral text-white' },
                         { label: 'Manage Products', href: '/admin/products',   icon: '👕', color: 'bg-charcoal text-white' },
                         { label: 'Employees',       href: '/admin/employees',  icon: '👥', color: 'bg-skyblue text-white' },
+                        { label: 'Customers',       href: '/admin/customers',  icon: '📱', color: 'bg-emerald-500 text-white' },
                         { label: 'Attendance',      href: '/admin/attendance', icon: '📅', color: 'bg-mint text-white' },
                         { label: 'Shipping Rates',  href: '/admin/shipping-rates', icon: '🚚', color: 'bg-indigo-500 text-white' },
                         { label: 'Rewards Points',  href: '/admin/rewards',    icon: '⭐', color: 'bg-sunny text-charcoal' },

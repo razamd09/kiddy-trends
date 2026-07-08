@@ -43,6 +43,36 @@ function normalizeWhatsApp(value) {
     return raw
 }
 
+function splitCustomerName(value) {
+    const normalized = String(value || '').trim().replace(/\s+/g, ' ')
+    if (!normalized) return { firstName: '', lastName: '' }
+    const parts = normalized.split(' ')
+    const firstName = parts.shift() || ''
+    const lastName = parts.join(' ')
+    return { firstName, lastName }
+}
+
+async function syncCustomerSnapshot(supabase, customer) {
+    const phone = normalizeWhatsApp(customer?.phone || customer?.whatsapp || '')
+    if (!phone) return
+
+    const { firstName, lastName } = splitCustomerName(customer?.name)
+    const payload = {
+        first_name: firstName,
+        last_name: lastName,
+        phone,
+        updated_at: new Date().toISOString(),
+    }
+
+    const { error } = await supabase
+        .from('customers')
+        .upsert([payload], { onConflict: 'phone' })
+
+    if (error) {
+        console.log('Customers sync error:', error.message)
+    }
+}
+
 async function sendOrderNotification({ orderNumber, customer, cartItems, subtotal, shipping, discount, total }) {
     if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
         console.log('Order email skipped: missing EmailJS configuration')
@@ -326,6 +356,8 @@ export async function POST(request) {
         } catch (emailErr) {
             console.log('Order email error:', emailErr)
         }
+
+        await syncCustomerSnapshot(supabase, customer)
 
         return Response.json({
             success:     true,
