@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { normalizePhone, upsertCustomers } from '../admin/customers/customer-data'
 
 const ORDER_NOTIFICATION_EMAIL = process.env.ORDER_NOTIFICATION_EMAIL || 'thekiddytrends@gmail.com'
 const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_9p08wct'
@@ -52,30 +53,18 @@ function splitCustomerName(value) {
     return { firstName, lastName }
 }
 
-async function syncCustomerSnapshot(supabase, customer) {
-    const phone = normalizeWhatsApp(customer?.phone || customer?.whatsapp || '')
+async function syncCustomerSnapshot(customer) {
+    const phone = normalizePhone(customer?.phone || customer?.whatsapp || '')
     if (!phone) return
 
     const { firstName, lastName } = splitCustomerName(customer?.name)
-    const payload = {
+    const error = await upsertCustomers([{
         first_name: firstName,
         last_name: lastName,
         phone,
         order_source: 'Website',
         updated_at: new Date().toISOString(),
-    }
-
-    let { error } = await supabase
-        .from('customers')
-        .upsert([payload], { onConflict: 'phone' })
-
-    if (error && String(error.message || '').toLowerCase().includes('order_source')) {
-        const { order_source, ...fallbackPayload } = payload
-        const fallback = await supabase
-            .from('customers')
-            .upsert([fallbackPayload], { onConflict: 'phone' })
-        error = fallback.error || null
-    }
+    }])
 
     if (error) {
         console.log('Customers sync error:', error.message)
@@ -366,7 +355,7 @@ export async function POST(request) {
             console.log('Order email error:', emailErr)
         }
 
-        await syncCustomerSnapshot(supabase, customer)
+        await syncCustomerSnapshot(customer)
 
         return Response.json({
             success:     true,

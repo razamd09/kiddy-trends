@@ -42,6 +42,12 @@ export default function EmployeeOrdersPage() {
     const [updating, setUpdating] = useState(false)
     const [lastOrderCount, setLastOrderCount] = useState(0)
     const [trackingInput, setTrackingInput] = useState('')
+    const [newCustomerFirst, setNewCustomerFirst] = useState('')
+    const [newCustomerLast, setNewCustomerLast] = useState('')
+    const [newCustomerPhone, setNewCustomerPhone] = useState('')
+    const [newCustomerSource, setNewCustomerSource] = useState('Website')
+    const [addingCustomer, setAddingCustomer] = useState(false)
+    const [addCustomerStatus, setAddCustomerStatus] = useState('')
     const router = useRouter()
 
     useEffect(() => {
@@ -144,6 +150,40 @@ export default function EmployeeOrdersPage() {
         setUpdating(false)
     }
 
+    async function addCustomer() {
+        setAddingCustomer(true)
+        setAddCustomerStatus('')
+
+        try {
+            const res = await fetch('/api/employee/customers', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: 'add-customer',
+                    first_name: newCustomerFirst,
+                    last_name: newCustomerLast,
+                    phone: newCustomerPhone,
+                    order_source: newCustomerSource,
+                }),
+            })
+
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(data?.error || 'Failed to save customer')
+
+            setAddCustomerStatus('Customer saved successfully')
+            setNewCustomerFirst('')
+            setNewCustomerLast('')
+            setNewCustomerPhone('')
+            setNewCustomerSource('Website')
+        } catch (error) {
+            setAddCustomerStatus(error.message || 'Failed to save customer')
+        }
+
+        setAddingCustomer(false)
+    }
+
     function getItems(order) {
         try {
             return typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || [])
@@ -205,6 +245,55 @@ export default function EmployeeOrdersPage() {
                             {s === 'all' ? '🛍️ All (' + total + ')' : (statusConfig[s]?.icon + ' ' + statusConfig[s]?.label)}
                         </button>
                     ))}
+                </div>
+
+                <div className="bg-white rounded-2xl p-4 mb-6">
+                    <div className="flex items-center justify-between mb-3">
+                        <p className="font-display text-lg text-charcoal">Add Customer</p>
+                        {addCustomerStatus && (
+                            <p className={addCustomerStatus.toLowerCase().includes('success') ? 'text-emerald-600 text-xs font-semibold' : 'text-coral text-xs font-semibold'}>
+                                {addCustomerStatus}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                        <input
+                            value={newCustomerFirst}
+                            onChange={(e) => setNewCustomerFirst(e.target.value)}
+                            placeholder="First Name"
+                            className="px-4 py-2 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm bg-cream"
+                        />
+                        <input
+                            value={newCustomerLast}
+                            onChange={(e) => setNewCustomerLast(e.target.value)}
+                            placeholder="Last Name"
+                            className="px-4 py-2 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm bg-cream"
+                        />
+                        <input
+                            value={newCustomerPhone}
+                            onChange={(e) => setNewCustomerPhone(e.target.value)}
+                            placeholder="Phone"
+                            className="px-4 py-2 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm bg-cream"
+                        />
+                        <select
+                            value={newCustomerSource}
+                            onChange={(e) => setNewCustomerSource(e.target.value)}
+                            className="px-4 py-2 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm bg-cream"
+                        >
+                            <option value="Insta">Insta</option>
+                            <option value="Facebook">Facebook</option>
+                            <option value="Whatsapp">Whatsapp</option>
+                            <option value="Website">Website</option>
+                        </select>
+                        <button
+                            onClick={addCustomer}
+                            disabled={addingCustomer}
+                            className="px-4 py-2 bg-coral text-white rounded-xl text-sm font-semibold hover:bg-opacity-90 disabled:opacity-60"
+                        >
+                            {addingCustomer ? 'Saving...' : 'Save Customer'}
+                        </button>
+                    </div>
                 </div>
 
                 <div className="grid md:grid-cols-5 gap-4">

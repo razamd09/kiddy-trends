@@ -16,3 +16,13 @@ CREATE INDEX IF NOT EXISTS idx_customers_updated_at ON customers(updated_at DESC
 
 ALTER TABLE customers
 ADD COLUMN IF NOT EXISTS order_source TEXT NOT NULL DEFAULT 'Website';
+
+-- Backfill-safe upgrade for databases where customers already existed without
+-- a unique index/constraint on phone (required for ON CONFLICT (phone)).
+DELETE FROM customers older
+USING customers newer
+WHERE older.phone = newer.phone
+  AND older.id < newer.id;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_phone_unique
+ON customers(phone);
