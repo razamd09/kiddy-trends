@@ -200,6 +200,7 @@ export async function PUT(request) {
         if (updates.stock !== undefined) cleanUpdates.stock = parseInt(updates.stock, 10) || 0
         if (updates.product_version !== undefined) cleanUpdates.product_version = String(updates.product_version || '').trim()
         if (updates.variants !== undefined) cleanUpdates.variants = normalizeVariants(updates.variants || [])
+        delete cleanUpdates.status
 
         const { data, error } = await supabase
             .from('products')

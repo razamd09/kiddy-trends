@@ -450,6 +450,8 @@ export async function PUT(request) {
             cleanUpdates.is_active = String(updates.status) === 'active'
         }
 
+        delete cleanUpdates.status
+
         const { data, error } = await supabase
             .from('products')
             .update(cleanUpdates)
