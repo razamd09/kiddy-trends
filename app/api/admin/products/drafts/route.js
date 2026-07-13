@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { normalizeVariants } from '../../../../../lib/variantNormalization'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -15,11 +16,11 @@ function normalizeVariantText(value) {
 }
 
 function parseVariants(rawVariants) {
-    if (Array.isArray(rawVariants)) return rawVariants
+    if (Array.isArray(rawVariants)) return normalizeVariants(rawVariants)
     if (typeof rawVariants === 'string') {
         try {
             const parsed = JSON.parse(rawVariants)
-            return Array.isArray(parsed) ? parsed : []
+            return Array.isArray(parsed) ? normalizeVariants(parsed) : []
         } catch {
             return []
         }
@@ -67,6 +68,15 @@ function normalizeImages(images) {
         return [trimmed]
     }
     return []
+}
+
+function validateRequiredProductFields(payload) {
+    const productType = String(payload?.product_type || '').trim()
+    const productVersion = String(payload?.product_version || '').trim()
+
+    if (!productType) return 'Product Type is required'
+    if (!productVersion) return 'Product Version is required'
+    return null
 }
 
 export async function GET(request) {
@@ -126,6 +136,7 @@ export async function GET(request) {
     const products = (data || []).map((product) => ({
         ...product,
         images: normalizeImages(product.images),
+        variants: parseVariants(product.variants),
     }))
     return Response.json({ success: true, products, total: count || 0 })
 }
@@ -133,6 +144,8 @@ export async function GET(request) {
 export async function POST(request) {
     try {
         const body = await request.json()
+        const validationError = validateRequiredProductFields(body)
+        if (validationError) return Response.json({ success: false, error: validationError }, { status: 400 })
 
         const { data, error } = await supabase
             .from('products')
@@ -147,7 +160,7 @@ export async function POST(request) {
                 category: String(body.category || '').trim(),
                 product_type: String(body.product_type || '').trim(),
                 tags: Array.isArray(body.tags) ? body.tags : [],
-                variants: body.variants || null,
+                variants: normalizeVariants(body.variants || []),
                 stock: parseInt(body.stock, 10) || 0,
                 is_active: false,
                 source: DRAFT_SOURCE,
@@ -172,6 +185,8 @@ export async function PUT(request) {
         const body = await request.json()
         const { id, ...updates } = body
         if (!id) return Response.json({ success: false, error: 'Product ID is required' }, { status: 400 })
+        const validationError = validateRequiredProductFields(updates)
+        if (validationError) return Response.json({ success: false, error: validationError }, { status: 400 })
 
         const cleanUpdates = { ...updates, updated_at: new Date().toISOString(), last_action_by: 'admin', last_action_type: 'edited', last_action_at: new Date().toISOString() }
         if (updates.title !== undefined) cleanUpdates.title = String(updates.title || '').trim()
@@ -184,6 +199,7 @@ export async function PUT(request) {
         if (updates.compare_price !== undefined) cleanUpdates.compare_price = updates.compare_price ? parseFloat(updates.compare_price) : null
         if (updates.stock !== undefined) cleanUpdates.stock = parseInt(updates.stock, 10) || 0
         if (updates.product_version !== undefined) cleanUpdates.product_version = String(updates.product_version || '').trim()
+        if (updates.variants !== undefined) cleanUpdates.variants = normalizeVariants(updates.variants || [])
 
         const { data, error } = await supabase
             .from('products')

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { normalizeVariants } from '../../../lib/variantNormalization'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -145,7 +146,7 @@ function getTitlePriority(title) {
 }
 
 function transformProduct(product) {
-    const rawVariants = Array.isArray(product.variants) ? product.variants : []
+    const rawVariants = normalizeVariants(Array.isArray(product.variants) ? product.variants : [])
     const hasRealVariants = rawVariants.some((v) => v && v.option1_value)
 
     let variants

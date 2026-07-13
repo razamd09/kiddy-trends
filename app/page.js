@@ -9,38 +9,8 @@ import SpinWheelPopup from '../components/SpinWheelPopup'
 import DiscountBanner from '../components/DiscountBanner'
 import LandingPreferencePopup from '../components/LandingPreferencePopup'
 
-const SUMMER_NEW_ARRIVALS_TARGET = 10
-const SUMMER_NEW_ARRIVALS_MATCHER = /summer\s+new\s+arrivals?\s+2026/i
-const SHUFFLE_WINDOW_MS = 6 * 60 * 60 * 1000 // reshuffle every 6 hours
+const NEW_ARRIVALS_TARGET = 10
 const FLASH_SALE_RIGHT_OFFSET_Y = 0
-
-function isSummerNewArrival2026(product) {
-  return SUMMER_NEW_ARRIVALS_MATCHER.test(String(product?.title || ''))
-}
-
-// Small seeded PRNG so every visitor in the same 6-hour window sees the same
-// order, and the order changes when the window rolls over.
-function mulberry32(seed) {
-  let a = seed >>> 0
-  return function () {
-    a |= 0; a = (a + 0x6D2B79F5) | 0
-    let t = Math.imul(a ^ (a >>> 15), 1 | a)
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-  }
-}
-
-// Deterministic Fisher-Yates shuffle seeded by the current 6-hour window.
-function shuffleForCurrentWindow(items) {
-  const seed = Math.floor(Date.now() / SHUFFLE_WINDOW_MS)
-  const rand = mulberry32(seed)
-  const arr = [...items]
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1))
-    ;[arr[i], arr[j]] = [arr[j], arr[i]]
-  }
-  return arr
-}
 
 const categories = [
   { label: 'Kids Clothing',      desc: 'Newborn to 12 years',         color: 'bg-coral/20',   emoji: '👕', href: '/collections' },
@@ -56,39 +26,12 @@ export default function Home() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const responses = await Promise.allSettled([
-          fetch('/api/products?limit=120&search=Summer New Arrival 2026').then(r => r.json()),
-          fetch('/api/products?limit=120&search=Summer New Arrivals 2026').then(r => r.json()),
-          fetch('/api/products?limit=400&page=1').then(r => r.json()),
-        ])
+        const data = await fetch('/api/products?limit=120&page=1').then(r => r.json())
+        const nextProducts = Array.isArray(data?.products)
+          ? data.products.slice(0, NEW_ARRIVALS_TARGET)
+          : []
 
-        const [singularData, pluralData, fallbackData] = responses.map((result) =>
-          result.status === 'fulfilled' ? result.value : null
-        )
-
-        const mergedProducts = [
-          ...(Array.isArray(singularData?.products) ? singularData.products : []),
-          ...(Array.isArray(pluralData?.products) ? pluralData.products : []),
-          ...(Array.isArray(fallbackData?.products) ? fallbackData.products : []),
-        ]
-
-        const uniqueProducts = []
-        const seen = new Set()
-        for (const product of mergedProducts) {
-          const key = product?._id || product?.id || product?.handle || ''
-          if (!key || seen.has(String(key))) continue
-          seen.add(String(key))
-          uniqueProducts.push(product)
-        }
-
-        // Same criteria (Summer New Arrivals 2026 only), but shuffle the pool
-        // per 6-hour window so the shown set/order rotates and feels freshly
-        // available to customers.
-        const onlySummerNewArrivals = shuffleForCurrentWindow(
-          uniqueProducts.filter(isSummerNewArrival2026)
-        ).slice(0, SUMMER_NEW_ARRIVALS_TARGET)
-
-        setProducts(onlySummerNewArrivals)
+        setProducts(nextProducts)
         setLoadingProducts(false)
       } catch { setLoadingProducts(false) }
     }

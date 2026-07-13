@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { normalizeVariants } from '../../../../lib/variantNormalization'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -17,13 +18,13 @@ function normalizeVariantText(value) {
 }
 
 function parseVariants(rawVariants) {
-    if (Array.isArray(rawVariants)) return rawVariants
+    if (Array.isArray(rawVariants)) return normalizeVariants(rawVariants)
     if (typeof rawVariants === 'string') {
         const trimmed = rawVariants.trim()
         if (!trimmed) return []
         try {
             const parsed = JSON.parse(trimmed)
-            return Array.isArray(parsed) ? parsed : []
+            return Array.isArray(parsed) ? normalizeVariants(parsed) : []
         } catch {
             return []
         }
@@ -164,6 +165,19 @@ function getActorIdentity(request) {
     }
 
     return 'admin (admin)'
+}
+
+function validateRequiredProductFields(payload) {
+    const productType = String(payload?.product_type || '').trim()
+    const productVersion = String(payload?.product_version || '').trim()
+    const status = payload?.status !== undefined
+        ? String(payload.status || '').trim()
+        : (payload?.is_active === true ? 'active' : payload?.is_active === false ? 'draft' : '')
+
+    if (!productType) return 'Product Type is required'
+    if (!productVersion) return 'Product Version is required'
+    if (!status) return 'Status is required'
+    return null
 }
 
 export async function GET(request) {
@@ -310,6 +324,7 @@ export async function GET(request) {
         return {
             ...product,
             images: resolvedImages,
+            variants: parseVariants(product.variants),
         }
     }))
 
@@ -321,6 +336,10 @@ export async function GET(request) {
 export async function POST(request) {
     try {
         const body = await request.json()
+            const validationError = validateRequiredProductFields(body)
+            if (validationError) {
+                return Response.json({ success: false, error: validationError }, { status: 400 })
+            }
             const actorIdentity = getActorIdentity(request)
             const isActive = typeof body.is_active !== 'undefined' ? !!body.is_active : (body.status ? String(body.status) === 'active' : true)
 
@@ -337,7 +356,7 @@ export async function POST(request) {
                     category:      body.category,
                     product_type:  body.product_type,
                     tags:          Array.isArray(body.tags) ? body.tags : (body.tags || []),
-                    variants:      body.variants || null,
+                    variants:      normalizeVariants(body.variants || []),
                     stock:         parseInt(body.stock) || 0,
                     is_active:     isActive,
                     source:        'custom',
@@ -364,6 +383,11 @@ export async function PUT(request) {
 
         if (!id) {
             return Response.json({ success: false, error: 'Product ID is required' }, { status: 400 })
+        }
+
+        const validationError = validateRequiredProductFields(updates)
+        if (validationError) {
+            return Response.json({ success: false, error: validationError }, { status: 400 })
         }
 
         const actorIdentity = getActorIdentity(request)
@@ -414,6 +438,10 @@ export async function PUT(request) {
 
         if (updates.product_version !== undefined) {
             cleanUpdates.product_version = String(updates.product_version || '').trim()
+        }
+
+        if (updates.variants !== undefined) {
+            cleanUpdates.variants = normalizeVariants(updates.variants || [])
         }
 
         if (updates.is_active !== undefined) {

@@ -5,6 +5,7 @@ import Link from 'next/link'
 
 const MONOCHROME_BG_COLORS = ['transparent', '#000000', '#1f2937', '#374151', '#6b7280', '#9ca3af', '#ffffff']
 const STANDARD_BG_COLORS = ['#991b1b', '#7c7a00', '#166534', '#0f766e', '#1d4ed8', '#6b21a8', '#ea580c', '#ec4899']
+const PRODUCT_TYPE_OPTIONS = ['T-Shirt', 'Full Sleeves Shirt', 'Shorts', 'Denim Jeans', 'Trouser', 'Girl-Top', 'Frock', 'Socks', 'Jacket', 'Button Shirts', 'Jeans Shorts', 'Cargo Pents', 'Cargo Trousers', 'School Bags', 'Ladies Bags', 'Bag-Pack', 'Rompers']
 
 function getEditorPreviewBackgroundStyle(color) {
     if (String(color || '').trim().toLowerCase() === 'transparent') {
@@ -56,9 +57,9 @@ export default function AdminProducts() {
     const [loadingCdnStatus, setLoadingCdnStatus] = useState(false)
     const [form, setForm] = useState({
         title: '', description: '', price: '', compare_price: '',
-            category: '', product_type: '', tags: '', stock: '',
-            product_version: 'Old Packs'
-        })
+        category: '', product_type: '', tags: '', stock: '',
+        product_version: '', status: ''
+    })
     const [formImages, setFormImages] = useState([])   // [{url, rotating}]
     const [formVariants, setFormVariants] = useState([]) // [{option1_name,option1_value,option2_name,option2_value,price,stock,sku}]
     const [rotatingIdx, setRotatingIdx] = useState(null)
@@ -83,6 +84,19 @@ export default function AdminProducts() {
             .replace(/([0-9])\s*-\s*([0-9])\s*[Yy]/g, '$1-$2 Year')
             .replace(/\s+/g, ' ')
             .trim()
+    }
+
+    function normalizeVariantInputValue(field, value) {
+        if (!/^option[123]_value$/.test(field)) return value
+
+        const text = String(value || '').trim()
+        if (/^5\s*[-–]\s*5(?:\s*(?:years?|yrs?|yr|y))?$/i.test(text)) {
+            if (/years?|yrs?|yr/i.test(text)) return '5-6 Year'
+            if (/y$/i.test(text)) return '5-6Y'
+            return '5-6'
+        }
+
+        return value
     }
 
     function getProductVariantValues(product) {
@@ -398,7 +412,7 @@ export default function AdminProducts() {
     }
 
     function resetForm() {
-            setForm({ title: '', description: '', price: '', compare_price: '', category: '', product_type: '', tags: '', stock: '', product_version: 'Old Packs', status: 'active' })
+        setForm({ title: '', description: '', price: '', compare_price: '', category: '', product_type: '', tags: '', stock: '', product_version: '', status: '' })
         setFormImages([])
         setFormVariants([])
         setEditingId(null)
@@ -437,15 +451,24 @@ export default function AdminProducts() {
             product_type:  product.product_type  || '',
             tags:          (product.tags || []).join(', '),
             stock:         product.stock         || '',
-                    product_version: product.product_version || 'Old Packs',
-                    status: product.is_active === false ? 'draft' : 'active',
-                })
+            product_version: product.product_version || '',
+            status: product.is_active === false ? 'draft' : 'active',
+        })
         setEditingId(product.id)
         setShowForm(true)
     }
 
     async function handleSubmit(e) {
         e.preventDefault()
+        const productType = String(form.product_type || '').trim()
+        const productVersion = String(form.product_version || '').trim()
+        const status = String(form.status || '').trim()
+
+        if (!productType || !productVersion || !status) {
+            alert('Product Type, Product Version, and Status are required.')
+            return
+        }
+
         setSubmitting(true)
         const token   = localStorage.getItem('admin_token')
 
@@ -472,16 +495,17 @@ export default function AdminProducts() {
             price:         parseFloat(form.price) || 0,
             compare_price: parseFloat(form.compare_price) || 0,
             category:      form.category,
-            product_type:  form.product_type,
+            product_type:  productType,
             tags:          form.tags.split(',').map(t => t.trim()).filter(Boolean),
             stock:         totalStock,
             images:        formImages
                 .map(img => img.url)
                 .filter((url) => typeof url === 'string' && url.trim() && !url.startsWith('blob:')),
             variants:      variants.length > 0 ? variants : null,
-                    product_version: form.product_version,
-                    is_active: form.status === 'active',
-                }
+            product_version: productVersion,
+            status,
+            is_active: status === 'active',
+        }
 
         const method = editingId ? 'PUT' : 'POST'
         if (editingId) payload.id = editingId
@@ -898,7 +922,8 @@ export default function AdminProducts() {
     }
 
     function updateVariant(idx, field, value) {
-        setFormVariants(prev => prev.map((v, i) => i === idx ? { ...v, [field]: value } : v))
+        const nextValue = normalizeVariantInputValue(field, value)
+        setFormVariants(prev => prev.map((v, i) => i === idx ? { ...v, [field]: nextValue } : v))
     }
 
     function removeVariant(idx) {
@@ -1129,7 +1154,7 @@ export default function AdminProducts() {
                                         </select>
                                     </div>
                                     <div>
-                                                                            <label className="block font-semibold text-xs text-charcoal mb-1">Product Version</label>
+                                                                            <label className="block font-semibold text-xs text-charcoal mb-1">Product Version *</label>
                                                                             <select required value={form.product_version}
                                                                                     onChange={e => setForm({...form, product_version: e.target.value})}
                                                                                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm">
@@ -1139,19 +1164,22 @@ export default function AdminProducts() {
                                                                             </select>
                                                                         </div>
                                                                         <div>
-                                                                            <label className="block font-semibold text-xs text-charcoal mb-1">Status</label>
-                                                                            <select value={form.status} onChange={e => setForm({...form, status: e.target.value})}
+                                                                            <label className="block font-semibold text-xs text-charcoal mb-1">Status *</label>
+                                                                            <select required value={form.status} onChange={e => setForm({...form, status: e.target.value})}
                                                                                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm">
+                                                                                <option value="">Select status</option>
                                                                                 <option value="active">Active</option>
                                                                                 <option value="draft">Draft</option>
                                                                             </select>
                                                                         </div>
                                                                         <div>
-                                                                            <label className="block font-semibold text-xs text-charcoal mb-1">Product Type</label>
-                                                                            <input type="text" value={form.product_type}
-                                                                                   onChange={e => setForm({...form, product_type: e.target.value})}
-                                                                                   placeholder="e.g. T-Shirt, Pajama Set"
-                                                                                   className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm" />
+                                                                            <label className="block font-semibold text-xs text-charcoal mb-1">Product Type *</label>
+                                                                            <select required value={form.product_type}
+                                                                                    onChange={e => setForm({...form, product_type: e.target.value})}
+                                                                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm">
+                                                                                <option value="">Select product type</option>
+                                                                                {PRODUCT_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{type}</option>)}
+                                                                            </select>
                                                                         </div>
                                     <div className="md:col-span-2">
                                         <label className="block font-semibold text-xs text-charcoal mb-1">Description</label>

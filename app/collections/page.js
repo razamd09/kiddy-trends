@@ -127,6 +127,54 @@ function productMatchesAnyGenders(product, genders) {
   return true
 }
 
+function getVersionPriority(product) {
+  return String(product?.product_version || '').toLowerCase() === 'new arrivals' ? 1 : 0
+}
+
+function getTitlePriority(product) {
+  const title = String(product?.title || '').toLowerCase()
+  if (title.includes('summer new arrival 2026')) return 2
+  if (title.includes('2026')) return 1
+  return 0
+}
+
+function getCreatedAtValue(product) {
+  const value = new Date(product?.created_at || 0).getTime()
+  return Number.isFinite(value) ? value : 0
+}
+
+function getInventoryValue(product) {
+  return product?.variants?.[0]?.inventory_quantity || 0
+}
+
+function getPriceValue(product) {
+  const value = parseFloat(product?.variants?.[0]?.price)
+  return Number.isFinite(value) ? value : 0
+}
+
+function compareBySelectedSort(a, b, sort) {
+  if (sort === 'low') return getPriceValue(a) - getPriceValue(b)
+  if (sort === 'high') return getPriceValue(b) - getPriceValue(a)
+  if (sort === 'az') return String(a?.title || '').localeCompare(String(b?.title || ''))
+  if (sort === 'za') return String(b?.title || '').localeCompare(String(a?.title || ''))
+  if (sort === 'old') return getCreatedAtValue(a) - getCreatedAtValue(b)
+  if (sort === 'best_selling') return getInventoryValue(b) - getInventoryValue(a)
+  return getCreatedAtValue(b) - getCreatedAtValue(a)
+}
+
+function compareProducts(a, b, sort) {
+  const versionDiff = getVersionPriority(b) - getVersionPriority(a)
+  if (versionDiff !== 0) return versionDiff
+
+  const selectedSortDiff = compareBySelectedSort(a, b, sort)
+  if (selectedSortDiff !== 0) return selectedSortDiff
+
+  const titlePriorityDiff = getTitlePriority(b) - getTitlePriority(a)
+  if (titlePriorityDiff !== 0) return titlePriorityDiff
+
+  return getCreatedAtValue(b) - getCreatedAtValue(a)
+}
+
 // Cache products in module scope so they persist between renders
 let cachedProducts = []
 let cacheTime = 0
@@ -229,28 +277,7 @@ export default function Collections() {
     filtered = filtered.filter((p) => productMatchesAnyAges(p, queryAges))
   }
 
-  if (sort === 'low')          filtered = [...filtered].sort((a,b) => parseFloat(a.variants[0]?.price) - parseFloat(b.variants[0]?.price))
-  if (sort === 'high')         filtered = [...filtered].sort((a,b) => parseFloat(b.variants[0]?.price) - parseFloat(a.variants[0]?.price))
-  if (sort === 'az')           filtered = [...filtered].sort((a,b) => a.title.localeCompare(b.title))
-  if (sort === 'za')           filtered = [...filtered].sort((a,b) => b.title.localeCompare(a.title))
-  if (sort === 'old')          filtered = [...filtered].sort((a,b) => new Date(a.created_at) - new Date(b.created_at))
-  if (sort === 'new')          filtered = [...filtered].sort((a,b) => new Date(b.created_at) - new Date(a.created_at))
-  if (sort === 'best_selling') filtered = [...filtered].sort((a,b) => (b.variants?.[0]?.inventory_quantity || 0) - (a.variants?.[0]?.inventory_quantity || 0))
-  // Priority sorting: product_version 'new arrivals' first, then "Summer New Arrival 2026", then other 2026, then rest
-  filtered = [...filtered].sort((a, b) => {
-    const aTitle = (a.title || '').toLowerCase()
-    const bTitle = (b.title || '').toLowerCase()
-
-    const aVer = String(a.product_version || '').toLowerCase() === 'new arrivals' ? 3 : 0
-    const bVer = String(b.product_version || '').toLowerCase() === 'new arrivals' ? 3 : 0
-
-    const aTitlePriority = aTitle.includes('summer new arrival 2026') ? 2 : aTitle.includes('2026') ? 1 : 0
-    const bTitlePriority = bTitle.includes('summer new arrival 2026') ? 2 : bTitle.includes('2026') ? 1 : 0
-
-    const aPriority = aVer + aTitlePriority
-    const bPriority = bVer + bTitlePriority
-    return bPriority - aPriority
-  })
+  filtered = [...filtered].sort((a, b) => compareProducts(a, b, sort))
 
   // Pagination
   const totalPages   = Math.ceil(filtered.length / ITEMS_PER_PAGE)

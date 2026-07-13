@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { normalizeVariants } from '../../../../../lib/variantNormalization'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -131,7 +132,7 @@ function mapShopifyRow(row) {
         category,
         product_type: productType,
         tags: parseTags(row['Tags']),
-        variants,
+        variants: normalizeVariants(variants),
         stock,
         is_active: isActive,
         source: 'shopify_csv',
