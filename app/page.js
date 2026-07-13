@@ -5,9 +5,9 @@ import { useState, useEffect } from 'react'
 import ProductCard from '../components/ProductCard'
 import FlashSaleBanner from '../components/FlashSaleBanner'
 import RewardsChecker from '../components/RewardsChecker'
-import SpinWheelPopup from '../components/SpinWheelPopup'
 import DiscountBanner from '../components/DiscountBanner'
 import LandingPreferencePopup from '../components/LandingPreferencePopup'
+import LandingVideoBanner from '../components/LandingVideoBanner'
 
 const NEW_ARRIVALS_TARGET = 10
 const FLASH_SALE_RIGHT_OFFSET_Y = 0
@@ -41,8 +41,8 @@ export default function Home() {
   return (
       <>
         <LandingPreferencePopup />
-        <SpinWheelPopup />
         <DiscountBanner />
+        <LandingVideoBanner />
         {/* HERO */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-16">
           <div className="grid md:grid-cols-2 gap-10 items-center">
