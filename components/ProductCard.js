@@ -53,8 +53,12 @@ export default function ProductCard({ product }) {
   const displayOriginal = fakeOriginal
   const isOnSale       = true // always show sale
 
-  const hasVariants = product.variants?.length > 1 &&
-    !(product.variants.length === 1 && product.variants[0].title === 'Default Title')
+  const hasVariants = Array.isArray(product.variants) && product.variants.some((variant) => {
+    const title = String(variant?.title || '').trim()
+    const option1 = String(variant?.option1 || '').trim()
+    const option2 = String(variant?.option2 || '').trim()
+    return (title && title !== 'Default Title') || option1 || option2
+  })
 
   function handleAddToCart() {
     if (isSoldOut || isMaxed) return

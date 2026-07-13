@@ -155,8 +155,12 @@ export default function ProductPage() {
 
   const lowStock = availableStock > 0 && availableStock <= 5 ? availableStock : null
 
-  const hasVariants = product?.variants?.length > 1 &&
-      !(product?.variants?.length === 1 && product?.variants[0]?.title === 'Default Title')
+  const hasVariants = Array.isArray(product?.variants) && product.variants.some((variant) => {
+    const title = String(variant?.title || '').trim()
+    const option1 = String(variant?.option1 || '').trim()
+    const option2 = String(variant?.option2 || '').trim()
+    return (title && title !== 'Default Title') || option1 || option2
+  })
 
   const mainImage = product?.images?.[activeImg]?.src || product?.images?.[0]?.src
 
