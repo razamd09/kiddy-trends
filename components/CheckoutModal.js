@@ -12,6 +12,7 @@ const EMAILJS_PUBLIC_KEY =
 const ORDER_NOTIFICATION_EMAIL =
   process.env.NEXT_PUBLIC_ORDER_NOTIFICATION_EMAIL || 'thekiddytrends@gmail.com'
 const SPIN_STORAGE_KEY = 'kt_spin_wheel_state'
+const LANDING_PROMO_STORAGE_KEY = 'kt_landing_promo_state'
 const GIFT_FLASH_SEEN_KEY = 'kt_checkout_reward_flash_seen'
 
 function notifySpinWheelStateChange() {
@@ -96,20 +97,31 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   useEffect(() => {
     if (discount) return
     try {
-      const raw = localStorage.getItem(SPIN_STORAGE_KEY)
-      if (!raw) return
-      const state = JSON.parse(raw)
       const now = Date.now()
-      const amount = Number(state?.activeDiscount || 0)
-      const consumed = Boolean(state?.consumed)
-      const lockedUntil = Number(state?.lockedUntil || 0)
-
-      if (amount > 0 && !consumed && lockedUntil > now) {
-        setDiscount({
-          type: 'fixed',
+      const parseDiscountState = (raw) => {
+        if (!raw) return null
+        const state = JSON.parse(raw)
+        const amount = Number(state?.activeDiscount || 0)
+        const consumed = Boolean(state?.consumed)
+        const lockedUntil = Number(state?.lockedUntil || 0)
+        if (amount <= 0 || consumed || lockedUntil <= now) return null
+        const discountType = String(state?.discountType || '').toLowerCase()
+        return {
+          type: discountType === 'percentage' ? 'percent' : 'fixed',
           value: Math.min(100, amount),
-          code: state?.discountCode || ('SPIN' + amount),
-        })
+          code: state?.discountCode || ('DISC' + amount),
+        }
+      }
+
+      const spinDiscount = parseDiscountState(localStorage.getItem(SPIN_STORAGE_KEY))
+      if (spinDiscount) {
+        setDiscount(spinDiscount)
+        return
+      }
+
+      const landingPromoDiscount = parseDiscountState(localStorage.getItem(LANDING_PROMO_STORAGE_KEY))
+      if (landingPromoDiscount) {
+        setDiscount(landingPromoDiscount)
       }
     } catch {}
   }, [discount])
@@ -625,9 +637,9 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                       <p className="text-sm text-green-600 mt-1">
                         Code: <span className="font-bold font-mono">{discount.code}</span>
                         {' '}
-                        {discount.discount_type === 'percentage' 
-                          ? `(${discount.discount_value}% OFF)` 
-                          : `(PKR ${discount.discount_value} OFF)`}
+                        {(discount.type === 'percent' || discount.discount_type === 'percentage')
+                          ? `(${discount.value || discount.discount_value}% OFF)`
+                          : `(PKR ${discount.value || discount.discount_value} OFF)`}
                       </p>
                     </div>
                     <button

@@ -7,6 +7,7 @@ import FlashSaleBanner from '../components/FlashSaleBanner'
 import RewardsChecker from '../components/RewardsChecker'
 import DiscountBanner from '../components/DiscountBanner'
 import LandingPreferencePopup from '../components/LandingPreferencePopup'
+import LandingVideoBanner from '../components/LandingVideoBanner'
 
 const NEW_ARRIVALS_TARGET = 10
 const FLASH_SALE_RIGHT_OFFSET_Y = 0
@@ -41,6 +42,7 @@ export default function Home() {
       <>
         <LandingPreferencePopup />
         <DiscountBanner />
+        <LandingVideoBanner />
         {/* HERO */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-16">
           <div className="grid md:grid-cols-2 gap-10 items-center">
@@ -81,7 +83,7 @@ export default function Home() {
         </section>
 
         {/* SHOP BY CATEGORY */}
-        <section className="bg-white py-16">
+        <section id="shop-by-category" className="bg-white py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-10">
               <h2 className="section-title mb-3">Shop by Category</h2>

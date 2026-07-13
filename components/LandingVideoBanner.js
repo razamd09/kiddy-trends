@@ -3,27 +3,19 @@
 import { useEffect, useState } from 'react'
 
 const PROMO_IMAGE_SRC = '/independence-day-banner.png'
-const SHOW_DURATION_MS = 2600
+const PROMO_STORAGE_KEY = 'kt_landing_promo_state'
+const PROMO_CODE = 'KT14OFF'
+const PROMO_DISCOUNT = 14
+const SHOW_DURATION_MS = 2800
 const FADE_DURATION_MS = 450
 
 export default function LandingVideoBanner() {
   const [visible, setVisible] = useState(true)
   const [removed, setRemoved] = useState(false)
+  const [status, setStatus] = useState('idle')
   const [imageFailed, setImageFailed] = useState(false)
 
   useEffect(() => {
-    const seenKey = 'kt_landing_promo_seen'
-    try {
-      if (sessionStorage.getItem(seenKey)) {
-        setVisible(false)
-        setRemoved(true)
-        return
-      }
-      sessionStorage.setItem(seenKey, '1')
-    } catch {
-      // Session storage can be blocked; the splash still works without it.
-    }
-
     const hideTimer = window.setTimeout(() => setVisible(false), SHOW_DURATION_MS)
     const removeTimer = window.setTimeout(() => setRemoved(true), SHOW_DURATION_MS + FADE_DURATION_MS)
 
@@ -32,6 +24,31 @@ export default function LandingVideoBanner() {
       window.clearTimeout(removeTimer)
     }
   }, [])
+
+  function saveLandingPromo() {
+    try {
+      localStorage.setItem(PROMO_STORAGE_KEY, JSON.stringify({
+        activeDiscount: PROMO_DISCOUNT,
+        discountCode: PROMO_CODE,
+        discountType: 'percentage',
+        consumed: false,
+        lockedUntil: Date.now() + (24 * 60 * 60 * 1000),
+      }))
+    } catch {}
+  }
+
+  function scrollToCategories() {
+    const target = document.getElementById('shop-by-category')
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  function handleAvailDiscount() {
+    saveLandingPromo()
+    setStatus('applied')
+    setVisible(false)
+    window.setTimeout(() => scrollToCategories(), 650)
+    window.setTimeout(() => setRemoved(true), 1100)
+  }
 
   if (removed) return null
 
@@ -48,7 +65,7 @@ export default function LandingVideoBanner() {
         <div className="pointer-events-none absolute -bottom-20 -right-16 h-64 w-64 rounded-full bg-coral/20 blur-3xl" />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-2 bg-gradient-to-r from-emerald-500 via-coral to-sunny" />
 
-        <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] items-center p-6 sm:p-8 lg:p-10">
+        <div className="grid gap-6 lg:grid-cols-[1.02fr_0.98fr] items-center p-6 sm:p-8 lg:p-10">
           <div className="relative z-10">
             <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/20 bg-white/90 px-4 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700 shadow-sm">
               Celebrate Independence Day
@@ -59,13 +76,30 @@ export default function LandingVideoBanner() {
               <span className="block text-coral">with Kiddy Trends</span>
             </h2>
             <p className="mt-4 max-w-xl text-base sm:text-lg leading-relaxed text-gray-600">
-              Proud of our land. Inspired by our future. Enjoy a limited 14% off festive offer while this special promo appears on the landing page.
+              Tap Avail Discount to apply 14% OFF at checkout. After the message appears, we will take you to Shop by Category.
             </p>
 
             <div className="mt-6 flex flex-wrap items-center gap-3 text-sm font-semibold text-gray-600">
               <span className="rounded-full bg-white px-4 py-2 shadow-sm border border-gray-100">Made with love</span>
               <span className="rounded-full bg-white px-4 py-2 shadow-sm border border-gray-100">Soft & comfortable</span>
               <span className="rounded-full bg-white px-4 py-2 shadow-sm border border-gray-100">Quality you can trust</span>
+            </div>
+
+            {status === 'applied' && (
+              <div className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-[#0f6b4c] px-4 py-3 text-white shadow-lg">
+                <span className="text-xl">✅</span>
+                <span className="font-semibold">14% Off discount code applied on checkout</span>
+              </div>
+            )}
+
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={handleAvailDiscount}
+                className="rounded-full bg-gradient-to-r from-coral to-[#ff8a6f] px-8 py-3.5 text-base font-display text-white shadow-xl transition-transform hover:scale-[1.02] active:scale-[0.98]"
+              >
+                Avail Discount 🎉
+              </button>
             </div>
           </div>
 
