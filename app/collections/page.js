@@ -16,6 +16,7 @@ const categories = [
   {
     id: 'toddler', label: 'Toddler', emoji: '🧸', color: 'bg-sunny/40',
     subFilters: [
+      { id: '1-2y',   label: '1–2 Year',    keywords: ['12-18','18-24','12 to 18','18 to 24','1 year','2 year','1yr','2yr'] },
       { id: '12-18m', label: '12–18 Months', keywords: ['12-18','12 to 18','12/18'] },
       { id: '18-24m', label: '18–24 Months', keywords: ['18-24','18 to 24','18/24'] },
       { id: '2-3y',   label: '2–3 Year',     keywords: ['2-3 year','2 to 3','2/3 year','2yr','3yr'] },

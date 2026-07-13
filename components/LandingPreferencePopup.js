@@ -64,19 +64,24 @@ export default function LandingPreferencePopup() {
     )
   }
 
+  function normalizeAgeSelection(ageId) {
+    if (ageId === '12-18m' || ageId === '18-24m') return '1-2y'
+    return ageId
+  }
+
   function goToSelectedProducts() {
     if (selectedAges.length === 0 || selectedGenders.length === 0) return
 
+    const normalizedAgeIds = [...new Set(selectedAges.map(normalizeAgeSelection))]
+
     const catSet = new Set(
-      AGE_OPTIONS.filter((opt) => selectedAges.includes(opt.sub)).map((opt) => opt.cat)
+      AGE_OPTIONS.filter((opt) => normalizedAgeIds.includes(normalizeAgeSelection(opt.sub))).map((opt) => opt.cat)
     )
     const cat = catSet.size === 1 ? [...catSet][0] : 'all'
+    const sub = normalizedAgeIds.length === 1 ? normalizedAgeIds[0] : ''
 
-    const params = new URLSearchParams({
-      cat,
-      ages: selectedAges.join(','),
-      genders: selectedGenders.join(','),
-    })
+    const params = new URLSearchParams({ cat, ages: normalizedAgeIds.join(','), genders: selectedGenders.join(',') })
+    if (sub) params.set('sub', sub)
 
     setOpen(false)
     router.push('/collections?' + params.toString())
