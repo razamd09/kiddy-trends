@@ -46,6 +46,7 @@ export default function LandingVideoBanner() {
                 poster="/sale-slide-1.jpg"
               >
                 <source src={VIDEO_SRC} type="video/mp4" />
+                <img src="/sale-slide-1.jpg" alt="Kiddy Trends new arrivals banner" className="h-[260px] w-full object-cover md:h-[340px]" />
               </video>
 
               <div className="absolute left-4 top-4 z-20 rounded-2xl bg-white/90 px-3 py-1.5 text-xs font-bold text-charcoal shadow-md">

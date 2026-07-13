@@ -87,11 +87,23 @@ export default function LandingPreferencePopup() {
     router.push('/collections')
   }
 
+  function closePopup() {
+    setOpen(false)
+  }
+
   if (!open) return null
 
   return (
     <div className="fixed inset-0 z-[70] bg-gradient-to-br from-coral/35 via-skyblue/30 to-mint/35 backdrop-blur-md flex items-center justify-center p-4">
       <div className="relative w-full max-w-2xl rounded-[2rem] bg-gradient-to-br from-white via-cream to-sunny/30 shadow-2xl border border-white/70 p-6 md:p-8 overflow-hidden">
+        <button
+          type="button"
+          onClick={closePopup}
+          aria-label="Close popup"
+          className="absolute right-4 top-4 z-20 inline-flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white/95 text-gray-500 shadow-sm transition-colors hover:border-coral/30 hover:text-charcoal"
+        >
+          ✕
+        </button>
         <div className="pointer-events-none absolute -top-12 -right-10 w-44 h-44 rounded-full bg-coral/25 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-14 -left-10 w-52 h-52 rounded-full bg-skyblue/30 blur-2xl" />
 
@@ -157,6 +169,13 @@ export default function LandingPreferencePopup() {
             className="rounded-2xl border-2 border-charcoal/20 bg-white/85 text-charcoal font-semibold px-4 py-3 hover:border-charcoal/40"
           >
             Explore All 🌈
+          </button>
+          <button
+            type="button"
+            onClick={closePopup}
+            className="sm:col-span-2 rounded-2xl border-2 border-gray-200 bg-white/85 text-gray-500 font-semibold px-4 py-3 hover:border-gray-300 hover:text-charcoal"
+          >
+            Cancel
           </button>
         </div>
       </div>
