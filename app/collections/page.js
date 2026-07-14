@@ -221,6 +221,11 @@ export default function Collections() {
       setActiveGender(validGender)
       setActiveSub(validSub)
       setPage(1)
+    } else {
+      setActiveCat('all')
+      setActiveGender(null)
+      setActiveSub(null)
+      setPage(1)
     }
 
     setQueryAges(queryAges)

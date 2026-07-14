@@ -5,7 +5,7 @@ import Link from 'next/link'
 
 const MONOCHROME_BG_COLORS = ['transparent', '#000000', '#1f2937', '#374151', '#6b7280', '#9ca3af', '#ffffff']
 const STANDARD_BG_COLORS = ['#991b1b', '#7c7a00', '#166534', '#0f766e', '#1d4ed8', '#6b21a8', '#ea580c', '#ec4899']
-const PRODUCT_TYPE_OPTIONS = ['T-Shirt', 'Full Sleeves Shirt', 'Shorts', 'Denim Jeans', 'Trouser', 'Girl-Top', 'Frock', 'Socks', 'Jacket', 'Button Shirts', 'Jeans Shorts', 'Cargo Pents', 'Cargo Trousers', 'School Bags', 'Ladies Bags', 'Bag-Pack', 'Rompers', 'Kurta Trouser', 'Girls Kurti with Gharara', 'Girls Kurti with Trouser']
+const DEFAULT_PRODUCT_TYPE_OPTIONS = ['T-Shirt', 'Full Sleeves Shirt', 'Shorts', 'Denim Jeans', 'Trouser', 'Girl-Top', 'Frock', 'Socks', 'Jacket', 'Button Shirts', 'Jeans Shorts', 'Cargo Pents', 'Cargo Trousers', 'School Bags', 'Ladies Bags', 'Bag-Pack', 'Rompers', 'Kurta Trouser', 'Girls Kurti with Gharara', 'Girls Kurti with Trouser']
 
 function getEditorPreviewBackgroundStyle(color) {
     if (String(color || '').trim().toLowerCase() === 'transparent') {
@@ -38,6 +38,7 @@ export default function AdminProducts() {
     const [duplicatingId, setDuplicatingId] = useState(null)
     const [deleteConfirm, setDeleteConfirm] = useState(null)
     const [selectedIds, setSelectedIds] = useState([])
+    const [productTypeOptions, setProductTypeOptions] = useState(DEFAULT_PRODUCT_TYPE_OPTIONS)
     const [bulkProcessing, setBulkProcessing] = useState(false)
     const [recentBgRemoving, setRecentBgRemoving] = useState(false)
     const [bulkEditOpen, setBulkEditOpen] = useState(false)
@@ -238,11 +239,34 @@ export default function AdminProducts() {
     }, [verified, page, searchTerm, categoryFilter, variantFilter, sortBy, sortDir])
 
     useEffect(() => {
+        if (verified) fetchProductTypes()
+    }, [verified])
+
+    useEffect(() => {
         if (!verified) return
         setPage(1)
     }, [searchTerm, categoryFilter, variantFilter, sortBy, sortDir, verified])
 
     const productsApiBase = '/api/admin/products'
+
+    async function fetchProductTypes() {
+        const token = localStorage.getItem('admin_token') || ''
+        try {
+            const res = await fetch('/api/admin/product-types', { headers: { 'x-admin-token': token } })
+            const data = await readApiJson(res)
+            const nextOptions = Array.isArray(data?.types)
+                ? data.types.map((type) => String(type?.name || '').trim()).filter(Boolean)
+                : []
+
+            if (res.ok && nextOptions.length > 0) {
+                setProductTypeOptions(nextOptions)
+            } else {
+                setProductTypeOptions(DEFAULT_PRODUCT_TYPE_OPTIONS)
+            }
+        } catch {
+            setProductTypeOptions(DEFAULT_PRODUCT_TYPE_OPTIONS)
+        }
+    }
 
     async function fetchProducts() {
         setLoading(true)
@@ -1178,7 +1202,7 @@ export default function AdminProducts() {
                                                                                     onChange={e => setForm({...form, product_type: e.target.value})}
                                                                                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm">
                                                                                 <option value="">Select product type</option>
-                                                                                {PRODUCT_TYPE_OPTIONS.map((type) => <option key={type} value={type}>{type}</option>)}
+                                                                                {productTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
                                                                             </select>
                                                                         </div>
                                     <div className="md:col-span-2">
