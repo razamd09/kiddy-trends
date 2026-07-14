@@ -1,5 +1,4 @@
   'use client'
-import Image from 'next/image'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import ProductCard from '../components/ProductCard'
@@ -7,6 +6,7 @@ import FlashSaleBanner from '../components/FlashSaleBanner'
 import RewardsChecker from '../components/RewardsChecker'
 import DiscountBanner from '../components/DiscountBanner'
 import LandingPreferencePopup from '../components/LandingPreferencePopup'
+import HomeHeroSlider from '../components/HomeHeroSlider'
 
 const NEW_ARRIVALS_TARGET = 10
 const FLASH_SALE_RIGHT_OFFSET_Y = 0
@@ -42,38 +42,7 @@ export default function Home() {
         <LandingPreferencePopup />
         <DiscountBanner />
         {/* HERO */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-16">
-          <div className="grid md:grid-cols-2 gap-10 items-center">
-            <div className="animate-fade-up">
-            <span className="inline-block bg-sunny text-charcoal font-display text-sm px-4 py-1.5 rounded-full mb-5">
-              Newborn — 12 Years 🎉
-            </span>
-              <h1 className="font-display text-5xl md:text-6xl lg:text-7xl text-charcoal leading-tight mb-6">
-                Dress them
-                <span className="text-coral block">to impress.</span>
-              </h1>
-              <p className="text-lg text-gray-600 leading-relaxed mb-8 max-w-md">
-                Kiddy Trends brings you the cutest, comfiest clothes, bedding, bags
-                and accessories for little explorers. Because every day is a fashion adventure!
-              </p>
-              <div className="flex flex-wrap gap-4">
-                <Link href="/collections" className="btn-primary">Shop Now 🛍️</Link>
-                <Link href="/about" className="btn-outline">Our Story</Link>
-              </div>
-            </div>
-            <div className="relative flex justify-center px-12">
-              <div className="w-72 h-72 md:w-96 md:h-96 bg-skyblue/30 rounded-[60%_40%_55%_45%/50%_60%_40%_50%] flex items-center justify-center animate-float">
-                <Image src="/logo.jpg" alt="Kiddy Trends" width={260} height={260} className="rounded-3xl shadow-2xl object-cover" />
-              </div>
-              <div className="absolute -top-4 right-0 bg-white rounded-2xl px-3 py-1.5 shadow-lg animate-bounce2 font-display text-coral text-xs whitespace-nowrap" style={{animationDelay:'0s'}}>😍 Super Soft!</div>
-              <div className="absolute top-6 -left-8 bg-mint rounded-2xl px-3 py-1.5 shadow-lg font-display text-charcoal text-xs animate-float whitespace-nowrap" style={{animationDelay:'0.7s'}}>👩 Mom's First Choice</div>
-              <div className="absolute top-1/3 -right-6 bg-coral rounded-2xl px-3 py-1.5 shadow-lg font-display text-white text-xs animate-bounce2 whitespace-nowrap" style={{animationDelay:'1.2s'}}>💰 Dad's Pocket Friendly</div>
-              <div className="absolute top-1/2 -left-4 bg-skyblue rounded-2xl px-3 py-1.5 shadow-lg font-display text-charcoal text-xs animate-float whitespace-nowrap" style={{animationDelay:'1.8s'}}>🏆 Premium</div>
-              <div className="absolute -bottom-2 right-8 bg-lavender rounded-2xl px-3 py-1.5 shadow-lg font-display text-white text-xs animate-bounce2 whitespace-nowrap" style={{animationDelay:'2.2s'}}>⭐ Branded</div>
-              <div className="absolute bottom-10 -left-6 bg-sunny rounded-2xl px-3 py-1.5 shadow-lg font-display text-charcoal text-xs animate-float whitespace-nowrap" style={{animationDelay:'0.4s'}}>✨ 100% Safe</div>
-            </div>
-          </div>
-        </section>
+        <HomeHeroSlider />
 
         {/* FLASH SALE TIMER */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6 pt-6">
