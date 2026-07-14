@@ -5,11 +5,15 @@ import Link from 'next/link'
 
 const SLIDE_COUNT = 2
 const AUTOPLAY_MS = 4000
+const LANDING_PROMO_STORAGE_KEY = 'kt_landing_promo_state'
+const LANDING_PROMO_CODE = '14August'
+const LANDING_PROMO_PERCENT = 14
 
 // Landing hero carousel: slide 1 = Kiddy Trends brand block, slide 2 =
 // Independence Day offer image. Auto-rotates and pauses on hover.
 export default function HomeHeroSlider() {
   const [index, setIndex] = useState(0)
+  const [promoApplied, setPromoApplied] = useState(false)
   const paused = useRef(false)
 
   useEffect(() => {
@@ -20,6 +24,20 @@ export default function HomeHeroSlider() {
   }, [])
 
   function go(i) { setIndex((i + SLIDE_COUNT) % SLIDE_COUNT) }
+
+  function applyLandingDiscount() {
+    try {
+      localStorage.setItem(LANDING_PROMO_STORAGE_KEY, JSON.stringify({
+        activeDiscount: LANDING_PROMO_PERCENT,
+        discountCode: LANDING_PROMO_CODE,
+        discountType: 'percentage',
+        consumed: false,
+        lockedUntil: Date.now() + (24 * 60 * 60 * 1000),
+      }))
+      setPromoApplied(true)
+      window.setTimeout(() => setPromoApplied(false), 3500)
+    } catch {}
+  }
 
   return (
     <div className="relative w-full overflow-hidden"
@@ -73,8 +91,24 @@ export default function HomeHeroSlider() {
               <img
                 src="/Independance%20Kiddy%20Trnds.png"
                 alt="Celebrate Independence Day with Kiddy Trends 14 percent off"
-                className="w-full h-[300px] md:h-[460px] object-cover"
+                className="w-full h-[300px] md:h-[460px] object-contain bg-white"
               />
+
+              <div className="absolute inset-x-0 bottom-4 flex justify-center px-4">
+                <button
+                  type="button"
+                  onClick={applyLandingDiscount}
+                  className="rounded-full bg-gradient-to-r from-[#0f6b4c] to-[#13855f] text-white font-display text-sm md:text-base px-6 py-2.5 shadow-lg hover:opacity-95"
+                >
+                  Use Code for Discount
+                </button>
+              </div>
+
+              {promoApplied && (
+                <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-xl bg-white/95 px-4 py-2 text-xs md:text-sm font-semibold text-[#0f6b4c] shadow-md">
+                  14August applied on checkout (14% OFF)
+                </div>
+              )}
             </div>
           </section>
         </div>
