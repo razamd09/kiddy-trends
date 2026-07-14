@@ -91,7 +91,7 @@ export default function HomeHeroSlider() {
               <img
                 src="/Independance%20Kiddy%20Trnds.png"
                 alt="Celebrate Independence Day with Kiddy Trends 14 percent off"
-                className="w-full h-[300px] md:h-[460px] object-contain bg-white"
+                className="w-full h-[300px] md:h-[460px] object-cover object-center"
               />
 
               <div className="absolute inset-x-0 bottom-4 flex justify-center px-4">
