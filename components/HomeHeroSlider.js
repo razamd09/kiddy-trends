@@ -71,7 +71,7 @@ export default function HomeHeroSlider() {
           <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-12">
             <div className="relative overflow-hidden rounded-[2rem] border border-white/80 shadow-[0_24px_70px_rgba(20,60,40,0.16)] bg-white">
               <img
-                src="/sale-slide-2.jpg"
+                src="/Independance%20Kiddy%20Trnds.png"
                 alt="Celebrate Independence Day with Kiddy Trends 14 percent off"
                 className="w-full h-[300px] md:h-[460px] object-cover"
               />
