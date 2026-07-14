@@ -190,6 +190,7 @@ export default function Collections() {
   const [activeSub, setActiveSub] = useState(null)
   const [queryGenders, setQueryGenders] = useState([])
   const [queryAges, setQueryAges] = useState([])
+  const [queryTitle, setQueryTitle] = useState('')
   const [sort, setSort]           = useState('new')
   const [page, setPage]           = useState(1)
   const ITEMS_PER_PAGE = 40
@@ -206,6 +207,7 @@ export default function Collections() {
       .split(',')
       .map((x) => x.trim())
       .filter((x) => x === 'boys' || x === 'girls')
+    const queryTitle = (searchParams.get('title') || '').trim().toLowerCase()
 
     const validCat = categories.some((c) => c.id === queryCat) ? queryCat : null
     const catId = validCat || 'all'
@@ -223,6 +225,7 @@ export default function Collections() {
 
     setQueryAges(queryAges)
     setQueryGenders(queryGenders)
+    setQueryTitle(queryTitle)
   }, [searchParams])
 
   useEffect(() => {
@@ -276,6 +279,10 @@ export default function Collections() {
 
   if (queryAges.length > 0) {
     filtered = filtered.filter((p) => productMatchesAnyAges(p, queryAges))
+  }
+
+  if (queryTitle) {
+    filtered = filtered.filter((p) => String(p?.title || '').toLowerCase().includes(queryTitle))
   }
 
   filtered = [...filtered].sort((a, b) => compareProducts(a, b, sort))

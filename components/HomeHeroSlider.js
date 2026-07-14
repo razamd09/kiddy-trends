@@ -95,13 +95,21 @@ export default function HomeHeroSlider() {
               />
 
               <div className="absolute inset-x-0 bottom-4 flex justify-center px-4">
-                <button
-                  type="button"
-                  onClick={applyLandingDiscount}
-                  className="rounded-full bg-gradient-to-r from-[#0f6b4c] to-[#13855f] text-white font-display text-sm md:text-base px-6 py-2.5 shadow-lg hover:opacity-95"
-                >
-                  Use Code for Discount
-                </button>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={applyLandingDiscount}
+                    className="rounded-full bg-gradient-to-r from-[#0f6b4c] to-[#13855f] text-white font-display text-sm md:text-base px-6 py-2.5 shadow-lg hover:opacity-95"
+                  >
+                    Use Code for Discount
+                  </button>
+                  <Link
+                    href="/collections?title=independence"
+                    className="rounded-full bg-white/95 text-[#0f6b4c] border border-[#0f6b4c]/20 font-display text-sm md:text-base px-6 py-2.5 shadow-lg hover:bg-white"
+                  >
+                    Independence Collection
+                  </Link>
+                </div>
               </div>
 
               {promoApplied && (
