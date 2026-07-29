@@ -5,6 +5,10 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_KEY
 )
 
+const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_9p08wct'
+const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID || 'template_gyanmsp'
+const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY || process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || 'G3OmrUP2PwOat-o1W'
+
 export function normalizePhone(value) {
     const raw = String(value || '').trim()
     if (!raw) return ''
@@ -260,5 +264,118 @@ export async function getCustomersPage(page, queryText = '') {
         total: result.total,
         page: safePage,
         pageSize: result.pageSize,
+    }
+}
+
+function isValidEmail(value) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim().toLowerCase())
+}
+
+function chunkArray(values, chunkSize) {
+    const chunks = []
+    for (let i = 0; i < values.length; i += chunkSize) {
+        chunks.push(values.slice(i, i + chunkSize))
+    }
+    return chunks
+}
+
+async function getCustomerEmailsFromOrders() {
+    const unique = new Set()
+    const pageSize = 1000
+    let from = 0
+
+    while (true) {
+        const { data, error } = await supabase
+            .from('orders')
+            .select('customer_email')
+            .order('created_at', { ascending: false })
+            .range(from, from + pageSize - 1)
+
+        if (error) throw new Error(error.message)
+
+        for (const row of data || []) {
+            const email = String(row?.customer_email || '').trim().toLowerCase()
+            if (!isValidEmail(email)) continue
+            unique.add(email)
+        }
+
+        if (!data || data.length < pageSize) break
+        from += pageSize
+    }
+
+    return [...unique]
+}
+
+async function sendEmailWithEmailJs(toEmail, subject, message) {
+    const payload = {
+        service_id: EMAILJS_SERVICE_ID,
+        template_id: EMAILJS_TEMPLATE_ID,
+        user_id: EMAILJS_PUBLIC_KEY,
+        template_params: {
+            to_email: toEmail,
+            recipient_email: toEmail,
+            email: toEmail,
+            customer_email: toEmail,
+            buyer_email: '',
+            to_name: 'Valued Customer',
+            from_name: 'Kiddy Trends',
+            reply_to: process.env.ORDER_NOTIFICATION_EMAIL || 'thekiddytrends@gmail.com',
+            subject,
+            customer_name: 'Valued Customer',
+            phone: '',
+            address: '',
+            city: '',
+            order_number: '',
+            order_items: '',
+            subtotal: '',
+            shipping: '',
+            discount: '',
+            total: '',
+            message,
+        },
+    }
+
+    const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(errorText || 'Email send failed')
+    }
+}
+
+export async function sendPromotionEmailToAllCustomers(subjectInput) {
+    const subject = String(subjectInput || '').trim()
+    if (!subject) throw new Error('Subject is required')
+
+    if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
+        throw new Error('Email service is not configured')
+    }
+
+    const recipients = await getCustomerEmailsFromOrders()
+    if (recipients.length === 0) {
+        return { sent: 0, failed: 0, totalRecipients: 0 }
+    }
+
+    const message = 'New promotions available'
+    let sent = 0
+    let failed = 0
+    const batches = chunkArray(recipients, 20)
+
+    for (const batch of batches) {
+        const results = await Promise.allSettled(batch.map((email) => sendEmailWithEmailJs(email, subject, message)))
+        for (const result of results) {
+            if (result.status === 'fulfilled') sent += 1
+            else failed += 1
+        }
+    }
+
+    return {
+        sent,
+        failed,
+        totalRecipients: recipients.length,
     }
 }

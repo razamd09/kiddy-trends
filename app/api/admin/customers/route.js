@@ -1,4 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
+import {
+    backfillCustomersFromOrders,
+    getCustomersPage,
+    normalizeCsvRow,
+    normalizeOrderSource,
+    normalizePhone,
+    sendPromotionEmailToAllCustomers,
+    upsertCustomers,
+} from './customer-data'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -19,169 +28,14 @@ async function validateAdmin(request) {
     return !!session
 }
 
-function normalizePhone(value) {
-    const raw = String(value || '').trim()
-    if (!raw) return ''
-
-    const digits = raw.replace(/\D/g, '')
-    if (!digits) return ''
-    if (digits.startsWith('92')) return '+' + digits
-    if (digits.startsWith('0')) return '+92' + digits.slice(1)
-    if (digits.length === 10) return '+92' + digits
-    return '+' + digits
-}
-
-function normalizeOrderSource(value) {
-    const v = String(value || '').trim().toLowerCase()
-    if (v === 'insta' || v === 'instagram') return 'Insta'
-    if (v === 'facebook' || v === 'fb') return 'Facebook'
-    if (v === 'whatsapp' || v === 'wa') return 'Whatsapp'
-    if (v === 'website' || v === 'web' || v === 'site') return 'Website'
-    return 'Website'
-}
-
-function splitName(name) {
-    const normalized = String(name || '').trim().replace(/\s+/g, ' ')
-    if (!normalized) return { first_name: '', last_name: '' }
-    const parts = normalized.split(' ')
-    const firstName = parts.shift() || ''
-    const lastName = parts.join(' ')
-    return { first_name: firstName, last_name: lastName }
-}
-
-function normalizeCsvRow(row) {
-    const firstName = String(row?.first_name || row?.firstName || row?.first || '').trim()
-    const lastName = String(row?.last_name || row?.lastName || row?.last || '').trim()
-    const phone = normalizePhone(row?.phone || row?.whatsapp || row?.mobile || '')
-    if (!phone) return null
-    return {
-        first_name: firstName,
-        last_name: lastName,
-        phone,
-        order_source: normalizeOrderSource(row?.order_source || row?.orderSource || row?.source),
-        updated_at: new Date().toISOString(),
-    }
-}
-
-async function upsertCustomers(rows) {
-    if (!rows?.length) return null
-
-    const firstAttempt = await supabase
-        .from('customers')
-        .upsert(rows, { onConflict: 'phone' })
-
-    if (!firstAttempt.error) return null
-
-    const message = String(firstAttempt.error.message || '').toLowerCase()
-    if (!message.includes('order_source')) return firstAttempt.error
-
-    const fallbackRows = rows.map((r) => {
-        const { order_source, ...rest } = r
-        return rest
-    })
-
-    const fallback = await supabase
-        .from('customers')
-        .upsert(fallbackRows, { onConflict: 'phone' })
-
-    return fallback.error || null
-}
-
-async function buildCustomersFromOrders() {
-    const pageSize = 1000
-    let from = 0
-    const byPhone = new Map()
-
-    while (true) {
-        const { data, error } = await supabase
-            .from('orders')
-            .select('customer_name, customer_phone, customer_whatsapp, created_at')
-            .order('created_at', { ascending: false })
-            .range(from, from + pageSize - 1)
-
-        if (error) throw new Error(error.message)
-        if (!data || data.length === 0) break
-
-        data.forEach((order) => {
-            const phone = normalizePhone(order.customer_whatsapp || order.customer_phone || '')
-            if (!phone || byPhone.has(phone)) return
-            const name = splitName(order.customer_name)
-            byPhone.set(phone, {
-                ...name,
-                phone,
-                order_source: 'Website',
-                updated_at: new Date().toISOString(),
-            })
-        })
-
-        if (data.length < pageSize) break
-        from += pageSize
-    }
-
-    return [...byPhone.values()]
-}
-
-async function backfillCustomersFromOrders() {
-    const rows = await buildCustomersFromOrders()
-    if (rows.length === 0) return 0
-
-    const error = await upsertCustomers(rows)
-
-    if (error) throw new Error(error.message)
-    return rows.length
-}
-
-function hasMissingNames(rows) {
-    return (rows || []).some((row) => !String(row?.first_name || '').trim() && !String(row?.last_name || '').trim())
-}
-
 export async function GET(request) {
     try {
         const valid = await validateAdmin(request)
         if (!valid) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
         const { searchParams } = new URL(request.url)
-        const page = Math.max(1, Number(searchParams.get('page') || 1))
-        const limit = 30
-        const offset = (page - 1) * limit
-        const queryText = String(searchParams.get('q') || '').trim()
-
-        let query = supabase
-            .from('customers')
-            .select('id, first_name, last_name, phone, created_at, updated_at', { count: 'exact' })
-            .order('updated_at', { ascending: false })
-            .range(offset, offset + limit - 1)
-
-        if (queryText) {
-            query = query.or('first_name.ilike.%' + queryText + '%,last_name.ilike.%' + queryText + '%,phone.ilike.%' + queryText + '%')
-        }
-
-        let { data, error, count } = await query
-        if (error) return Response.json({ error: error.message }, { status: 500 })
-
-        if (!queryText && page === 1 && ((count || 0) === 0 || hasMissingNames(data))) {
-            try {
-                const imported = await backfillCustomersFromOrders()
-                if (imported > 0) {
-                    const refreshed = await supabase
-                        .from('customers')
-                        .select('id, first_name, last_name, phone, created_at, updated_at', { count: 'exact' })
-                        .order('updated_at', { ascending: false })
-                        .range(offset, offset + limit - 1)
-                    data = refreshed.data || []
-                    count = refreshed.count || 0
-                }
-            } catch {
-                // Keep existing empty response if backfill fails.
-            }
-        }
-
-        return Response.json({
-            customers: data || [],
-            total: count || 0,
-            page,
-            pageSize: limit,
-        })
+        const data = await getCustomersPage(searchParams.get('page') || 1, searchParams.get('q') || '')
+        return Response.json(data)
     } catch (error) {
         return Response.json({ error: error.message }, { status: 500 })
     }
@@ -220,6 +74,14 @@ export async function POST(request) {
             if (error) return Response.json({ error: error.message }, { status: 500 })
 
             return Response.json({ success: true, imported: rows.length, source: 'csv' })
+        }
+
+        if (action === 'send-promotions-email') {
+            const subject = String(body?.subject || '').trim()
+            if (!subject) return Response.json({ error: 'Subject is required' }, { status: 400 })
+
+            const result = await sendPromotionEmailToAllCustomers(subject)
+            return Response.json({ success: true, ...result })
         }
 
         if (action === 'add-customer') {

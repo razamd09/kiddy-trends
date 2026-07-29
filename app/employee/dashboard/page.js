@@ -243,6 +243,13 @@ export default function EmployeeDashboard() {
                             href="/employee/rewards"
                             subtitle="View member points summary"
                         />
+                        <ModuleCard
+                            enabled={true}
+                            title="Customers"
+                            icon="👥"
+                            href="/employee/customers"
+                            subtitle="Search customer records"
+                        />
                     </div>
                 </div>
             </div>
