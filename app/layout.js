@@ -7,6 +7,7 @@ import Script from 'next/script'
 import LiveNotifications from '../components/LiveNotifications'
 import BottomNav from '../components/BottomNav'
 import SplashScreen from '../components/SplashScreen'
+import AmbientMusicPlayer from '../components/AmbientMusicPlayer'
 
 export const metadata = {
   title: 'Kiddy Trends – Fun Fashion for Little Ones',
@@ -107,6 +108,7 @@ export default function RootLayout({ children }) {
         </div>
 
         <CartDrawer />
+        <AmbientMusicPlayer />
         <main className="pb-16 md:pb-0">{children}</main>
         <Footer />
         <BottomNav />

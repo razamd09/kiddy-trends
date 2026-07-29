@@ -33,7 +33,7 @@ export default function FlashSaleBanner({ rightSideOffsetY = 0 }) {
   }, [])
 
   return (
-    <div className="bg-charcoal rounded-3xl px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+    <div className="bg-charcoal rounded-3xl px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-3">
       <div className="flex items-center gap-3">
         <span className="text-2xl animate-bounce2">🔥</span>
         <div>
@@ -42,22 +42,22 @@ export default function FlashSaleBanner({ rightSideOffsetY = 0 }) {
         </div>
       </div>
       <div
-        className="flex items-center gap-3 flex-shrink-0"
+        className="flex flex-col md:items-end gap-2 flex-shrink-0"
         style={{ transform: `translateY(${rightSideOffsetY}px)` }}
       >
         {/* Countdown */}
-        <div className="flex items-center gap-1">
-          <div className="bg-coral rounded-xl px-3 py-2 text-center min-w-[3rem]">
+        <div className="flex items-center md:items-stretch md:flex-col gap-1 md:gap-2">
+          <div className="bg-coral rounded-xl px-3 py-2 text-center min-w-[3rem] md:min-w-[4.25rem]">
             <p className="font-display text-2xl text-white leading-none">{time.h}</p>
             <p className="text-white/60 text-xs">HRS</p>
           </div>
-          <span className="font-display text-white text-xl">:</span>
-          <div className="bg-coral rounded-xl px-3 py-2 text-center min-w-[3rem]">
+          <span className="font-display text-white text-xl md:hidden">:</span>
+          <div className="bg-coral rounded-xl px-3 py-2 text-center min-w-[3rem] md:min-w-[4.25rem]">
             <p className="font-display text-2xl text-white leading-none">{time.m}</p>
             <p className="text-white/60 text-xs">MIN</p>
           </div>
-          <span className="font-display text-white text-xl">:</span>
-          <div className="bg-coral rounded-xl px-3 py-2 text-center min-w-[3rem]">
+          <span className="font-display text-white text-xl md:hidden">:</span>
+          <div className="bg-coral rounded-xl px-3 py-2 text-center min-w-[3rem] md:min-w-[4.25rem]">
             <p className="font-display text-2xl text-white leading-none">{time.s}</p>
             <p className="text-white/60 text-xs">SEC</p>
           </div>
