@@ -215,10 +215,11 @@ export async function GET(request) {
 export async function POST(request) {
     try {
         const { cartItems, customer } = await request.json()
+        const customerEmail = String(customer?.email || '').trim().toLowerCase()
 
         const explicitRewardsUserId = (customer?.rewards?.userId || '').toLowerCase().trim()
-        const inferredRewardsUserId = (customer?.email || '').includes('@')
-            ? customer.email.split('@')[0].toLowerCase().trim()
+        const inferredRewardsUserId = customerEmail.includes('@')
+            ? customerEmail.split('@')[0].toLowerCase().trim()
             : ''
         let rewardsUserId = explicitRewardsUserId || inferredRewardsUserId
 
@@ -315,7 +316,7 @@ export async function POST(request) {
                 customer_name:     customer.name,
                 customer_phone:    customer.phone,
                 customer_whatsapp: customer.whatsapp || customer.phone,
-                customer_email:    customer.email || '',
+                customer_email:    customerEmail,
                 customer_city:     customer.city,
                 customer_address:  customer.address,
                 items:             cartItems,

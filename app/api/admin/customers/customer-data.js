@@ -8,6 +8,16 @@ const supabase = createClient(
 const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_9p08wct'
 const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID || 'template_gyanmsp'
 const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY || process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || 'G3OmrUP2PwOat-o1W'
+const WHATSAPP_ACCESS_TOKEN = [
+    process.env.WHATSAPP_CLOUD_API_TOKEN,
+    process.env.WHATSAPP_ACCESS_TOKEN,
+    process.env.META_WHATSAPP_ACCESS_TOKEN,
+].find((value) => typeof value === 'string' && value.trim()) || ''
+const WHATSAPP_PHONE_NUMBER_ID = [
+    process.env.WHATSAPP_CLOUD_PHONE_NUMBER_ID,
+    process.env.WHATSAPP_PHONE_NUMBER_ID,
+    process.env.META_WHATSAPP_PHONE_NUMBER_ID,
+].find((value) => typeof value === 'string' && value.trim()) || ''
 
 export function normalizePhone(value) {
     const raw = String(value || '').trim()
@@ -271,6 +281,18 @@ function isValidEmail(value) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim().toLowerCase())
 }
 
+function normalizePkPhone(phone) {
+    let digits = String(phone || '').replace(/\D/g, '')
+    if (!digits) return null
+    if (digits.startsWith('92') && digits.length > 10) digits = digits.slice(2)
+    if (digits.startsWith('0') && digits.length > 10) digits = digits.slice(1)
+    if (digits.length !== 10) return null
+    return {
+        e164: '+92' + digits,
+        waTo: '92' + digits,
+    }
+}
+
 function chunkArray(values, chunkSize) {
     const chunks = []
     for (let i = 0; i < values.length; i += chunkSize) {
@@ -304,6 +326,33 @@ async function getCustomerEmailsFromOrders() {
     }
 
     return [...unique]
+}
+
+async function getCustomerWhatsAppNumbersFromOrders() {
+    const uniqueByWaTo = new Map()
+    const pageSize = 1000
+    let from = 0
+
+    while (true) {
+        const { data, error } = await supabase
+            .from('orders')
+            .select('customer_whatsapp, customer_phone')
+            .order('created_at', { ascending: false })
+            .range(from, from + pageSize - 1)
+
+        if (error) throw new Error(error.message)
+
+        for (const row of data || []) {
+            const normalized = normalizePkPhone(row?.customer_whatsapp || row?.customer_phone || '')
+            if (!normalized) continue
+            uniqueByWaTo.set(normalized.waTo, normalized)
+        }
+
+        if (!data || data.length < pageSize) break
+        from += pageSize
+    }
+
+    return [...uniqueByWaTo.values()]
 }
 
 async function sendEmailWithEmailJs(toEmail, subject, message) {
@@ -367,6 +416,63 @@ export async function sendPromotionEmailToAllCustomers(subjectInput) {
 
     for (const batch of batches) {
         const results = await Promise.allSettled(batch.map((email) => sendEmailWithEmailJs(email, subject, message)))
+        for (const result of results) {
+            if (result.status === 'fulfilled') sent += 1
+            else failed += 1
+        }
+    }
+
+    return {
+        sent,
+        failed,
+        totalRecipients: recipients.length,
+    }
+}
+
+async function sendWhatsAppMessage(to, message) {
+    const response = await fetch('https://graph.facebook.com/v20.0/' + WHATSAPP_PHONE_NUMBER_ID + '/messages', {
+        method: 'POST',
+        headers: {
+            Authorization: 'Bearer ' + WHATSAPP_ACCESS_TOKEN,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            messaging_product: 'whatsapp',
+            recipient_type: 'individual',
+            to,
+            type: 'text',
+            text: {
+                preview_url: false,
+                body: message,
+            },
+        }),
+    })
+
+    if (!response.ok) {
+        const payload = await response.json().catch(() => null)
+        throw new Error(payload?.error?.message || 'Failed to send WhatsApp message')
+    }
+}
+
+export async function sendPromotionWhatsAppToAllCustomers(subjectInput) {
+    const subject = String(subjectInput || '').trim()
+    if (!subject) throw new Error('Subject is required')
+
+    if (!WHATSAPP_ACCESS_TOKEN || !WHATSAPP_PHONE_NUMBER_ID) {
+        throw new Error('WhatsApp API is not configured. Missing WHATSAPP_CLOUD_API_TOKEN or WHATSAPP_CLOUD_PHONE_NUMBER_ID')
+    }
+
+    const recipients = await getCustomerWhatsAppNumbersFromOrders()
+    if (recipients.length === 0) {
+        return { sent: 0, failed: 0, totalRecipients: 0 }
+    }
+
+    let sent = 0
+    let failed = 0
+    const batches = chunkArray(recipients, 15)
+
+    for (const batch of batches) {
+        const results = await Promise.allSettled(batch.map((recipient) => sendWhatsAppMessage(recipient.waTo, subject)))
         for (const result of results) {
             if (result.status === 'fulfilled') sent += 1
             else failed += 1

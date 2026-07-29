@@ -3,6 +3,7 @@ import {
     normalizeOrderSource,
     normalizePhone,
     sendPromotionEmailToAllCustomers,
+    sendPromotionWhatsAppToAllCustomers,
     upsertCustomers,
 } from '../../admin/customers/customer-data'
 import { createClient } from '@supabase/supabase-js'
@@ -52,6 +53,17 @@ export async function POST(request) {
             if (!subject) return Response.json({ error: 'Subject is required' }, { status: 400 })
 
             const result = await sendPromotionEmailToAllCustomers(subject)
+            return Response.json({ success: true, ...result })
+        }
+
+        if (action === 'send-promotions-whatsapp') {
+            const validEmployee = await validateEmployeeAccess(body?.employee_id)
+            if (!validEmployee) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+            const subject = String(body?.subject || '').trim()
+            if (!subject) return Response.json({ error: 'Subject is required' }, { status: 400 })
+
+            const result = await sendPromotionWhatsAppToAllCustomers(subject)
             return Response.json({ success: true, ...result })
         }
 

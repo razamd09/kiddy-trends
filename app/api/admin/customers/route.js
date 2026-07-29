@@ -6,6 +6,7 @@ import {
     normalizeOrderSource,
     normalizePhone,
     sendPromotionEmailToAllCustomers,
+    sendPromotionWhatsAppToAllCustomers,
     upsertCustomers,
 } from './customer-data'
 
@@ -81,6 +82,14 @@ export async function POST(request) {
             if (!subject) return Response.json({ error: 'Subject is required' }, { status: 400 })
 
             const result = await sendPromotionEmailToAllCustomers(subject)
+            return Response.json({ success: true, ...result })
+        }
+
+        if (action === 'send-promotions-whatsapp') {
+            const subject = String(body?.subject || '').trim()
+            if (!subject) return Response.json({ error: 'Subject is required' }, { status: 400 })
+
+            const result = await sendPromotionWhatsAppToAllCustomers(subject)
             return Response.json({ success: true, ...result })
         }
 

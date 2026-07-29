@@ -110,6 +110,7 @@ export default function CustomersScreen({ mode = 'admin' }) {
     const [syncingOrders, setSyncingOrders] = useState(false)
     const [importingCsv, setImportingCsv] = useState(false)
     const [sendingPromotion, setSendingPromotion] = useState(false)
+    const [sendingWhatsAppPromotion, setSendingWhatsAppPromotion] = useState(false)
     const [csvName, setCsvName] = useState('')
     const fileRef = useRef(null)
     const router = useRouter()
@@ -274,27 +275,33 @@ export default function CustomersScreen({ mode = 'admin' }) {
             return
         }
 
+        let employeeId = ''
+        const headers = { 'Content-Type': 'application/json' }
+        if (isAdmin) {
+            const token = localStorage.getItem('admin_token')
+            if (!token) {
+                router.push('/admin')
+                return
+            }
+            headers['x-admin-token'] = token
+        } else {
+            const employee = JSON.parse(localStorage.getItem('employee') || '{}')
+            employeeId = employee.employee_id || ''
+            if (!employeeId) {
+                router.push('/admin')
+                return
+            }
+        }
+
         setSendingPromotion(true)
         setStatusMessage('')
 
         try {
-            const headers = { 'Content-Type': 'application/json' }
             const payload = {
                 action: 'send-promotions-email',
                 subject,
             }
-
-            if (isAdmin) {
-                const token = localStorage.getItem('admin_token')
-                if (!token) {
-                    router.push('/admin')
-                    return
-                }
-                headers['x-admin-token'] = token
-            } else {
-                const employee = JSON.parse(localStorage.getItem('employee') || '{}')
-                payload.employee_id = employee.employee_id || ''
-            }
+            if (!isAdmin) payload.employee_id = employeeId
 
             const res = await fetch(apiPath, {
                 method: 'POST',
@@ -311,6 +318,58 @@ export default function CustomersScreen({ mode = 'admin' }) {
         }
 
         setSendingPromotion(false)
+    }
+
+    async function sendPromotionWhatsApp() {
+        const subject = promotionSubject.trim()
+        if (!subject) {
+            setStatusMessage('Subject is required')
+            return
+        }
+
+        let employeeId = ''
+        const headers = { 'Content-Type': 'application/json' }
+        if (isAdmin) {
+            const token = localStorage.getItem('admin_token')
+            if (!token) {
+                router.push('/admin')
+                return
+            }
+            headers['x-admin-token'] = token
+        } else {
+            const employee = JSON.parse(localStorage.getItem('employee') || '{}')
+            employeeId = employee.employee_id || ''
+            if (!employeeId) {
+                router.push('/admin')
+                return
+            }
+        }
+
+        setSendingWhatsAppPromotion(true)
+        setStatusMessage('')
+
+        try {
+            const payload = {
+                action: 'send-promotions-whatsapp',
+                subject,
+            }
+            if (!isAdmin) payload.employee_id = employeeId
+
+            const res = await fetch(apiPath, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(payload),
+            })
+
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(data?.error || 'Failed to send WhatsApp promotions')
+
+            setStatusMessage('WhatsApp promotions sent: ' + (data.sent || 0) + ' successful, ' + (data.failed || 0) + ' failed')
+        } catch (error) {
+            setStatusMessage(error.message || 'Failed to send WhatsApp promotions')
+        }
+
+        setSendingWhatsAppPromotion(false)
     }
 
     function logout() {
@@ -390,8 +449,8 @@ export default function CustomersScreen({ mode = 'admin' }) {
 
                 <div className="bg-white rounded-2xl p-4 space-y-3">
                     <div>
-                        <p className="font-semibold text-charcoal">Send Promotion Email</p>
-                        <p className="text-xs text-gray-400">Sends &quot;New promotions available&quot; to all customer emails.</p>
+                        <p className="font-semibold text-charcoal">Send Promotions</p>
+                        <p className="text-xs text-gray-400">Use Subject, then send by Email or WhatsApp to all customer contacts.</p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
                         <input
@@ -400,12 +459,21 @@ export default function CustomersScreen({ mode = 'admin' }) {
                             placeholder="Subject"
                             className="flex-1 rounded-xl border border-gray-200 px-4 py-2 text-sm outline-none focus:border-coral"
                         />
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2">
                         <button
                             onClick={sendPromotionEmails}
-                            disabled={sendingPromotion}
+                            disabled={sendingPromotion || sendingWhatsAppPromotion}
                             className="px-4 py-2 rounded-xl bg-coral text-white text-sm font-semibold disabled:opacity-50"
                         >
-                            {sendingPromotion ? 'Sending...' : 'Send To All Customers'}
+                            {sendingPromotion ? 'Sending Email...' : 'Send Email To All'}
+                        </button>
+                        <button
+                            onClick={sendPromotionWhatsApp}
+                            disabled={sendingPromotion || sendingWhatsAppPromotion}
+                            className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50"
+                        >
+                            {sendingWhatsAppPromotion ? 'Sending WhatsApp...' : 'Send WhatsApp To All'}
                         </button>
                     </div>
                 </div>
