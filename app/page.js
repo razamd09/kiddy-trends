@@ -2,14 +2,12 @@
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import ProductCard from '../components/ProductCard'
-import FlashSaleBanner from '../components/FlashSaleBanner'
 import RewardsChecker from '../components/RewardsChecker'
 import DiscountBanner from '../components/DiscountBanner'
 import LandingPreferencePopup from '../components/LandingPreferencePopup'
 import HomeHeroSlider from '../components/HomeHeroSlider'
 
 const NEW_ARRIVALS_TARGET = 10
-const FLASH_SALE_RIGHT_OFFSET_Y = 0
 
 const categories = [
   { label: 'Kids Clothing',      desc: 'Newborn to 12 years',         color: 'bg-coral/20',   emoji: '👕', href: '/collections' },
@@ -43,11 +41,6 @@ export default function Home() {
         <DiscountBanner />
         {/* HERO */}
         <HomeHeroSlider />
-
-        {/* FLASH SALE TIMER */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6 pt-6">
-          <FlashSaleBanner rightSideOffsetY={FLASH_SALE_RIGHT_OFFSET_Y} />
-        </section>
 
         {/* SHOP BY CATEGORY */}
         <section id="shop-by-category" className="bg-white py-16">
