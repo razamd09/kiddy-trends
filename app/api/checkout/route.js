@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { createHash } from 'crypto'
 import { normalizePhone, upsertCustomers } from '../admin/customers/customer-data'
 
 const ORDER_NOTIFICATION_EMAIL = process.env.ORDER_NOTIFICATION_EMAIL || 'thekiddytrends@gmail.com'
@@ -8,6 +9,9 @@ const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY || process.env.NEXT_PU
 const POINTS_PER_1000 = 25
 const BONUS_THRESHOLD = 500
 const BONUS_POINTS = 100
+const SPIN_HASH_SECRET = process.env.SPIN_WHEEL_HASH_SECRET || 'kt_spin_wheel_secret_v1'
+const SPIN_ALLOWED_PERCENTS = [10, 20]
+const SPIN_TZ = 'Asia/Karachi'
 
 function toNumber(value) {
     const parsed = Number(value)
@@ -226,7 +230,7 @@ export async function POST(request) {
         const subtotalFromItems = (cartItems || []).reduce((s, i) => s + (parseFloat(i.price || 0) * (i.quantity || 1)), 0)
         const subtotalFromCustomer = Math.max(0, toNumber(customer?.order_subtotal || 0))
         const subtotal = subtotalFromCustomer > 0 ? subtotalFromCustomer : subtotalFromItems
-        const promoDiscount = Math.max(0, toNumber(customer?.discount || 0))
+        const requestedPromoDiscount = Math.max(0, toNumber(customer?.discount || 0))
         const redeemRequested = Math.max(0, toNumber(customer?.rewards?.redeem || 0))
 
         const supabase = createClient(
@@ -243,6 +247,23 @@ export async function POST(request) {
 
         const shippingRate = activeRates?.[0] || { flat_price: 250, shipping_percentage: 0 }
         const shipping = computeShipping(subtotal, shippingRate)
+        const incomingDiscountCode = String(customer?.discount_code || '').trim()
+
+        let promoDiscount = requestedPromoDiscount
+        let spinResolution = { amount: 0, percent: 0, sessionId: null, used: false, ipHash: null }
+
+        if (/^SPINPCT/i.test(incomingDiscountCode)) {
+            spinResolution = await resolveSpinDiscount({
+                supabase,
+                request,
+                customer,
+                subtotal,
+                shipping,
+            })
+            promoDiscount = spinResolution.amount
+        }
+
+        promoDiscount = Math.max(0, Math.min(promoDiscount, subtotal + shipping))
 
         let rewardsSummary = null
         let redeemedPoints = 0
@@ -305,6 +326,9 @@ export async function POST(request) {
         const total = Math.max(0, subtotal + shipping - discount)
         const notesText = [
             customer?.notes || '',
+            spinResolution.used
+                ? ('[Spin] ' + spinResolution.percent + '% applied via ' + incomingDiscountCode)
+                : '',
             rewardsSummary
                 ? ('[Rewards] ' + rewardsSummary.userId + ' redeemed ' + rewardsSummary.redeemedPoints + ' pts, earned ' + rewardsSummary.earnedPoints + ' pts, balance ' + rewardsSummary.availablePoints + ' pts')
                 : '',
@@ -358,6 +382,19 @@ export async function POST(request) {
 
         await syncCustomerSnapshot(customer)
 
+        if (spinResolution.used && spinResolution.sessionId) {
+            await supabase
+                .from('spin_wheel_sessions')
+                .update({
+                    consumed: true,
+                    active_discount: 0,
+                    updated_at: new Date().toISOString(),
+                    ip_hash: spinResolution.ipHash,
+                })
+                .eq('id', spinResolution.sessionId)
+                .eq('consumed', false)
+        }
+
         return Response.json({
             success:     true,
             orderId:     savedOrder.id,
@@ -370,4 +407,66 @@ export async function POST(request) {
     } catch (error) {
         return Response.json({ success: false, error: error.message }, { status: 500 })
     }
+}
+
+function hashValue(input) {
+    return createHash('sha256').update(String(input || '') + '|' + SPIN_HASH_SECRET).digest('hex')
+}
+
+function getKarachiDayKey() {
+    const now = new Date(new Date().toLocaleString('en-US', { timeZone: SPIN_TZ }))
+    const y = now.getFullYear()
+    const m = String(now.getMonth() + 1).padStart(2, '0')
+    const d = String(now.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+}
+
+function getClientIp(request) {
+    const forwarded = String(request.headers.get('x-forwarded-for') || '').trim()
+    if (forwarded) return forwarded.split(',')[0].trim()
+    return String(request.headers.get('x-real-ip') || '').trim()
+}
+
+function getUserAgent(request) {
+    return String(request.headers.get('user-agent') || '').trim()
+}
+
+async function resolveSpinDiscount({ supabase, request, customer, subtotal, shipping }) {
+    const spin = customer?.spin || {}
+    const discountCode = String(spin?.discountCode || customer?.discount_code || '').trim()
+    const fingerprint = String(spin?.fingerprint || '').trim()
+
+    if (!/^SPINPCT(10|20)$/i.test(discountCode) || !fingerprint) {
+        return { amount: 0, percent: 0, sessionId: null, used: false, ipHash: null }
+    }
+
+    const dayKey = getKarachiDayKey()
+    const fingerprintHash = hashValue('fp|' + fingerprint)
+    const userAgentHash = hashValue('ua|' + getUserAgent(request))
+    const ip = getClientIp(request)
+    const ipHash = ip ? hashValue('ip|' + ip) : null
+
+    const { data: session, error } = await supabase
+        .from('spin_wheel_sessions')
+        .select('id, active_discount, discount_code, consumed')
+        .eq('day_key', dayKey)
+        .eq('fingerprint_hash', fingerprintHash)
+        .eq('user_agent_hash', userAgentHash)
+        .maybeSingle()
+
+    if (error || !session || session.consumed) {
+        return { amount: 0, percent: 0, sessionId: null, used: false, ipHash }
+    }
+
+    if (String(session.discount_code || '').toUpperCase() !== discountCode.toUpperCase()) {
+        return { amount: 0, percent: 0, sessionId: null, used: false, ipHash }
+    }
+
+    const percent = Number(session.active_discount || 0)
+    if (!SPIN_ALLOWED_PERCENTS.includes(percent)) {
+        return { amount: 0, percent: 0, sessionId: null, used: false, ipHash }
+    }
+
+    const amount = Math.max(0, Math.round((Math.max(0, subtotal) + Math.max(0, shipping)) * percent / 100))
+    return { amount, percent, sessionId: session.id, used: true, ipHash }
 }

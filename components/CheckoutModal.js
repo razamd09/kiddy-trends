@@ -21,6 +21,18 @@ function notifySpinWheelStateChange() {
   }
 }
 
+function readSpinState() {
+  try {
+    const raw = localStorage.getItem(SPIN_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object') return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
 function toNumber(value) {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : 0
@@ -85,10 +97,11 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   const image          = product?.images?.[0]?.src
   const baseShipping   = computeShippingAmount(price, shippingRate)
   const shipping       = discount?.type === 'shipping' ? 0 : baseShipping
+  const billAmountForDiscount = price + shipping
   const discountAmount = discount
-    ? discount.type === 'percent' ? Math.round(price * discount.value / 100)
+    ? discount.type === 'percent' ? Math.round(billAmountForDiscount * discount.value / 100)
     : discount.type === 'fixed'   ? Math.min(discount.value, price)
-    : discount.discount_type === 'percentage' ? Math.round(price * discount.discount_value / 100)
+    : discount.discount_type === 'percentage' ? Math.round(billAmountForDiscount * discount.discount_value / 100)
     : discount.discount_type === 'amount' ? Math.min(discount.discount_value, price)
     : 0 : 0
   const rewardsDiscount = rewards.redeemed || 0
@@ -158,15 +171,28 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   function consumeSpinDiscountIfUsed() {
     if (!discount?.code || !String(discount.code).startsWith('SPIN')) return
     try {
-      const raw = localStorage.getItem(SPIN_STORAGE_KEY)
-      if (!raw) return
-      const state = JSON.parse(raw)
+      const state = readSpinState()
+      if (!state) return
       localStorage.setItem(SPIN_STORAGE_KEY, JSON.stringify({
         ...state,
         consumed: true,
         activeDiscount: 0,
       }))
       notifySpinWheelStateChange()
+    } catch {}
+
+    try {
+      const state = readSpinState()
+      if (!state?.deviceFingerprint) return
+      fetch('/api/spin-wheel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'consume',
+          fingerprint: state.deviceFingerprint,
+          discountCode: discount.code,
+        }),
+      }).catch(() => {})
     } catch {}
   }
 
@@ -370,6 +396,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
             image: image || '',
           }]
       const waNumber = form.sameAsPhone ? form.phone : form.whatsapp
+      const spinState = readSpinState()
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -384,9 +411,14 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
             city:     form.city,
             notes:    form.notes,
             discount: discount?.type !== 'shipping' ? discountAmount : 0,
+            discount_code: discount?.code || '',
             order_subtotal: Number(price || 0),
             order_shipping: Number(shipping || 0),
             order_total: Number(total || 0),
+            spin: {
+              fingerprint: String(spinState?.deviceFingerprint || ''),
+              discountCode: String(discount?.code || ''),
+            },
             rewards: rewards.userId ? { userId: rewards.userId, redeem: rewards.redeemed || 0 } : null,
             payment:  'cod',
           }

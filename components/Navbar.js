@@ -117,7 +117,7 @@ export default function Navbar() {
                   onClick={() => setCartOpen(true)}
                   className="absolute top-full right-0 mt-2 w-52 rounded-2xl bg-gradient-to-r from-coral to-[#ff8a6f] text-white text-[11px] leading-snug text-left px-3 py-2 shadow-xl animate-bounce z-20"
                 >
-                  YOU Have PKR {spinReminder.amount} discount, CHECKOUT to avail
+                  YOU have {spinReminder.amount}% OFF, checkout to avail
                 </button>
               )}
             </div>

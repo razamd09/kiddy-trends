@@ -2,60 +2,95 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 const STORAGE_KEY = 'kt_spin_wheel_state'
-const LOCK_MS = 12 * 60 * 60 * 1000
-const MAX_SPINS_PER_WINDOW = 2
-
-const SEGMENTS = [
-  { label: 'Rs 20', amount: 20, weight: 18 },
-  { label: 'Rs 30', amount: 30, weight: 16 },
-  { label: 'Rs 40', amount: 40, weight: 14 },
-  { label: 'Rs 50', amount: 50, weight: 13 },
-  { label: 'Rs 60', amount: 60, weight: 12 },
-  { label: 'Better Luck', amount: 0, weight: 12 },
-  { label: 'Rs 70', amount: 70, weight: 6 },
-  { label: 'Rs 80', amount: 80, weight: 5 },
-  { label: 'Rs 90', amount: 90, weight: 4 },
-]
+const MAX_SPINS_PER_DAY = 2
+const SEGMENTS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+const SPIN_API = '/api/spin-wheel'
 
 function getDefaultState(now) {
   return {
-    windowStartedAt: now,
-    spinsUsed: 0,
+    dayKey: getDayKey(now),
+    spinsUsedToday: 0,
+    lastSpinAt: 0,
     lockedUntil: 0,
     activeDiscount: 0,
     discountCode: '',
+    discountType: 'percentage',
     consumed: false,
+    deviceFingerprint: '',
   }
 }
 
-function readState(now) {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return getDefaultState(now)
-    const parsed = JSON.parse(raw)
-    if (!parsed || typeof parsed !== 'object') return getDefaultState(now)
+function getDayKey(now) {
+  const d = new Date(now)
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 
-    const lockedUntil = Number(parsed.lockedUntil || 0)
-    if (lockedUntil > now) {
-      return {
-        ...getDefaultState(now),
-        ...parsed,
-      }
-    }
+function getEndOfDayTimestamp(now) {
+  const d = new Date(now)
+  d.setHours(23, 59, 59, 999)
+  return d.getTime()
+}
 
-    const startedAt = Number(parsed.windowStartedAt || 0)
-    if (!startedAt || now - startedAt >= LOCK_MS) {
-      return getDefaultState(now)
-    }
+function hashString(input) {
+  let hash = 5381
+  for (let i = 0; i < input.length; i += 1) {
+    hash = ((hash << 5) + hash) + input.charCodeAt(i)
+    hash |= 0
+  }
+  return Math.abs(hash).toString(36)
+}
 
+function getDeviceFingerprint() {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return 'server'
+  const parts = [
+    navigator.userAgent || '',
+    navigator.platform || '',
+    navigator.language || '',
+    Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+    String(window.screen?.width || 0) + 'x' + String(window.screen?.height || 0),
+    String(window.devicePixelRatio || 1),
+    String(navigator.hardwareConcurrency || 0),
+    String(navigator.maxTouchPoints || 0),
+  ]
+  return hashString(parts.join('|'))
+}
+
+function normalizeState(rawState, now, fingerprint) {
+  const base = {
+    ...getDefaultState(now),
+    ...rawState,
+  }
+
+  // Reset counters automatically when calendar day changes.
+  if (base.dayKey !== getDayKey(now)) {
     return {
       ...getDefaultState(now),
-      ...parsed,
-      windowStartedAt: startedAt,
-      lockedUntil: 0,
+      deviceFingerprint: fingerprint,
     }
+  }
+
+  return {
+    ...base,
+    spinsUsedToday: Math.max(0, Math.min(MAX_SPINS_PER_DAY, Number(base.spinsUsedToday || 0))),
+    activeDiscount: Number(base.activeDiscount || 0),
+    lockedUntil: Number(base.lockedUntil || 0),
+    lastSpinAt: Number(base.lastSpinAt || 0),
+    deviceFingerprint: fingerprint,
+  }
+}
+
+function readState(now, fingerprint) {
+  const fallback = normalizeState(getDefaultState(now), now, fingerprint)
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return fallback
+    const parsed = JSON.parse(raw)
+    return normalizeState(parsed, now, fingerprint)
   } catch {
-    return getDefaultState(now)
+    return fallback
   }
 }
 
@@ -66,48 +101,66 @@ function saveState(state) {
   }
 }
 
-function pickWeightedSegment() {
-  const totalWeight = SEGMENTS.reduce((sum, s) => sum + s.weight, 0)
-  let roll = Math.random() * totalWeight
-  for (let i = 0; i < SEGMENTS.length; i += 1) {
-    roll -= SEGMENTS[i].weight
-    if (roll <= 0) return i
-  }
-  return 0
-}
-
-function getSegmentByRotation(totalRotation) {
-  const segmentAngle = 360 / SEGMENTS.length
-  const normalized = ((totalRotation % 360) + 360) % 360
-  const pointerWheelAngle = (360 - normalized) % 360
-  const index = Math.floor(pointerWheelAngle / segmentAngle) % SEGMENTS.length
-  return SEGMENTS[index]
-}
-
 export default function SpinWheelPopup() {
   const [open, setOpen] = useState(false)
   const [rotation, setRotation] = useState(0)
   const [spinning, setSpinning] = useState(false)
   const [result, setResult] = useState(null)
-  const [spinsLeft, setSpinsLeft] = useState(0)
   const [showWinEffect, setShowWinEffect] = useState(false)
+  const [spinsLeft, setSpinsLeft] = useState(MAX_SPINS_PER_DAY)
   const finalRotationRef = useRef(0)
+  const selectedPercentRef = useRef(0)
+  const fingerprintRef = useRef('')
 
   useEffect(() => {
-    const now = Date.now()
-    const state = readState(now)
-    saveState(state)
+    let mounted = true
 
-    const canShow = now >= Number(state.lockedUntil || 0) && Number(state.spinsUsed || 0) < MAX_SPINS_PER_WINDOW
-    setSpinsLeft(Math.max(0, MAX_SPINS_PER_WINDOW - Number(state.spinsUsed || 0)))
-    setOpen(canShow)
+    async function loadSpinStatus() {
+      const now = Date.now()
+      const fingerprint = getDeviceFingerprint()
+      fingerprintRef.current = fingerprint
+
+      try {
+        const res = await fetch(SPIN_API + '?fingerprint=' + encodeURIComponent(fingerprint), {
+          cache: 'no-store',
+        })
+        const data = await res.json()
+        if (!mounted || !res.ok || !data?.success) throw new Error(data?.error || 'Failed to fetch spin state')
+
+        const state = {
+          ...readState(now, fingerprint),
+          dayKey: String(data.dayKey || getDayKey(now)),
+          spinsUsedToday: Math.max(0, MAX_SPINS_PER_DAY - Number(data.spinsLeft || 0)),
+          lastSpinAt: Number(data.spinsUsed || 0) > 0 ? now : 0,
+          lockedUntil: Date.parse(data.lockedUntil || '') || 0,
+          activeDiscount: Number(data.activeDiscount || 0),
+          discountCode: String(data.discountCode || ''),
+          discountType: 'percentage',
+          consumed: Boolean(data.consumed),
+          deviceFingerprint: fingerprint,
+        }
+
+        saveState(state)
+        setSpinsLeft(Math.max(0, Number(data.spinsLeft || 0)))
+        setOpen(Number(data.spinsLeft || 0) > 0)
+      } catch {
+        const localState = readState(now, fingerprint)
+        saveState(localState)
+        const left = Math.max(0, MAX_SPINS_PER_DAY - Number(localState.spinsUsedToday || 0))
+        setSpinsLeft(left)
+        setOpen(left > 0)
+      }
+    }
+
+    loadSpinStatus()
+    return () => { mounted = false }
   }, [])
 
   const wheelStyle = useMemo(() => {
     const gradientStops = SEGMENTS.map((segment, index) => {
       const start = (index / SEGMENTS.length) * 100
       const end = ((index + 1) / SEGMENTS.length) * 100
-      const color = segment.amount > 0 ? (index % 2 ? '#FDE68A' : '#FCA5A5') : '#E5E7EB'
+      const color = index % 2 ? '#FDE68A' : '#FCA5A5'
       return `${color} ${start}% ${end}%`
     }).join(', ')
 
@@ -120,25 +173,57 @@ export default function SpinWheelPopup() {
 
   const segmentLabels = useMemo(() => {
     const segmentAngle = 360 / SEGMENTS.length
-    return SEGMENTS.map((segment, index) => {
+    return SEGMENTS.map((percent, index) => {
       const angle = index * segmentAngle + (segmentAngle / 2) - 90
       return {
-        ...segment,
+        percent,
         angle,
       }
     })
   }, [])
 
-  function spinNow() {
-    if (spinning) return
+  async function spinNow() {
+    if (spinning || spinsLeft <= 0) return
     setSpinning(true)
     setResult(null)
     setShowWinEffect(false)
 
-    const selectedIndex = pickWeightedSegment()
+    let selectedPercent = 0
+    let nextSpinsLeft = spinsLeft
+    let dayKey = getDayKey(Date.now())
+    let lockedUntil = 0
+    let discountCode = ''
+    try {
+      const fingerprint = fingerprintRef.current || getDeviceFingerprint()
+      fingerprintRef.current = fingerprint
+      const res = await fetch(SPIN_API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'spin', fingerprint }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data?.success) {
+        setSpinning(false)
+        setSpinsLeft(Math.max(0, Number(data?.spinsLeft || 0)))
+        setOpen(Number(data?.spinsLeft || 0) > 0)
+        return
+      }
+
+      selectedPercent = Number(data.wonPercent || 10)
+      nextSpinsLeft = Math.max(0, Number(data.spinsLeft || 0))
+      dayKey = String(data.dayKey || dayKey)
+      lockedUntil = Date.parse(data.lockedUntil || '') || getEndOfDayTimestamp(Date.now())
+      discountCode = String(data.discountCode || ('SPINPCT' + selectedPercent))
+    } catch {
+      setSpinning(false)
+      return
+    }
+
+    selectedPercentRef.current = selectedPercent
+    const selectedIndex = SEGMENTS.indexOf(selectedPercent)
     const segmentAngle = 360 / SEGMENTS.length
     const centerAngle = selectedIndex * segmentAngle + (segmentAngle / 2)
-    // Pointer is at top (0deg). Rotate wheel so selected segment center lands exactly under pointer.
+    // Pointer is at top (0deg). Rotate wheel so selected segment center lands under pointer.
     const targetAngle = (360 - centerAngle) % 360
     const fullSpins = 5 + Math.floor(Math.random() * 2)
     setRotation((prev) => {
@@ -151,67 +236,46 @@ export default function SpinWheelPopup() {
 
     window.setTimeout(() => {
       const now = Date.now()
-      const state = readState(now)
-      const landed = getSegmentByRotation(finalRotationRef.current)
-      const nextSpinsUsed = Math.min(MAX_SPINS_PER_WINDOW, Number(state.spinsUsed || 0) + 1)
+      const fingerprint = fingerprintRef.current || getDeviceFingerprint()
+      const landedPercent = selectedPercentRef.current || 10
       const nextState = {
-        ...state,
-        spinsUsed: nextSpinsUsed,
-      }
-
-      if (landed.amount > 0) {
-        nextState.pendingDiscount = landed.amount
-        nextState.pendingCode = 'SPIN' + landed.amount
-        nextState.activeDiscount = 0
-        nextState.discountCode = ''
-        nextState.consumed = false
-        nextState.lockedUntil = now + LOCK_MS
-      } else if (nextSpinsUsed >= MAX_SPINS_PER_WINDOW) {
-        nextState.lockedUntil = now + LOCK_MS
+        ...readState(now, fingerprint),
+        dayKey,
+        spinsUsedToday: Math.max(0, MAX_SPINS_PER_DAY - nextSpinsLeft),
+        lastSpinAt: now,
+        activeDiscount: landedPercent,
+        discountType: 'percentage',
+        discountCode,
+        consumed: false,
+        lockedUntil,
+        deviceFingerprint: fingerprint,
       }
 
       saveState(nextState)
-      setSpinsLeft(Math.max(0, MAX_SPINS_PER_WINDOW - nextSpinsUsed))
-      setResult(landed)
+      setSpinsLeft(nextSpinsLeft)
+      setOpen(nextSpinsLeft > 0)
+      setResult({ percent: landedPercent })
       setSpinning(false)
-      if (landed.amount > 0) {
-        setShowWinEffect(true)
-      }
+      setShowWinEffect(true)
     }, 4100)
   }
 
   function applyDiscount() {
-    if (!result || result.amount <= 0) return
-    const now = Date.now()
-    const state = readState(now)
-    saveState({
-      ...state,
-      activeDiscount: result.amount,
-      discountCode: state.pendingCode || ('SPIN' + result.amount),
-      pendingDiscount: 0,
-      pendingCode: '',
-      consumed: false,
-    })
+    if (!result?.percent) return
     setShowWinEffect(false)
     setOpen(false)
   }
 
   function closePopup() {
-    const now = Date.now()
-    const state = readState(now)
-    const cleared = {
-      ...state,
-      pendingDiscount: 0,
-      pendingCode: '',
-    }
-    if (result?.amount > 0) {
-      cleared.activeDiscount = 0
-      cleared.discountCode = ''
-      cleared.consumed = true
-    }
-    saveState(cleared)
+    if (!result?.percent) return
     setShowWinEffect(false)
     setOpen(false)
+  }
+
+  function tryLuckAgain() {
+    if (spinning || spinsLeft <= 0) return
+    setResult(null)
+    spinNow()
   }
 
   if (!open) return null
@@ -220,33 +284,34 @@ export default function SpinWheelPopup() {
     <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-6 text-center">
-        {showWinEffect && result?.amount > 0 && (
+        {showWinEffect && result?.percent && (
           <div className="absolute inset-0 z-20 rounded-3xl pointer-events-none bg-gradient-to-b from-yellow-100/80 via-white/30 to-pink-100/80 animate-pulse">
             <div className="h-full w-full flex items-center justify-center">
               <div className="text-center px-4">
                 <p className="text-4xl mb-2 animate-bounce">🎉</p>
                 <p className="font-display text-2xl text-coral">WOOOWW!</p>
-                <p className="font-display text-xl text-charcoal">You won PKR {result.amount} discount</p>
+                <p className="font-display text-xl text-charcoal">You won {result.percent}% OFF</p>
               </div>
             </div>
           </div>
         )}
-        <p className="font-display text-2xl text-charcoal mb-1">Spin & Win Discount 🎯</p>
-        <p className="text-sm text-gray-500 mb-4">Win PKR discount for checkout (max PKR 100)</p>
+        <p className="font-display text-2xl text-charcoal mb-1">Independence Day Sale</p>
+        <p className="text-sm text-gray-500 mb-4">Spin now and unlock your checkout percentage OFF</p>
+        <p className="text-xs text-gray-500 mb-3">Daily spins left on this device/browser: {spinsLeft}</p>
 
         <div className="relative w-64 h-64 mx-auto mb-4">
           <div className="absolute left-1/2 -translate-x-1/2 -top-2 text-coral text-2xl z-10">▼</div>
           <div className="w-64 h-64 rounded-full border-8 border-coral/20 shadow-inner mx-auto overflow-hidden relative" style={wheelStyle}>
             {segmentLabels.map((segment, idx) => (
               <div
-                key={segment.label + idx}
+                key={segment.percent + '-' + idx}
                 className="absolute left-1/2 top-1/2 text-[11px] font-bold text-charcoal"
                 style={{
                   transform: `rotate(${segment.angle}deg) translate(0, -102px) rotate(${-segment.angle}deg)`,
                   transformOrigin: 'center',
                 }}
               >
-                {segment.amount > 0 ? ('Rs ' + segment.amount) : 'No Luck'}
+                {segment.percent + '%'}
               </div>
             ))}
           </div>
@@ -255,29 +320,33 @@ export default function SpinWheelPopup() {
           </div>
         </div>
 
-        <p className="text-xs text-gray-400 mb-4">Attempts left in this window: {spinsLeft}</p>
-
         {result && (
-          <p className={'font-semibold mb-4 ' + (result.amount > 0 ? 'text-green-600' : 'text-gray-500')}>
-            {result.amount > 0
-              ? ('🎉 You won PKR ' + result.amount + ' discount!')
-              : '🙂 Better luck next time!'}
+          <p className="font-semibold mb-4 text-green-600">
+            🎉 You won {result.percent}% OFF on checkout bill!
           </p>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <button
-            onClick={result?.amount > 0 ? applyDiscount : spinNow}
-            disabled={spinning || spinsLeft <= 0 || (result && result.amount <= 0 && spinsLeft <= 0)}
+            onClick={result?.percent ? applyDiscount : spinNow}
+            disabled={spinning || spinsLeft <= 0}
             className="w-full bg-coral text-white font-display text-base py-3 rounded-2xl hover:bg-opacity-90 disabled:opacity-60 relative z-30"
           >
-            {result?.amount > 0 ? 'Apply Discount' : (spinning ? 'Spinning...' : 'Spin Now')}
+            {result?.percent ? 'Apply Discount' : (spinning ? 'Spinning...' : 'Spin Now')}
+          </button>
+          <button
+            onClick={tryLuckAgain}
+            disabled={spinning || !result?.percent || spinsLeft <= 0}
+            className="w-full bg-amber-100 text-amber-700 font-display text-base py-3 rounded-2xl hover:bg-amber-200 disabled:opacity-50 relative z-30"
+          >
+            Try Luck Again
           </button>
           <button
             onClick={closePopup}
+            disabled={!result?.percent}
             className="w-full bg-gray-100 text-charcoal font-display text-base py-3 rounded-2xl hover:bg-gray-200 relative z-30"
           >
-            Cancel / Close
+            Close
           </button>
         </div>
       </div>
