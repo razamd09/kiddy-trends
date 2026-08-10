@@ -112,6 +112,10 @@ export default function SpinWheelPopup() {
   const selectedPercentRef = useRef(0)
   const fingerprintRef = useRef('')
 
+  function pickFallbackPercent() {
+    return Math.random() < 0.5 ? 10 : 20
+  }
+
   useEffect(() => {
     let mounted = true
 
@@ -188,11 +192,12 @@ export default function SpinWheelPopup() {
     setResult(null)
     setShowWinEffect(false)
 
-    let selectedPercent = 0
+    let selectedPercent = pickFallbackPercent()
     let nextSpinsLeft = spinsLeft
     let dayKey = getDayKey(Date.now())
-    let lockedUntil = 0
-    let discountCode = ''
+    let lockedUntil = getEndOfDayTimestamp(Date.now())
+    let discountCode = 'SPINPCT' + selectedPercent
+    let shouldPersistLocalFallback = false
     try {
       const fingerprint = fingerprintRef.current || getDeviceFingerprint()
       fingerprintRef.current = fingerprint
@@ -215,17 +220,22 @@ export default function SpinWheelPopup() {
       lockedUntil = Date.parse(data.lockedUntil || '') || getEndOfDayTimestamp(Date.now())
       discountCode = String(data.discountCode || ('SPINPCT' + selectedPercent))
     } catch {
-      setSpinning(false)
-      return
+      // Keep UX reliable even if API temporarily fails.
+      shouldPersistLocalFallback = true
+      nextSpinsLeft = Math.max(0, spinsLeft - 1)
+      dayKey = getDayKey(Date.now())
+      lockedUntil = getEndOfDayTimestamp(Date.now())
+      discountCode = 'SPINPCT' + selectedPercent
     }
 
     selectedPercentRef.current = selectedPercent
-    const selectedIndex = SEGMENTS.indexOf(selectedPercent)
+    const selectedIndexRaw = SEGMENTS.indexOf(selectedPercent)
+    const selectedIndex = selectedIndexRaw >= 0 ? selectedIndexRaw : 0
     const segmentAngle = 360 / SEGMENTS.length
     const centerAngle = selectedIndex * segmentAngle + (segmentAngle / 2)
     // Pointer is at top (0deg). Rotate wheel so selected segment center lands under pointer.
     const targetAngle = (360 - centerAngle) % 360
-    const fullSpins = 5 + Math.floor(Math.random() * 2)
+    const fullSpins = 8 + Math.floor(Math.random() * 3)
     setRotation((prev) => {
       const currentAngle = ((prev % 360) + 360) % 360
       const deltaToTarget = (targetAngle - currentAngle + 360) % 360
@@ -249,6 +259,11 @@ export default function SpinWheelPopup() {
         consumed: false,
         lockedUntil,
         deviceFingerprint: fingerprint,
+      }
+
+      // Fallback path ensures discount still works when API is unavailable.
+      if (shouldPersistLocalFallback) {
+        nextState.spinsUsedToday = Math.max(0, Math.min(MAX_SPINS_PER_DAY, Number(nextState.spinsUsedToday || 0)))
       }
 
       saveState(nextState)
