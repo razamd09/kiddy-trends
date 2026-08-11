@@ -11,27 +11,8 @@ const EMAILJS_PUBLIC_KEY =
   process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || 'G3OmrUP2PwOat-o1W'
 const ORDER_NOTIFICATION_EMAIL =
   process.env.NEXT_PUBLIC_ORDER_NOTIFICATION_EMAIL || 'thekiddytrends@gmail.com'
-const SPIN_STORAGE_KEY = 'kt_spin_wheel_state'
 const LANDING_PROMO_STORAGE_KEY = 'kt_landing_promo_state'
 const GIFT_FLASH_SEEN_KEY = 'kt_checkout_reward_flash_seen'
-
-function notifySpinWheelStateChange() {
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new Event('kt-spin-wheel-updated'))
-  }
-}
-
-function readSpinState() {
-  try {
-    const raw = localStorage.getItem(SPIN_STORAGE_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw)
-    if (!parsed || typeof parsed !== 'object') return null
-    return parsed
-  } catch {
-    return null
-  }
-}
 
 function toNumber(value) {
   const parsed = Number(value)
@@ -126,12 +107,6 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
         }
       }
 
-      const spinDiscount = parseDiscountState(localStorage.getItem(SPIN_STORAGE_KEY))
-      if (spinDiscount) {
-        setDiscount(spinDiscount)
-        return
-      }
-
       const landingPromoDiscount = parseDiscountState(localStorage.getItem(LANDING_PROMO_STORAGE_KEY))
       if (landingPromoDiscount) {
         setDiscount(landingPromoDiscount)
@@ -167,34 +142,6 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
       }
     } catch {}
   }, [])
-
-  function consumeSpinDiscountIfUsed() {
-    if (!discount?.code || !String(discount.code).startsWith('SPIN')) return
-    try {
-      const state = readSpinState()
-      if (!state) return
-      localStorage.setItem(SPIN_STORAGE_KEY, JSON.stringify({
-        ...state,
-        consumed: true,
-        activeDiscount: 0,
-      }))
-      notifySpinWheelStateChange()
-    } catch {}
-
-    try {
-      const state = readSpinState()
-      if (!state?.deviceFingerprint) return
-      fetch('/api/spin-wheel', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'consume',
-          fingerprint: state.deviceFingerprint,
-          discountCode: discount.code,
-        }),
-      }).catch(() => {})
-    } catch {}
-  }
 
   function formatPhone(val) {
     let digits = String(val || '').replace(/\D/g, '')
@@ -411,14 +358,9 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
             city:     form.city,
             notes:    form.notes,
             discount: discount?.type !== 'shipping' ? discountAmount : 0,
-            discount_code: discount?.code || '',
             order_subtotal: Number(price || 0),
             order_shipping: Number(shipping || 0),
             order_total: Number(total || 0),
-            spin: {
-              fingerprint: String(spinState?.deviceFingerprint || ''),
-              discountCode: String(discount?.code || ''),
-            },
             rewards: rewards.userId ? { userId: rewards.userId, redeem: rewards.redeemed || 0 } : null,
             payment:  'cod',
           }
@@ -436,7 +378,6 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
       }
 
       if (data.success) {
-        consumeSpinDiscountIfUsed()
         const orderNumber = data.orderNumber || data.orderName || ('#' + data.orderId)
         try {
           await Promise.race([

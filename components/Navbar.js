@@ -6,8 +6,6 @@ import { useCart } from '../context/CartContext'
 import SearchBar from './SearchBar'
 import RewardsNavChecker from './RewardsNavChecker'
 
-const SPIN_STORAGE_KEY = 'kt_spin_wheel_state'
-
 const links = [
   { href: '/',                label: 'Home' },
   { href: '/collections',     label: 'Collections' },
@@ -20,46 +18,7 @@ const links = [
 
 export default function Navbar() {
   const [open, setOpen] = useState(false)
-  const [spinReminder, setSpinReminder] = useState(null)
   const { totalItems, setCartOpen } = useCart()
-
-  useEffect(() => {
-    function refreshSpinReminder() {
-      try {
-        const raw = localStorage.getItem(SPIN_STORAGE_KEY)
-        if (!raw) {
-          setSpinReminder(null)
-          return
-        }
-
-        const state = JSON.parse(raw)
-        const amount = Number(state?.activeDiscount || 0)
-        const consumed = Boolean(state?.consumed)
-        const lockedUntil = Number(state?.lockedUntil || 0)
-        const code = String(state?.discountCode || '')
-
-        if (amount > 0 && !consumed && lockedUntil > Date.now()) {
-          setSpinReminder({ amount, code })
-          return
-        }
-
-        setSpinReminder(null)
-      } catch {
-        setSpinReminder(null)
-      }
-    }
-
-    refreshSpinReminder()
-    window.addEventListener('storage', refreshSpinReminder)
-    window.addEventListener('focus', refreshSpinReminder)
-    window.addEventListener('kt-spin-wheel-updated', refreshSpinReminder)
-
-    return () => {
-      window.removeEventListener('storage', refreshSpinReminder)
-      window.removeEventListener('focus', refreshSpinReminder)
-      window.removeEventListener('kt-spin-wheel-updated', refreshSpinReminder)
-    }
-  }, [])
 
   return (
     <nav className="bg-white shadow-sm sticky top-0 z-50">
@@ -100,7 +59,7 @@ export default function Navbar() {
             {/* Cart */}
             <div className="relative">
               <button onClick={() => setCartOpen(true)}
-              className={'relative p-2 rounded-full hover:bg-coral/10 transition-colors ' + (spinReminder ? 'animate-pulse ring-2 ring-coral/30 ring-offset-2 ring-offset-white' : '')}>
+              className={'relative p-2 rounded-full hover:bg-coral/10 transition-colors'}>
               <svg className="w-6 h-6 text-charcoal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 9H4L5 9z" />
               </svg>
@@ -110,16 +69,6 @@ export default function Navbar() {
                 </span>
               )}
               </button>
-
-              {spinReminder && (
-                <button
-                  type="button"
-                  onClick={() => setCartOpen(true)}
-                  className="absolute top-full right-0 mt-2 w-52 rounded-2xl bg-gradient-to-r from-coral to-[#ff8a6f] text-white text-[11px] leading-snug text-left px-3 py-2 shadow-xl animate-bounce z-20"
-                >
-                  YOU have {spinReminder.amount}% OFF, checkout to avail
-                </button>
-              )}
             </div>
 
             {/* Mobile menu toggle */}
