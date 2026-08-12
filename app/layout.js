@@ -8,6 +8,7 @@ import LiveNotifications from '../components/LiveNotifications'
 import BottomNav from '../components/BottomNav'
 import SplashScreen from '../components/SplashScreen'
 import AmbientMusicPlayer from '../components/AmbientMusicPlayer'
+import DynamicSocialProofBar from '../components/DynamicSocialProofBar'
 
 export const metadata = {
   title: 'Kiddy Trends – Fun Fashion for Little Ones',
@@ -79,33 +80,7 @@ export default function RootLayout({ children }) {
       <CartProvider>
         <LiveNotifications />
         <Navbar />
-
-        {/* Social proof bar — right below navbar on every page */}
-        <div className="bg-charcoal py-2">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-wrap items-center justify-center gap-4 text-white text-xs">
-              <div className="flex items-center gap-1.5">
-                <span className="text-sunny font-bold">🛍️ 1,200+</span>
-                <span className="text-gray-300">Happy Customers</span>
-              </div>
-              <div className="hidden sm:block w-px h-3 bg-gray-600" />
-              <div className="flex items-center gap-1.5">
-                <span className="text-sunny font-bold">⭐ 4.8/5</span>
-                <span className="text-gray-300">Average Rating</span>
-              </div>
-              <div className="hidden sm:block w-px h-3 bg-gray-600" />
-              <div className="flex items-center gap-1.5">
-                <span className="text-sunny font-bold">📦 3-5</span>
-                <span className="text-gray-300">Days Delivery</span>
-              </div>
-              <div className="hidden sm:block w-px h-3 bg-gray-600" />
-              <div className="flex items-center gap-1.5">
-                <span className="text-sunny font-bold">🔄 100%</span>
-                <span className="text-gray-300">Exchange Guarantee</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <DynamicSocialProofBar />
 
         <CartDrawer />
         <AmbientMusicPlayer />
