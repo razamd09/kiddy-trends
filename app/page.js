@@ -10,10 +10,10 @@ import HomeHeroSlider from '../components/HomeHeroSlider'
 const NEW_ARRIVALS_TARGET = 10
 
 const categories = [
-  { label: 'Kids Clothing',      desc: 'Newborn to 12 years',         icon: 'shirt',    href: '/collections' },
-  { label: 'Kids Bedding',       desc: 'Single bed sets & covers',    icon: 'bed',      href: '/collections' },
-  { label: 'Bags',               desc: 'School, college & baby bags', icon: 'backpack', href: '/collections' },
-  { label: 'Little Accessories', desc: 'Pins, ponytails & more',      icon: 'sparkle',  href: '/collections' },
+  { label: 'Kids Clothing',      desc: 'Newborn to 12 years',         icon: 'shirt',    href: '/collections?cat=clothing' },
+  { label: 'Kids Bedding',       desc: 'Single bed sets & covers',    icon: 'bed',      href: '/collections?cat=bedding' },
+  { label: 'Bags',               desc: 'School, college & baby bags', icon: 'backpack', href: '/collections?cat=bags' },
+  { label: 'Little Accessories', desc: 'Pins, ponytails & more',      icon: 'sparkle',  href: '/collections?cat=accessories' },
 ]
 
 const trustItems = [
