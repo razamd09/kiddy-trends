@@ -13,7 +13,7 @@ export default function HomeHeroSlider() {
             width={1600}
             height={700}
             priority
-            className="block h-[220px] w-full object-cover sm:h-[260px] lg:h-[300px]"
+            className="block h-auto max-h-[300px] w-full object-contain sm:max-h-[340px] lg:max-h-[360px]"
           />
 
           <div className="absolute inset-0 bg-gradient-to-r from-[#dfe9e2]/30 via-transparent to-[#dfe9e2]/10" />
