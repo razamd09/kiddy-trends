@@ -84,11 +84,10 @@ export default function HomeHeroSlider() {
                          width={520} height={520} className="rounded-3xl object-cover w-full h-full" priority />
               */}
               <div className="relative flex justify-center px-6">
-                <div className="w-full max-w-md aspect-square rounded-3xl bg-cream border border-charcoal/10 flex items-center justify-center overflow-hidden">
-                  <Image src="/logo.jpg" alt="Kiddy Trends" width={200} height={200} className="rounded-2xl object-cover opacity-90" />
-                </div>
-              </div>
-            </div>
+  <div className="w-full max-w-md aspect-square rounded-3xl overflow-hidden">
+    <Image src="/sale-1947.png" alt="19 to 47 percent Independence Day sale" width={520} height={520} className="w-full h-full object-cover" priority />
+  </div>
+</div></div>
           </section>
         </div>
 
