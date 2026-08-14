@@ -4,16 +4,16 @@ import Link from 'next/link'
 
 export default function HomeHeroSlider() {
   return (
-    <section className="w-full py-3 sm:py-4">
+    <section className="w-full py-2 sm:py-3">
       <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
-        <div className="relative overflow-hidden rounded-[2rem] bg-[#dfe9e2] ring-1 ring-black/5">
+        <div className="relative overflow-hidden rounded-[1.5rem] bg-[#dfe9e2] ring-1 ring-black/5">
           <Image
             src="/sale-1947.png"
             alt="Kiddy Trends sale banner"
             width={1600}
             height={700}
             priority
-            className="block h-auto w-full object-cover"
+            className="block h-[220px] w-full object-cover sm:h-[260px] lg:h-[300px]"
           />
 
           <div className="absolute inset-0 bg-gradient-to-r from-[#dfe9e2]/30 via-transparent to-[#dfe9e2]/10" />
