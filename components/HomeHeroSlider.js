@@ -1,7 +1,7 @@
 'use client'
-import Image from 'next/image'
 import Link from 'next/link'
 import Snowfall from './Snowfall'
+import AnimatedLogo from './AnimatedLogo'
 
 function SnowflakeIcon() {
   return (
@@ -54,16 +54,13 @@ export default function HomeHeroSlider() {
             </div>
           </div>
 
-          {/* Replace this placeholder with a real winter lifestyle photo once available:
-              <Image src="/hero-winter-kid.jpg" alt="Child wearing a Kiddy Trends winter jacket"
-                     width={520} height={520} className="rounded-3xl object-cover w-full h-full" priority />
-          */}
+          {/* Animated block-logo: tiles build, split apart, and rejoin on a loop */}
           <div className="relative flex justify-center px-6">
             <div
-              className="w-full max-w-md aspect-square rounded-3xl border flex items-center justify-center overflow-hidden"
+              className="w-full max-w-md rounded-3xl border overflow-hidden flex items-center justify-center p-10"
               style={{ background: '#ffffff', borderColor: 'rgba(31,58,82,0.1)' }}
             >
-              <Image src="/logo.jpg" alt="Kiddy Trends" width={200} height={200} className="rounded-2xl object-cover opacity-90" />
+              <AnimatedLogo />
             </div>
           </div>
         </div>
