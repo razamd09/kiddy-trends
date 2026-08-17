@@ -107,17 +107,43 @@ export default function CustomersScreen({ mode = 'admin' }) {
     const [total, setTotal] = useState(0)
     const [statusMessage, setStatusMessage] = useState('')
     const [promotionSubject, setPromotionSubject] = useState('')
+    const [whatsappMessage, setWhatsappMessage] = useState('')
+    const [localSenderUrl, setLocalSenderUrl] = useState('')
+    const [localApiKey, setLocalApiKey] = useState('')
     const [syncingOrders, setSyncingOrders] = useState(false)
     const [importingCsv, setImportingCsv] = useState(false)
     const [sendingPromotion, setSendingPromotion] = useState(false)
     const [sendingWhatsAppPromotion, setSendingWhatsAppPromotion] = useState(false)
+    const [campaignProgress, setCampaignProgress] = useState(null) // { total, sent, failed, done }
     const [csvName, setCsvName] = useState('')
     const fileRef = useRef(null)
+    const pollRef = useRef(null)
     const router = useRouter()
     const pageSize = 30
     const isAdmin = mode === 'admin'
     const apiPath = isAdmin ? '/api/admin/customers' : '/api/employee/customers'
     const backHref = isAdmin ? '/admin/dashboard' : '/employee/dashboard'
+
+    // Remember the local sender URL + API key in this browser so you don't
+    // have to retype them every time you start a new campaign.
+    useEffect(() => {
+        setLocalSenderUrl(localStorage.getItem('wa_local_sender_url') || '')
+        setLocalApiKey(localStorage.getItem('wa_local_api_key') || '')
+    }, [])
+
+    useEffect(() => {
+        if (localSenderUrl) localStorage.setItem('wa_local_sender_url', localSenderUrl)
+    }, [localSenderUrl])
+
+    useEffect(() => {
+        if (localApiKey) localStorage.setItem('wa_local_api_key', localApiKey)
+    }, [localApiKey])
+
+    useEffect(() => {
+        return () => {
+            if (pollRef.current) clearInterval(pollRef.current)
+        }
+    }, [])
 
     useEffect(() => {
         async function verify() {
@@ -320,10 +346,50 @@ export default function CustomersScreen({ mode = 'admin' }) {
         setSendingPromotion(false)
     }
 
+    function stopPolling() {
+        if (pollRef.current) {
+            clearInterval(pollRef.current)
+            pollRef.current = null
+        }
+    }
+
+    function pollCampaignProgress(cleanedUrl, apiKey) {
+        stopPolling()
+        pollRef.current = setInterval(async () => {
+            try {
+                const res = await fetch(cleanedUrl + '/send-campaign/status', {
+                    headers: { 'x-api-key': apiKey },
+                })
+                const data = await res.json().catch(() => ({}))
+                if (data?.noJob) return
+
+                setCampaignProgress(data)
+
+                if (data.done) {
+                    stopPolling()
+                    setSendingWhatsAppPromotion(false)
+                    setStatusMessage(
+                        'WhatsApp campaign finished: ' + data.sent + ' sent, ' + data.failed + ' failed (of ' + data.total + ')'
+                    )
+                }
+            } catch {
+                // local sender may be temporarily unreachable between polls — keep trying
+            }
+        }, 3000)
+    }
+
     async function sendPromotionWhatsApp() {
-        const subject = promotionSubject.trim()
-        if (!subject) {
-            setStatusMessage('Subject is required')
+        const message = whatsappMessage.trim()
+        if (!message) {
+            setStatusMessage('WhatsApp message is required')
+            return
+        }
+        if (!localSenderUrl.trim()) {
+            setStatusMessage('Local sender URL is required (start local-server.js and ngrok on your PC first)')
+            return
+        }
+        if (!localApiKey.trim()) {
+            setStatusMessage('Local sender API key is required')
             return
         }
 
@@ -346,12 +412,17 @@ export default function CustomersScreen({ mode = 'admin' }) {
         }
 
         setSendingWhatsAppPromotion(true)
+        setCampaignProgress(null)
         setStatusMessage('')
+
+        const cleanedUrl = localSenderUrl.trim().replace(/\/$/, '')
 
         try {
             const payload = {
                 action: 'send-promotions-whatsapp',
-                subject,
+                message,
+                localSenderUrl: cleanedUrl,
+                apiKey: localApiKey.trim(),
             }
             if (!isAdmin) payload.employee_id = employeeId
 
@@ -362,14 +433,20 @@ export default function CustomersScreen({ mode = 'admin' }) {
             })
 
             const data = await res.json().catch(() => ({}))
-            if (!res.ok) throw new Error(data?.error || 'Failed to send WhatsApp promotions')
+            if (!res.ok) throw new Error(data?.error || 'Failed to start WhatsApp campaign')
 
-            setStatusMessage('WhatsApp promotions sent: ' + (data.sent || 0) + ' successful, ' + (data.failed || 0) + ' failed')
+            if (!data.started) {
+                setStatusMessage('No customers with phone numbers found to message')
+                setSendingWhatsAppPromotion(false)
+                return
+            }
+
+            setStatusMessage('Campaign started for ' + data.totalRecipients + ' customers. Tracking progress...')
+            pollCampaignProgress(cleanedUrl, localApiKey.trim())
         } catch (error) {
             setStatusMessage(error.message || 'Failed to send WhatsApp promotions')
+            setSendingWhatsAppPromotion(false)
         }
-
-        setSendingWhatsAppPromotion(false)
     }
 
     function logout() {
@@ -447,10 +524,11 @@ export default function CustomersScreen({ mode = 'admin' }) {
                     </div>
                 )}
 
+                {/* EMAIL PROMOTION */}
                 <div className="bg-white rounded-2xl p-4 space-y-3">
                     <div>
-                        <p className="font-semibold text-charcoal">Send Promotions</p>
-                        <p className="text-xs text-gray-400">Use Subject, then send by Email or WhatsApp to all customer contacts.</p>
+                        <p className="font-semibold text-charcoal">Send Email Promotion</p>
+                        <p className="text-xs text-gray-400">Use Subject, then send by Email to all customer contacts.</p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
                         <input
@@ -459,23 +537,81 @@ export default function CustomersScreen({ mode = 'admin' }) {
                             placeholder="Subject"
                             className="flex-1 rounded-xl border border-gray-200 px-4 py-2 text-sm outline-none focus:border-coral"
                         />
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-2">
                         <button
                             onClick={sendPromotionEmails}
-                            disabled={sendingPromotion || sendingWhatsAppPromotion}
-                            className="px-4 py-2 rounded-xl bg-coral text-white text-sm font-semibold disabled:opacity-50"
+                            disabled={sendingPromotion}
+                            className="px-4 py-2 rounded-xl bg-coral text-white text-sm font-semibold disabled:opacity-50 whitespace-nowrap"
                         >
                             {sendingPromotion ? 'Sending Email...' : 'Send Email To All'}
                         </button>
-                        <button
-                            onClick={sendPromotionWhatsApp}
-                            disabled={sendingPromotion || sendingWhatsAppPromotion}
-                            className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50"
-                        >
-                            {sendingWhatsAppPromotion ? 'Sending WhatsApp...' : 'Send WhatsApp To All'}
-                        </button>
                     </div>
+                </div>
+
+                {/* WHATSAPP PROMOTION */}
+                <div className="bg-white rounded-2xl p-4 space-y-3">
+                    <div>
+                        <p className="font-semibold text-charcoal">Send WhatsApp Campaign</p>
+                        <p className="text-xs text-gray-400">
+                            Sends to every customer with a phone number ({total} total). Use {'{{name}}'} in your message to insert each customer's name.
+                        </p>
+                    </div>
+
+                    <textarea
+                        value={whatsappMessage}
+                        onChange={(e) => setWhatsappMessage(e.target.value)}
+                        placeholder={'Hi {{name}}! Our sale is live — 19% to 47% off with code 14AUGUST. Shop now: thekiddytrends.com'}
+                        rows={3}
+                        className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm outline-none focus:border-coral"
+                    />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                            <label className="text-xs text-gray-400 block mb-1">Local sender URL (from ngrok, e.g. https://xxxx.ngrok-free.app)</label>
+                            <input
+                                value={localSenderUrl}
+                                onChange={(e) => setLocalSenderUrl(e.target.value)}
+                                placeholder="https://xxxx.ngrok-free.app"
+                                className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm outline-none focus:border-coral"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs text-gray-400 block mb-1">Local sender API key</label>
+                            <input
+                                value={localApiKey}
+                                onChange={(e) => setLocalApiKey(e.target.value)}
+                                type="password"
+                                placeholder="Same key set as LOCAL_API_KEY on your PC"
+                                className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm outline-none focus:border-coral"
+                            />
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={sendPromotionWhatsApp}
+                        disabled={sendingWhatsAppPromotion}
+                        className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50"
+                    >
+                        {sendingWhatsAppPromotion ? 'Sending WhatsApp...' : 'Send WhatsApp To All'}
+                    </button>
+
+                    {campaignProgress && (
+                        <div className="pt-2">
+                            <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                                <div
+                                    className="bg-emerald-500 h-2.5 rounded-full transition-all"
+                                    style={{
+                                        width: campaignProgress.total
+                                            ? Math.round(((campaignProgress.sent + campaignProgress.failed) / campaignProgress.total) * 100) + '%'
+                                            : '0%',
+                                    }}
+                                />
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                                {campaignProgress.sent} sent, {campaignProgress.failed} failed, of {campaignProgress.total} total
+                                {campaignProgress.done ? ' — done' : ' — sending...'}
+                            </p>
+                        </div>
+                    )}
                 </div>
 
                 {statusMessage && (

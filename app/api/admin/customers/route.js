@@ -86,10 +86,15 @@ export async function POST(request) {
         }
 
         if (action === 'send-promotions-whatsapp') {
-            const subject = String(body?.subject || '').trim()
-            if (!subject) return Response.json({ error: 'Subject is required' }, { status: 400 })
+            const message = String(body?.message || '').trim()
+            const localSenderUrl = String(body?.localSenderUrl || '').trim()
+            const apiKey = String(body?.apiKey || '').trim()
 
-            const result = await sendPromotionWhatsAppToAllCustomers(subject)
+            if (!message) return Response.json({ error: 'Message is required' }, { status: 400 })
+            if (!localSenderUrl) return Response.json({ error: 'Local sender URL is required' }, { status: 400 })
+            if (!apiKey) return Response.json({ error: 'API key is required' }, { status: 400 })
+
+            const result = await sendPromotionWhatsAppToAllCustomers({ message, localSenderUrl, apiKey })
             return Response.json({ success: true, ...result })
         }
 
