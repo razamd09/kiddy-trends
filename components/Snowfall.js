@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 // Lightweight animated snowfall overlay. Drop it inside any `position: relative`
 // container and it covers that container with falling snowflakes.
@@ -10,31 +10,49 @@ import { useEffect, useState } from 'react'
 //     ...rest of your hero content...
 //   </div>
 //
-// Respects prefers-reduced-motion — shows a few static flakes instead of
-// animating, for users who've asked their OS to reduce motion.
+// - Respects prefers-reduced-motion — shows a few static flakes instead of animating.
+// - Uses fewer flakes on small screens (mobile) to save CPU/battery.
+// - Pauses animation entirely once scrolled out of view via IntersectionObserver,
+//   so it doesn't keep animating (and costing CPU) once you've scrolled past the hero.
 
-export default function Snowfall({ count = 28 }) {
+export default function Snowfall({ count = 70, mobileCount = 30 }) {
     const [flakes, setFlakes] = useState([])
     const [reducedMotion, setReducedMotion] = useState(false)
+    const [visible, setVisible] = useState(true)
+    const containerRef = useRef(null)
 
     useEffect(() => {
         const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
         setReducedMotion(mediaQuery.matches)
 
-        const generated = Array.from({ length: count }).map((_, i) => ({
+        const effectiveCount = window.innerWidth < 640 ? mobileCount : count
+        const generated = Array.from({ length: effectiveCount }).map((_, i) => ({
             id: i,
             left: Math.random() * 100,
-            size: 8 + Math.random() * 10,
-            duration: 7 + Math.random() * 8,
-            delay: Math.random() * 8,
-            drift: -20 + Math.random() * 40,
-            opacity: 0.5 + Math.random() * 0.4,
+            size: 6 + Math.random() * 16,
+            duration: 5 + Math.random() * 7,
+            delay: Math.random() * 7,
+            drift: -40 + Math.random() * 80,
+            opacity: 0.55 + Math.random() * 0.4,
         }))
         setFlakes(generated)
-    }, [count])
+    }, [count, mobileCount])
+
+    useEffect(() => {
+        const node = containerRef.current
+        if (!node || typeof IntersectionObserver === 'undefined') return
+
+        const observer = new IntersectionObserver(
+            (entries) => setVisible(entries[0]?.isIntersecting ?? true),
+            { threshold: 0 }
+        )
+        observer.observe(node)
+        return () => observer.disconnect()
+    }, [])
 
     return (
         <div
+            ref={containerRef}
             className="absolute inset-0 overflow-hidden pointer-events-none"
             style={{ zIndex: 2 }}
             aria-hidden="true"
@@ -52,6 +70,7 @@ export default function Snowfall({ count = 28 }) {
                         animation: reducedMotion
                             ? 'none'
                             : `kt-snowfall ${flake.duration}s linear ${flake.delay}s infinite`,
+                        animationPlayState: visible ? 'running' : 'paused',
                         transform: reducedMotion ? `translateY(${Math.random() * 300}px)` : undefined,
                         '--drift': flake.drift + 'px',
                     }}

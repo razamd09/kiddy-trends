@@ -6,6 +6,7 @@ import RewardsChecker from '../components/RewardsChecker'
 import DiscountBanner from '../components/DiscountBanner'
 import LandingPreferencePopup from '../components/LandingPreferencePopup'
 import HomeHeroSlider from '../components/HomeHeroSlider'
+import LazyMount from '../components/LazyMount'
 
 const NEW_ARRIVALS_TARGET = 10
 
@@ -159,9 +160,11 @@ export default function Home() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {['7649019831047458056','7647926799875214600','7649698031213858055','7647962725112352018'].map(id => (
                 <div key={id} className="rounded-xl overflow-hidden border border-gray-200 bg-white">
-                  <iframe src={'https://www.tiktok.com/embed/v2/' + id} className="w-full"
-                          style={{height:'560px',border:'none'}} allowFullScreen allow="encrypted-media"
-                          loading="lazy" title={'TikTok video ' + id} />
+                  <LazyMount minHeight={560}>
+                    <iframe src={'https://www.tiktok.com/embed/v2/' + id} className="w-full"
+                            style={{height:'560px',border:'none'}} allowFullScreen allow="encrypted-media"
+                            loading="lazy" title={'TikTok video ' + id} />
+                  </LazyMount>
                 </div>
             ))}
           </div>
@@ -183,10 +186,12 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {['DZ7W_ZWo-k1','DZ9YMmLCCjg','DZ4bJK5iHA3','DZ21w0hCOEz'].map(id => (
                 <div key={id} className="rounded-xl overflow-hidden border border-gray-200 bg-white min-h-[480px]">
-                  <iframe src={'https://www.instagram.com/p/' + id + '/embed/captioned/'}
-                          className="w-full" style={{height:'480px',border:'none'}}
-                          allowFullScreen loading="lazy" title={'Instagram post ' + id}
-                          scrolling="no" />
+                  <LazyMount minHeight={480}>
+                    <iframe src={'https://www.instagram.com/p/' + id + '/embed/captioned/'}
+                            className="w-full" style={{height:'480px',border:'none'}}
+                            allowFullScreen loading="lazy" title={'Instagram post ' + id}
+                            scrolling="no" />
+                  </LazyMount>
                 </div>
             ))}
           </div>
