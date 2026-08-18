@@ -57,10 +57,16 @@ export default function HomeHeroSlider() {
           {/* Animated block-logo: tiles build, split apart, and rejoin on a loop */}
           <div className="relative flex justify-center px-6">
             <div
-              className="w-full max-w-md rounded-3xl border overflow-hidden flex items-center justify-center p-10"
-              style={{ background: '#ffffff', borderColor: 'rgba(31,58,82,0.1)' }}
+              className="relative w-full max-w-md rounded-3xl border overflow-hidden flex items-center justify-center p-10"
+              style={{
+                background: 'linear-gradient(160deg, #f4f9fd 0%, #dbe9f5 100%)',
+                borderColor: 'rgba(31,58,82,0.12)',
+              }}
             >
-              <AnimatedLogo />
+              <Snowfall count={18} mobileCount={8} />
+              <div className="relative" style={{ zIndex: 3 }}>
+                <AnimatedLogo />
+              </div>
             </div>
           </div>
         </div>
