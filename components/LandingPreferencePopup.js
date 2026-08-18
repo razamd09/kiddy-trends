@@ -45,6 +45,12 @@ export default function LandingPreferencePopup() {
   const [open, setOpen] = useState(false)
   const [selectedGenders, setSelectedGenders] = useState([])
   const [selectedAges, setSelectedAges] = useState([])
+  const [isSizeHelpOpen, setIsSizeHelpOpen] = useState(false)
+  const [years, setYears] = useState('')
+  const [months, setMonths] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [recommendation, setRecommendation] = useState(null)
   const greeting = useMemo(() => getPakistanGreeting(), [])
 
   useEffect(() => {
@@ -93,9 +99,86 @@ export default function LandingPreferencePopup() {
   }
 
   function goToSizeChartHelpGuide() {
-    setOpen(false)
-    router.push('/size-chart')
+    setIsSizeHelpOpen(true)
+    setYears('')
+    setMonths('')
+    setError('')
+    setRecommendation(null)
   }
+
+  function closeSizeHelpModal() {
+    setIsSizeHelpOpen(false)
+    setError('')
+    setRecommendation(null)
+    setIsLoading(false)
+  }
+
+  async function fetchRecommendation(parsedYears, parsedMonths, signal) {
+    setError('')
+    setRecommendation(null)
+    setIsLoading(true)
+
+    try {
+      const response = await fetch('/api/size-recommendation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal,
+        body: JSON.stringify({ years: parsedYears, months: parsedMonths }),
+      })
+
+      const payload = await response.json()
+      if (!response.ok) {
+        setError(payload?.error || 'Unable to find recommended size right now.')
+        return
+      }
+
+      setRecommendation(payload.recommendation)
+    } catch (fetchError) {
+      if (fetchError?.name === 'AbortError') return
+      setError('Unable to connect. Please try again in a moment.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!isSizeHelpOpen) return
+
+    const yearsText = years.trim()
+    const monthsText = months.trim()
+
+    if (!yearsText && !monthsText) {
+      setError('')
+      setRecommendation(null)
+      setIsLoading(false)
+      return
+    }
+
+    const parsedYears = Number.parseInt(yearsText, 10)
+    const parsedMonths = Number.parseInt(monthsText, 10)
+
+    if (!Number.isInteger(parsedYears) || parsedYears < 0 || parsedYears > 18) {
+      setError('Please enter valid years between 0 and 18.')
+      setRecommendation(null)
+      return
+    }
+
+    if (!Number.isInteger(parsedMonths) || parsedMonths < 0 || parsedMonths > 11) {
+      setError('Please enter valid months between 0 and 11.')
+      setRecommendation(null)
+      return
+    }
+
+    const controller = new AbortController()
+    const timer = setTimeout(() => {
+      fetchRecommendation(parsedYears, parsedMonths, controller.signal)
+    }, 250)
+
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
+  }, [isSizeHelpOpen, years, months])
 
   function closePopup() {
     setOpen(false)
@@ -195,6 +278,88 @@ export default function LandingPreferencePopup() {
             Cancel
           </button>
         </div>
+
+        {isSizeHelpOpen && (
+          <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeSizeHelpModal} />
+            <div className="relative w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden">
+              <div className="bg-skyblue/30 px-6 py-5 text-center">
+                <div className="text-4xl mb-2">📏</div>
+                <h3 className="font-display text-2xl text-charcoal">Size Help Form</h3>
+                <p className="text-gray-500 text-sm">Enter exact age in years and months</p>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-charcoal mb-2">Year field</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="18"
+                    value={years}
+                    onChange={(e) => setYears(e.target.value)}
+                    placeholder="e.g. 3"
+                    className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-charcoal mb-2">Month field</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="11"
+                    value={months}
+                    onChange={(e) => setMonths(e.target.value)}
+                    placeholder="e.g. 6"
+                    className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm"
+                    required
+                  />
+                </div>
+
+                {error && (
+                  <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>
+                )}
+
+                {isLoading && (
+                  <p className="text-sm text-gray-500">Finding size recommendation...</p>
+                )}
+
+                {recommendation && (
+                  <div className="bg-cream rounded-2xl p-4 space-y-3">
+                    <p className="font-display text-lg text-charcoal text-center">
+                      Recommended for <span className="text-coral">{recommendation.age_label}</span>
+                    </p>
+                    <div className="grid grid-cols-3 gap-3 text-center">
+                      <div className="bg-white rounded-xl p-3">
+                        <p className="text-xs text-gray-400 mb-1">Shirt</p>
+                        <p className="font-display text-coral text-lg">{recommendation.shirt_size}</p>
+                      </div>
+                      <div className="bg-white rounded-xl p-3">
+                        <p className="text-xs text-gray-400 mb-1">Bottom</p>
+                        <p className="font-display text-coral text-lg">{recommendation.bottom_size}</p>
+                      </div>
+                      <div className="bg-white rounded-xl p-3">
+                        <p className="text-xs text-gray-400 mb-1">Weight</p>
+                        <p className="font-display text-coral text-sm">{recommendation.weight_range || 'N/A'}</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 text-center">Between sizes? We recommend sizing up.</p>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={closeSizeHelpModal}
+                  className="w-full text-gray-400 text-sm hover:text-coral transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
