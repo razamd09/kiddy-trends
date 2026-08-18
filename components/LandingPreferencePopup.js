@@ -92,6 +92,11 @@ export default function LandingPreferencePopup() {
     router.push('/collections')
   }
 
+  function goToSizeChartHelpGuide() {
+    setOpen(false)
+    router.push('/size-chart')
+  }
+
   function closePopup() {
     setOpen(false)
   }
@@ -174,6 +179,13 @@ export default function LandingPreferencePopup() {
             className="rounded-2xl border-2 border-charcoal/20 bg-white/85 text-charcoal font-semibold px-4 py-3 hover:border-charcoal/40"
           >
             Explore All 🌈
+          </button>
+          <button
+            type="button"
+            onClick={goToSizeChartHelpGuide}
+            className="sm:col-span-2 rounded-2xl border-2 border-skyblue/40 bg-skyblue/15 text-charcoal font-semibold px-4 py-3 hover:border-skyblue/70"
+          >
+            Size Chart Help Guide 📏
           </button>
           <button
             type="button"
