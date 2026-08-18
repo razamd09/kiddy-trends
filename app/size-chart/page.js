@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 const sizeData = {
   clothing: {
@@ -60,29 +60,16 @@ export default function SizeChart() {
   const [recommendation, setRecommendation] = useState(null)
   const data = sizeData[active]
 
-  async function handleFindSize(event) {
-    event.preventDefault()
+  async function fetchRecommendation(parsedYears, parsedMonths, signal) {
     setError('')
     setRecommendation(null)
-
-    const parsedYears = Number.parseInt(years, 10)
-    const parsedMonths = Number.parseInt(months, 10)
-
-    if (!Number.isInteger(parsedYears) || parsedYears < 0 || parsedYears > 18) {
-      setError('Please enter valid years between 0 and 18.')
-      return
-    }
-
-    if (!Number.isInteger(parsedMonths) || parsedMonths < 0 || parsedMonths > 11) {
-      setError('Please enter valid months between 0 and 11.')
-      return
-    }
-
     setIsLoading(true)
+
     try {
       const response = await fetch('/api/size-recommendation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal,
         body: JSON.stringify({ years: parsedYears, months: parsedMonths }),
       })
 
@@ -94,12 +81,50 @@ export default function SizeChart() {
       }
 
       setRecommendation(payload.recommendation)
-    } catch {
+    } catch (fetchError) {
+      if (fetchError?.name === 'AbortError') return
       setError('Unable to connect. Please try again in a moment.')
     } finally {
       setIsLoading(false)
     }
   }
+
+  useEffect(() => {
+    const yearsText = years.trim()
+    const monthsText = months.trim()
+
+    if (!yearsText && !monthsText) {
+      setError('')
+      setRecommendation(null)
+      setIsLoading(false)
+      return
+    }
+
+    const parsedYears = Number.parseInt(yearsText, 10)
+    const parsedMonths = Number.parseInt(monthsText, 10)
+
+    if (!Number.isInteger(parsedYears) || parsedYears < 0 || parsedYears > 18) {
+      setError('Please enter valid years between 0 and 18.')
+      setRecommendation(null)
+      return
+    }
+
+    if (!Number.isInteger(parsedMonths) || parsedMonths < 0 || parsedMonths > 11) {
+      setError('Please enter valid months between 0 and 11.')
+      setRecommendation(null)
+      return
+    }
+
+    const controller = new AbortController()
+    const timer = setTimeout(() => {
+      fetchRecommendation(parsedYears, parsedMonths, controller.signal)
+    }, 250)
+
+    return () => {
+      clearTimeout(timer)
+      controller.abort()
+    }
+  }, [years, months])
 
   function openSizeHelpModal() {
     setIsSizeHelpOpen(true)
@@ -214,7 +239,7 @@ export default function SizeChart() {
               <p className="text-gray-500 text-sm">Enter exact age in years and months</p>
             </div>
 
-            <form className="p-6 space-y-4" onSubmit={handleFindSize}>
+            <div className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-charcoal mb-2">Year field</label>
                 <input
@@ -247,13 +272,9 @@ export default function SizeChart() {
                 <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>
               )}
 
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full bg-coral text-white font-display py-3 rounded-2xl hover:bg-opacity-90 transition-colors disabled:opacity-50"
-              >
-                {isLoading ? 'Finding Size...' : 'Find My Size 🎯'}
-              </button>
+              {isLoading && (
+                <p className="text-sm text-gray-500">Finding size recommendation...</p>
+              )}
 
               {recommendation && (
                 <div className="bg-cream rounded-2xl p-4 space-y-3">
@@ -285,7 +306,7 @@ export default function SizeChart() {
               >
                 Close
               </button>
-            </form>
+            </div>
           </div>
         </div>
       )}
