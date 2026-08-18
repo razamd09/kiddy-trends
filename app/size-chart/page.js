@@ -52,7 +52,65 @@ const tabLabels = { clothing: '👕 Clothing', bedding: '🛏️ Bedding', bags:
 
 export default function SizeChart() {
   const [active, setActive] = useState('clothing')
+  const [isSizeHelpOpen, setIsSizeHelpOpen] = useState(false)
+  const [years, setYears] = useState('')
+  const [months, setMonths] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [recommendation, setRecommendation] = useState(null)
   const data = sizeData[active]
+
+  async function handleFindSize(event) {
+    event.preventDefault()
+    setError('')
+    setRecommendation(null)
+
+    const parsedYears = Number.parseInt(years, 10)
+    const parsedMonths = Number.parseInt(months, 10)
+
+    if (!Number.isInteger(parsedYears) || parsedYears < 0 || parsedYears > 18) {
+      setError('Please enter valid years between 0 and 18.')
+      return
+    }
+
+    if (!Number.isInteger(parsedMonths) || parsedMonths < 0 || parsedMonths > 11) {
+      setError('Please enter valid months between 0 and 11.')
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const response = await fetch('/api/size-recommendation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ years: parsedYears, months: parsedMonths }),
+      })
+
+      const payload = await response.json()
+
+      if (!response.ok) {
+        setError(payload?.error || 'Unable to find recommended size right now.')
+        return
+      }
+
+      setRecommendation(payload.recommendation)
+    } catch {
+      setError('Unable to connect. Please try again in a moment.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  function openSizeHelpModal() {
+    setIsSizeHelpOpen(true)
+    setError('')
+    setRecommendation(null)
+  }
+
+  function closeSizeHelpModal() {
+    setIsSizeHelpOpen(false)
+    setIsLoading(false)
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
@@ -137,11 +195,100 @@ export default function SizeChart() {
 
       {/* CTA */}
       <div className="mt-8 text-center">
-        <a href="https://wa.me/923360677340" target="_blank" rel="noopener noreferrer"
-          className="inline-block bg-coral text-white font-display px-8 py-3 rounded-full text-lg hover:scale-105 transition-transform shadow-md">
+        <button
+          type="button"
+          onClick={openSizeHelpModal}
+          className="inline-block bg-coral text-white font-display px-8 py-3 rounded-full text-lg hover:scale-105 transition-transform shadow-md"
+        >
           📱 Ask Us for Size Help
-        </a>
+        </button>
       </div>
+
+      {isSizeHelpOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeSizeHelpModal} />
+          <div className="relative bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="bg-skyblue/30 px-6 py-5 text-center">
+              <div className="text-4xl mb-2">📏</div>
+              <h3 className="font-display text-2xl text-charcoal">Size Help Form</h3>
+              <p className="text-gray-500 text-sm">Enter exact age in years and months</p>
+            </div>
+
+            <form className="p-6 space-y-4" onSubmit={handleFindSize}>
+              <div>
+                <label className="block text-sm font-semibold text-charcoal mb-2">Year field</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="18"
+                  value={years}
+                  onChange={(e) => setYears(e.target.value)}
+                  placeholder="e.g. 3"
+                  className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-charcoal mb-2">Month field</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="11"
+                  value={months}
+                  onChange={(e) => setMonths(e.target.value)}
+                  placeholder="e.g. 6"
+                  className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm"
+                  required
+                />
+              </div>
+
+              {error && (
+                <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>
+              )}
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-coral text-white font-display py-3 rounded-2xl hover:bg-opacity-90 transition-colors disabled:opacity-50"
+              >
+                {isLoading ? 'Finding Size...' : 'Find My Size 🎯'}
+              </button>
+
+              {recommendation && (
+                <div className="bg-cream rounded-2xl p-4 space-y-3">
+                  <p className="font-display text-lg text-charcoal text-center">
+                    Recommended for <span className="text-coral">{recommendation.age_label}</span>
+                  </p>
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    <div className="bg-white rounded-xl p-3">
+                      <p className="text-xs text-gray-400 mb-1">Shirt</p>
+                      <p className="font-display text-coral text-lg">{recommendation.shirt_size}</p>
+                    </div>
+                    <div className="bg-white rounded-xl p-3">
+                      <p className="text-xs text-gray-400 mb-1">Bottom</p>
+                      <p className="font-display text-coral text-lg">{recommendation.bottom_size}</p>
+                    </div>
+                    <div className="bg-white rounded-xl p-3">
+                      <p className="text-xs text-gray-400 mb-1">Weight</p>
+                      <p className="font-display text-coral text-sm">{recommendation.weight_range || 'N/A'}</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500 text-center">Between sizes? We recommend sizing up.</p>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={closeSizeHelpModal}
+                className="w-full text-gray-400 text-sm hover:text-coral transition-colors"
+              >
+                Close
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
