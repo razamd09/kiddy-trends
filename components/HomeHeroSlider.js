@@ -50,7 +50,13 @@ export default function HomeHeroSlider() {
               >
                 Shop winter collection
               </Link>
-              <Link href="/about" className="btn-outline">Our story</Link>
+              <Link
+                href="/about"
+                className="rounded-full font-display text-sm px-6 py-3 border-2 bg-transparent"
+                style={{ color: '#1f3a52', borderColor: '#1f3a52' }}
+              >
+                Our story
+              </Link>
             </div>
           </div>
 
