@@ -8,7 +8,7 @@ import LandingPreferencePopup from '../components/LandingPreferencePopup'
 import HomeHeroSlider from '../components/HomeHeroSlider'
 import LazyMount from '../components/LazyMount'
 
-const NEW_ARRIVALS_TARGET = 10
+const NEW_ARRIVALS_TARGET = 15
 
 const categories = [
   { label: 'Kids Clothing',      desc: 'Newborn to 12 years',         icon: 'shirt',    href: '/collections?cat=clothing' },
@@ -43,7 +43,7 @@ function Icon({ name, className = 'w-6 h-6' }) {
 }
 
 export default function Home() {
-  const [products, setProducts] = useState([])
+  const [allProducts, setAllProducts] = useState([])
   const [loadingProducts, setLoadingProducts] = useState(true)
   const [activeView, setActiveView] = useState('new-arrivals')
 
@@ -51,43 +51,24 @@ export default function Home() {
     async function fetchProducts() {
       try {
         const data = await fetch('/api/products?limit=120&page=1').then(r => r.json())
-        const nextProducts = Array.isArray(data?.products)
-          ? data.products.slice(0, NEW_ARRIVALS_TARGET)
-          : []
+        const nextProducts = Array.isArray(data?.products) ? data.products : []
 
-        setProducts(nextProducts)
+        setAllProducts(nextProducts)
         setLoadingProducts(false)
       } catch { setLoadingProducts(false) }
     }
     fetchProducts()
   }, [])
 
-  const winterKeywords = ['winter', 'coat', 'jacket', 'hoodie', 'sweater', 'thermal', 'fleece']
-
   const visibleProducts = useMemo(() => {
-    const matchesWinter = (product) => {
-      const haystack = [
-        product.title,
-        product.category,
-        product.product_type,
-        ...(Array.isArray(product.tags) ? product.tags : []),
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-
-      return winterKeywords.some((keyword) => haystack.includes(keyword))
-    }
+    const matchesWinterTitle = (product) => String(product.title || '').toLowerCase().includes('winter')
 
     if (activeView === 'winter-arrivals') {
-      return products.filter(matchesWinter)
+      return allProducts.filter(matchesWinterTitle)
     }
 
-    return products.filter((product) => {
-      const version = String(product.product_version || '').toLowerCase()
-      return version === 'new arrivals' || !matchesWinter(product)
-    })
-  }, [activeView, products])
+    return allProducts.slice(0, NEW_ARRIVALS_TARGET)
+  }, [activeView, allProducts])
 
   return (
       <>
