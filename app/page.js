@@ -17,13 +17,6 @@ const categories = [
   { label: 'Little Accessories', desc: 'Pins, ponytails & more',      icon: 'sparkle',  href: '/collections?cat=accessories' },
 ]
 
-const trustItems = [
-  { icon: 'star', label: '4.8/5 average rating' },
-  { icon: 'users', label: '1,200+ happy customers' },
-  { icon: 'truck', label: 'Cash on delivery, 3–5 days' },
-  { icon: 'refresh', label: 'Easy exchanges' },
-]
-
 /* --- small inline icon set — no new dependency required --- */
 function Icon({ name, className = 'w-6 h-6' }) {
   const common = { className, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7 }
@@ -74,18 +67,6 @@ export default function Home() {
         <DiscountBanner />
         {/* HERO */}
         <HomeHeroSlider />
-
-        {/* TRUST BAR */}
-        <section className="border-y border-gray-200 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap justify-center gap-x-8 gap-y-2 text-sm text-gray-600">
-            {trustItems.map(item => (
-                <span key={item.label} className="flex items-center gap-1.5">
-                  <Icon name={item.icon} className="w-4 h-4 text-coral" />
-                  {item.label}
-                </span>
-            ))}
-          </div>
-        </section>
 
         {/* SHOP BY CATEGORY */}
         <section id="shop-by-category" className="bg-white py-16">
