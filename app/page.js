@@ -1,5 +1,6 @@
 'use client'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useMemo, useState, useEffect } from 'react'
 import ProductCard from '../components/ProductCard'
 import RewardsChecker from '../components/RewardsChecker'
@@ -79,18 +80,9 @@ export default function Home() {
 
         {/* WINTER LIFESTYLE BANNER */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
-          <div className="relative rounded-3xl overflow-hidden min-h-[340px] flex items-end">
-            <img
-              src="/girl-winter-outfit.jpg"
-              alt="Child wearing a cream Kiddy Trends winter outfit"
-              className="absolute inset-0 w-full h-full object-cover object-top"
-            />
-            <div
-              className="absolute inset-0"
-              style={{ background: 'linear-gradient(0deg, rgba(31,58,82,0.75) 0%, rgba(31,58,82,0.1) 60%, transparent 100%)' }}
-            />
-            <div className="relative z-10 p-8 md:p-10">
-              <p className="text-white/80 text-xs tracking-widest mb-2">WINTER 2026</p>
+          <div className="rounded-3xl overflow-hidden bg-[#1f3a52] grid md:grid-cols-2 items-center">
+            <div className="p-8 md:p-10 order-2 md:order-1">
+              <p className="text-white/70 text-xs tracking-widest mb-2">WINTER 2026</p>
               <h2 className="font-display text-3xl md:text-4xl text-white mb-4">Shop the winter edit</h2>
               <Link
                 href="/collections?title=winter"
@@ -98,6 +90,16 @@ export default function Home() {
               >
                 Explore collection
               </Link>
+            </div>
+            <div className="relative w-full h-[280px] md:h-[380px] order-1 md:order-2">
+              <Image
+                src="/girl-winter-outfit.jpg"
+                alt="Child wearing a cream Kiddy Trends winter outfit"
+                fill
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-cover object-top"
+                quality={95}
+              />
             </div>
           </div>
         </section>
@@ -195,11 +197,14 @@ export default function Home() {
 
         {/* NEW SEASON LIFESTYLE BANNER */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="rounded-3xl overflow-hidden relative">
-            <img
+          <div className="rounded-3xl overflow-hidden relative h-[220px] md:h-[320px]">
+            <Image
               src="/kids-running-outfits.jpg"
               alt="Kids playing outdoors in Kiddy Trends floral outfits, three colorways"
-              className="w-full h-[220px] md:h-[320px] object-cover"
+              fill
+              sizes="100vw"
+              className="object-cover"
+              quality={95}
             />
             <div
               className="absolute inset-0 flex items-center"
@@ -277,10 +282,13 @@ export default function Home() {
         {/* NEWSLETTER */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="relative rounded-2xl overflow-hidden min-h-[260px] flex items-center">
-            <img
+            <Image
               src="/twins-holding-hands.jpg"
               alt="Two children in colorful Kiddy Trends dresses holding hands in a garden"
-              className="absolute inset-0 w-full h-full object-cover"
+              fill
+              sizes="100vw"
+              className="object-cover"
+              quality={95}
             />
             <div
               className="absolute inset-0"
