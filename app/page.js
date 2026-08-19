@@ -1,3 +1,14 @@
+import SplashScreen from '../components/SplashScreen'
+
+// ...inside your return, as the very first element:
+<>
+  <SplashScreen />
+  <LandingPreferencePopup />
+  <DiscountBanner />
+  <HomeHeroSlider />
+  {/* ...rest of your homepage... */}
+</>
+
 'use client'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
