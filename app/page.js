@@ -77,6 +77,31 @@ export default function Home() {
         {/* HERO */}
         <HomeHeroSlider />
 
+        {/* WINTER LIFESTYLE BANNER */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
+          <div className="relative rounded-3xl overflow-hidden min-h-[340px] flex items-end">
+            <img
+              src="/girl-winter-outfit.jpg"
+              alt="Child wearing a cream Kiddy Trends winter outfit"
+              className="absolute inset-0 w-full h-full object-cover object-top"
+            />
+            <div
+              className="absolute inset-0"
+              style={{ background: 'linear-gradient(0deg, rgba(31,58,82,0.75) 0%, rgba(31,58,82,0.1) 60%, transparent 100%)' }}
+            />
+            <div className="relative z-10 p-8 md:p-10">
+              <p className="text-white/80 text-xs tracking-widest mb-2">WINTER 2026</p>
+              <h2 className="font-display text-3xl md:text-4xl text-white mb-4">Shop the winter edit</h2>
+              <Link
+                href="/collections?title=winter"
+                className="inline-block bg-white text-charcoal font-display text-sm px-6 py-3 rounded-full hover:opacity-90"
+              >
+                Explore collection
+              </Link>
+            </div>
+          </div>
+        </section>
+
         {/* SHOP BY CATEGORY */}
         <section id="shop-by-category" className="bg-white py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -168,6 +193,31 @@ export default function Home() {
           )}
         </section>
 
+        {/* NEW SEASON LIFESTYLE BANNER */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="rounded-3xl overflow-hidden relative">
+            <img
+              src="/kids-running-outfits.jpg"
+              alt="Kids playing outdoors in Kiddy Trends floral outfits, three colorways"
+              className="w-full h-[220px] md:h-[320px] object-cover"
+            />
+            <div
+              className="absolute inset-0 flex items-center"
+              style={{ background: 'linear-gradient(90deg, rgba(31,58,82,0.55) 0%, transparent 55%)' }}
+            >
+              <div className="pl-8 md:pl-12">
+                <p className="font-display text-2xl md:text-3xl text-white mb-3">New season, new looks</p>
+                <Link
+                  href="/collections?sort=new"
+                  className="inline-block bg-white text-charcoal font-display text-sm px-6 py-2.5 rounded-full hover:opacity-90"
+                >
+                  Shop new arrivals
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* TIKTOK VIDEOS */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 bg-gray-50 rounded-3xl">
           <div className="text-center mb-10">
@@ -226,15 +276,26 @@ export default function Home() {
 
         {/* NEWSLETTER */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="border border-gray-200 rounded-2xl p-10 md:p-16 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div>
-              <h2 className="font-display text-3xl md:text-4xl text-charcoal mb-3">New arrivals every week</h2>
-              <p className="text-gray-600 text-lg">Be the first to know about new collections & deals.</p>
-            </div>
-            <div className="flex gap-3 flex-wrap">
-              <input type="email" placeholder="your@email.com"
-                     className="px-5 py-3 rounded-full border border-gray-300 focus:outline-none focus:border-coral font-body text-base w-60" />
-              <button className="btn-primary whitespace-nowrap">Notify me</button>
+          <div className="relative rounded-2xl overflow-hidden min-h-[260px] flex items-center">
+            <img
+              src="/twins-holding-hands.jpg"
+              alt="Two children in colorful Kiddy Trends dresses holding hands in a garden"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div
+              className="absolute inset-0"
+              style={{ background: 'linear-gradient(90deg, rgba(31,58,82,0.8) 0%, rgba(31,58,82,0.35) 60%, rgba(31,58,82,0.15) 100%)' }}
+            />
+            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6 w-full p-8 md:p-12">
+              <div>
+                <h2 className="font-display text-3xl md:text-4xl text-white mb-3">New arrivals every week</h2>
+                <p className="text-white/85 text-lg">Be the first to know about new collections & deals.</p>
+              </div>
+              <div className="flex gap-3 flex-wrap">
+                <input type="email" placeholder="your@email.com"
+                       className="px-5 py-3 rounded-full border border-white/30 bg-white/95 focus:outline-none focus:border-coral font-body text-base w-60" />
+                <button className="btn-primary whitespace-nowrap">Notify me</button>
+              </div>
             </div>
           </div>
         </section>
