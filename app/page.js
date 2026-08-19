@@ -161,7 +161,7 @@ export default function Home() {
                     href={activeView === 'winter-arrivals' ? '/collections?search=winter' : '/collections'}
                     className="text-coral font-semibold hover:underline"
                   >
-                    Show more ->
+                    Show more {'->'}
                   </Link>
                 </div>
               </>
@@ -175,7 +175,7 @@ export default function Home() {
             <p className="text-gray-500 text-lg">See our latest collections in action</p>
             <a href="https://www.tiktok.com/@kiddy.trends?is_from_webapp=1&sender_device=pc" target="_blank" rel="noopener noreferrer"
                className="inline-block mt-3 border border-charcoal/20 text-charcoal font-display text-sm px-5 py-2 rounded-full hover:border-coral hover:text-coral transition-colors">
-              Follow @kiddy.trends ->
+              Follow @kiddy.trends {'->'}
             </a>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
