@@ -83,7 +83,8 @@ export default function Home() {
           <div className="rounded-3xl overflow-hidden bg-[#1f3a52] grid md:grid-cols-2 items-center">
             <div className="p-8 md:p-10 order-2 md:order-1">
               <p className="text-white/70 text-xs tracking-widest mb-2">WINTER 2026</p>
-              <h2 className="font-display text-3xl md:text-4xl text-white mb-4">Shop the winter edit</h2>
+              <h2 className="font-display text-3xl md:text-5xl text-white mb-2">Shop the Winter Deals</h2>
+              <p className="font-display text-4xl md:text-6xl font-extrabold text-white mb-5 leading-none">Upto 50% OFF</p>
               <Link
                 href="/collections?title=winter"
                 className="inline-block bg-white text-charcoal font-display text-sm px-6 py-3 rounded-full hover:opacity-90"
