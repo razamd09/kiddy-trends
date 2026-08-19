@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import ProductCard from '../components/ProductCard'
 import RewardsChecker from '../components/RewardsChecker'
 import DiscountBanner from '../components/DiscountBanner'
@@ -8,7 +8,7 @@ import LandingPreferencePopup from '../components/LandingPreferencePopup'
 import HomeHeroSlider from '../components/HomeHeroSlider'
 import LazyMount from '../components/LazyMount'
 
-const NEW_ARRIVALS_TARGET = 10
+const NEW_ARRIVALS_TARGET = 15
 
 const categories = [
   { label: 'Kids Clothing',      desc: 'Newborn to 12 years',         icon: 'shirt',    href: '/collections?cat=clothing' },
@@ -17,14 +17,7 @@ const categories = [
   { label: 'Little Accessories', desc: 'Pins, ponytails & more',      icon: 'sparkle',  href: '/collections?cat=accessories' },
 ]
 
-const trustItems = [
-  { icon: 'star', label: '4.8/5 average rating' },
-  { icon: 'users', label: '1,200+ happy customers' },
-  { icon: 'truck', label: 'Cash on delivery, 3–5 days' },
-  { icon: 'refresh', label: 'Easy exchanges' },
-]
-
-/* --- small inline icon set — no new dependency required --- */
+/* --- small inline icon set -- no new dependency required --- */
 function Icon({ name, className = 'w-6 h-6' }) {
   const common = { className, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7 }
   switch (name) {
@@ -50,23 +43,32 @@ function Icon({ name, className = 'w-6 h-6' }) {
 }
 
 export default function Home() {
-  const [products, setProducts] = useState([])
+  const [allProducts, setAllProducts] = useState([])
   const [loadingProducts, setLoadingProducts] = useState(true)
+  const [activeView, setActiveView] = useState('new-arrivals')
 
   useEffect(() => {
     async function fetchProducts() {
       try {
         const data = await fetch('/api/products?limit=120&page=1').then(r => r.json())
-        const nextProducts = Array.isArray(data?.products)
-          ? data.products.slice(0, NEW_ARRIVALS_TARGET)
-          : []
+        const nextProducts = Array.isArray(data?.products) ? data.products : []
 
-        setProducts(nextProducts)
+        setAllProducts(nextProducts)
         setLoadingProducts(false)
       } catch { setLoadingProducts(false) }
     }
     fetchProducts()
   }, [])
+
+  const visibleProducts = useMemo(() => {
+    const matchesWinterTitle = (product) => String(product.title || '').toLowerCase().includes('winter')
+
+    if (activeView === 'winter-arrivals') {
+      return allProducts.filter(matchesWinterTitle)
+    }
+
+    return allProducts.slice(0, NEW_ARRIVALS_TARGET)
+  }, [activeView, allProducts])
 
   return (
       <>
@@ -74,43 +76,6 @@ export default function Home() {
         <DiscountBanner />
         {/* HERO */}
         <HomeHeroSlider />
-
-        {/* TRUST BAR */}
-        <section className="border-y border-gray-200 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap justify-center gap-x-8 gap-y-2 text-sm text-gray-600">
-            {trustItems.map(item => (
-                <span key={item.label} className="flex items-center gap-1.5">
-                  <Icon name={item.icon} className="w-4 h-4 text-coral" />
-                  {item.label}
-                </span>
-            ))}
-          </div>
-        </section>
-
-        {/* WINTER LIFESTYLE BANNER */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
-          <div className="relative rounded-3xl overflow-hidden min-h-[340px] flex items-end">
-            <img
-              src="/photos/girl-winter-outfit.jpg"
-              alt="Child wearing a cream Kiddy Trends winter outfit"
-              className="absolute inset-0 w-full h-full object-cover object-top"
-            />
-            <div
-              className="absolute inset-0"
-              style={{ background: 'linear-gradient(0deg, rgba(31,58,82,0.75) 0%, rgba(31,58,82,0.1) 60%, transparent 100%)' }}
-            />
-            <div className="relative z-10 p-8 md:p-10">
-              <p className="text-white/80 text-xs tracking-widest mb-2">WINTER 2026</p>
-              <h2 className="font-display text-3xl md:text-4xl text-white mb-4">Shop the winter edit</h2>
-              <Link
-                href="/collections?title=winter"
-                className="inline-block bg-white text-charcoal font-display text-sm px-6 py-3 rounded-full hover:opacity-90"
-              >
-                Explore collection
-              </Link>
-            </div>
-          </div>
-        </section>
 
         {/* SHOP BY CATEGORY */}
         <section id="shop-by-category" className="bg-white py-16">
@@ -134,10 +99,41 @@ export default function Home() {
           </div>
         </section>
 
-        {/* NEW ARRIVALS */}
+        {/* ARRIVAL TABS */}
         <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-10">
-            <h2 className="section-title">New Arrivals</h2>
+          <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+            <div>
+              <h2 className="section-title">
+                {activeView === 'winter-arrivals' ? 'Winter Arrivals' : 'New Arrivals'}
+              </h2>
+              <p className="text-gray-500 text-sm mt-2">
+                {activeView === 'winter-arrivals'
+                  ? 'Warm picks for the colder season'
+                  : 'Freshly added styles for this week'}
+              </p>
+            </div>
+            <div className="inline-flex rounded-full bg-white p-1 shadow-sm border border-gray-200 w-full md:w-auto">
+              <button
+                type="button"
+                onClick={() => setActiveView('new-arrivals')}
+                className={'flex-1 md:flex-none px-5 py-2 rounded-full text-sm font-semibold transition-colors ' +
+                  (activeView === 'new-arrivals'
+                    ? 'bg-coral text-white shadow'
+                    : 'text-charcoal hover:text-coral')}
+              >
+                New Arrivals
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveView('winter-arrivals')}
+                className={'flex-1 md:flex-none px-5 py-2 rounded-full text-sm font-semibold transition-colors ' +
+                  (activeView === 'winter-arrivals'
+                    ? 'bg-coral text-white shadow'
+                    : 'text-charcoal hover:text-coral')}
+              >
+                Winter Arrivals
+              </button>
+            </div>
           </div>
           {loadingProducts && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
@@ -156,45 +152,20 @@ export default function Home() {
           {!loadingProducts && (
               <>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-                  {products.map(product => (
+                  {visibleProducts.map(product => (
                       <ProductCard key={product.id} product={product} />
                   ))}
                 </div>
                 <div className="text-center mt-8">
                   <Link
-                    href="/collections"
+                    href={activeView === 'winter-arrivals' ? '/collections?search=winter' : '/collections'}
                     className="text-coral font-semibold hover:underline"
                   >
-                    Show more →
+                    Show more ->
                   </Link>
                 </div>
               </>
           )}
-        </section>
-
-        {/* NEW SEASON LIFESTYLE BANNER */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="rounded-3xl overflow-hidden relative">
-            <img
-              src="/photos/kids-running-outfits.jpg"
-              alt="Kids playing outdoors in Kiddy Trends floral outfits, three colorways"
-              className="w-full h-[220px] md:h-[320px] object-cover"
-            />
-            <div
-              className="absolute inset-0 flex items-center"
-              style={{ background: 'linear-gradient(90deg, rgba(31,58,82,0.55) 0%, transparent 55%)' }}
-            >
-              <div className="pl-8 md:pl-12">
-                <p className="font-display text-2xl md:text-3xl text-white mb-3">New season, new looks</p>
-                <Link
-                  href="/collections?sort=new"
-                  className="inline-block bg-white text-charcoal font-display text-sm px-6 py-2.5 rounded-full hover:opacity-90"
-                >
-                  Shop new arrivals
-                </Link>
-              </div>
-            </div>
-          </div>
         </section>
 
         {/* TIKTOK VIDEOS */}
@@ -204,7 +175,7 @@ export default function Home() {
             <p className="text-gray-500 text-lg">See our latest collections in action</p>
             <a href="https://www.tiktok.com/@kiddy.trends?is_from_webapp=1&sender_device=pc" target="_blank" rel="noopener noreferrer"
                className="inline-block mt-3 border border-charcoal/20 text-charcoal font-display text-sm px-5 py-2 rounded-full hover:border-coral hover:text-coral transition-colors">
-              Follow @kiddy.trends →
+              Follow @kiddy.trends ->
             </a>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -255,26 +226,15 @@ export default function Home() {
 
         {/* NEWSLETTER */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="relative rounded-2xl overflow-hidden min-h-[260px] flex items-center">
-            <img
-              src="/photos/twins-holding-hands.jpg"
-              alt="Two children in colorful Kiddy Trends dresses holding hands in a garden"
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-            <div
-              className="absolute inset-0"
-              style={{ background: 'linear-gradient(90deg, rgba(31,58,82,0.8) 0%, rgba(31,58,82,0.35) 60%, rgba(31,58,82,0.15) 100%)' }}
-            />
-            <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6 w-full p-8 md:p-12">
-              <div>
-                <h2 className="font-display text-3xl md:text-4xl text-white mb-3">New arrivals every week</h2>
-                <p className="text-white/85 text-lg">Be the first to know about new collections & deals.</p>
-              </div>
-              <div className="flex gap-3 flex-wrap">
-                <input type="email" placeholder="your@email.com"
-                       className="px-5 py-3 rounded-full border border-white/30 bg-white/95 focus:outline-none focus:border-coral font-body text-base w-60" />
-                <button className="btn-primary whitespace-nowrap">Notify me</button>
-              </div>
+          <div className="border border-gray-200 rounded-2xl p-10 md:p-16 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div>
+              <h2 className="font-display text-3xl md:text-4xl text-charcoal mb-3">New arrivals every week</h2>
+              <p className="text-gray-600 text-lg">Be the first to know about new collections & deals.</p>
+            </div>
+            <div className="flex gap-3 flex-wrap">
+              <input type="email" placeholder="your@email.com"
+                     className="px-5 py-3 rounded-full border border-gray-300 focus:outline-none focus:border-coral font-body text-base w-60" />
+              <button className="btn-primary whitespace-nowrap">Notify me</button>
             </div>
           </div>
         </section>
