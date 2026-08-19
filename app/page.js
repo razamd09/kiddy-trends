@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import ProductCard from '../components/ProductCard'
 import RewardsChecker from '../components/RewardsChecker'
 import DiscountBanner from '../components/DiscountBanner'
@@ -45,6 +45,7 @@ function Icon({ name, className = 'w-6 h-6' }) {
 export default function Home() {
   const [products, setProducts] = useState([])
   const [loadingProducts, setLoadingProducts] = useState(true)
+  const [activeView, setActiveView] = useState('new-arrivals')
 
   useEffect(() => {
     async function fetchProducts() {
@@ -60,6 +61,33 @@ export default function Home() {
     }
     fetchProducts()
   }, [])
+
+  const winterKeywords = ['winter', 'coat', 'jacket', 'hoodie', 'sweater', 'thermal', 'fleece']
+
+  const visibleProducts = useMemo(() => {
+    const matchesWinter = (product) => {
+      const haystack = [
+        product.title,
+        product.category,
+        product.product_type,
+        ...(Array.isArray(product.tags) ? product.tags : []),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+
+      return winterKeywords.some((keyword) => haystack.includes(keyword))
+    }
+
+    if (activeView === 'winter-arrivals') {
+      return products.filter(matchesWinter)
+    }
+
+    return products.filter((product) => {
+      const version = String(product.product_version || '').toLowerCase()
+      return version === 'new arrivals' || !matchesWinter(product)
+    })
+  }, [activeView, products])
 
   return (
       <>
@@ -90,10 +118,41 @@ export default function Home() {
           </div>
         </section>
 
-        {/* NEW ARRIVALS */}
+        {/* ARRIVAL TABS */}
         <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-10">
-            <h2 className="section-title">New Arrivals</h2>
+          <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+            <div>
+              <h2 className="section-title">
+                {activeView === 'winter-arrivals' ? 'Winter Arrivals' : 'New Arrivals'}
+              </h2>
+              <p className="text-gray-500 text-sm mt-2">
+                {activeView === 'winter-arrivals'
+                  ? 'Warm picks for the colder season'
+                  : 'Freshly added styles for this week'}
+              </p>
+            </div>
+            <div className="inline-flex rounded-full bg-white p-1 shadow-sm border border-gray-200 w-full md:w-auto">
+              <button
+                type="button"
+                onClick={() => setActiveView('new-arrivals')}
+                className={'flex-1 md:flex-none px-5 py-2 rounded-full text-sm font-semibold transition-colors ' +
+                  (activeView === 'new-arrivals'
+                    ? 'bg-coral text-white shadow'
+                    : 'text-charcoal hover:text-coral')}
+              >
+                New Arrivals
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveView('winter-arrivals')}
+                className={'flex-1 md:flex-none px-5 py-2 rounded-full text-sm font-semibold transition-colors ' +
+                  (activeView === 'winter-arrivals'
+                    ? 'bg-coral text-white shadow'
+                    : 'text-charcoal hover:text-coral')}
+              >
+                Winter Arrivals
+              </button>
+            </div>
           </div>
           {loadingProducts && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
@@ -112,13 +171,13 @@ export default function Home() {
           {!loadingProducts && (
               <>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-                  {products.map(product => (
+                  {visibleProducts.map(product => (
                       <ProductCard key={product.id} product={product} />
                   ))}
                 </div>
                 <div className="text-center mt-8">
                   <Link
-                    href="/collections"
+                    href={activeView === 'winter-arrivals' ? '/collections?search=winter' : '/collections'}
                     className="text-coral font-semibold hover:underline"
                   >
                     Show more →
