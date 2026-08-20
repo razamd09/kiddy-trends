@@ -162,14 +162,22 @@ function normalizeProductVersion(value) {
     .trim()
 }
 
+function normalizeSearchText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 function isOldPackProduct(product) {
   const version = normalizeProductVersion(product?.product_version)
   return version.includes('old') && version.includes('pack')
 }
 
 function isSeasonDealProduct(product, seasonKeyword) {
-  const title = String(product?.title || '').toLowerCase()
-  return isOldPackProduct(product) && title.includes(seasonKeyword)
+  const normalizedTitle = normalizeSearchText(product?.title)
+  return isOldPackProduct(product) && normalizedTitle.includes(seasonKeyword)
 }
 
 function compareBySelectedSort(a, b, sort) {
@@ -339,6 +347,21 @@ export default function Collections() {
     setPage(1)
   }
 
+  function handleSortChange(nextSort) {
+    setSort(nextSort)
+    setPage(1)
+
+    // Seasonal modes should always run globally, independent of existing query/category filters.
+    if (nextSort === 'winter_deals' || nextSort === 'summer_deals') {
+      setActiveCat('all')
+      setActiveGender(null)
+      setActiveSub(null)
+      setQueryAges([])
+      setQueryGenders([])
+      setQueryTitle('')
+    }
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
 
@@ -406,7 +429,7 @@ export default function Collections() {
           {activeGender && <span className="ml-2 text-coral">· {activeGender === 'boys' ? 'Boys' : 'Girls'}</span>}
           {activeSub && <span className="ml-2 text-coral">· {subFilters.find(s => s.id === activeSub)?.label}</span>}
         </p>
-        <select value={sort} onChange={e => { setSort(e.target.value); setPage(1) }}
+        <select value={sort} onChange={e => handleSortChange(e.target.value)}
           className="px-4 py-2 rounded-full border-2 border-gray-100 text-sm font-semibold text-center focus:outline-none focus:border-coral bg-cream">
           <option value="new">Newest First</option>
           <option value="winter_deals">Winter Deals</option>
