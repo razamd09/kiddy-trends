@@ -154,6 +154,24 @@ function getPriceValue(product) {
   return Number.isFinite(value) ? value : 0
 }
 
+function normalizeProductVersion(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function isOldPackProduct(product) {
+  const version = normalizeProductVersion(product?.product_version)
+  return version.includes('old') && version.includes('pack')
+}
+
+function isSeasonDealProduct(product, seasonKeyword) {
+  const title = String(product?.title || '').toLowerCase()
+  return isOldPackProduct(product) && title.includes(seasonKeyword)
+}
+
 function compareBySelectedSort(a, b, sort) {
   if (sort === 'low') return getPriceValue(a) - getPriceValue(b)
   if (sort === 'high') return getPriceValue(b) - getPriceValue(a)
@@ -275,30 +293,31 @@ export default function Collections() {
   const activeCatObj = categories.find(c => c.id === activeCat)
   const subFilters   = activeCatObj?.subFilters || []
   const showGenderFilter = ['kids', 'toddler', 'tweens'].includes(activeCat)
+  const isSeasonDealSort = sort === 'winter_deals' || sort === 'summer_deals'
 
-  let filtered = activeCat === 'all'
-    ? products
-    : products.filter(p => productMatchesFilter(p, activeCat, activeSub, subFilters, activeGender))
+  let filtered = products
 
-  if (queryGenders.length > 0) {
-    filtered = filtered.filter((p) => productMatchesAnyGenders(p, queryGenders))
+  if (!isSeasonDealSort) {
+    filtered = activeCat === 'all'
+      ? products
+      : products.filter(p => productMatchesFilter(p, activeCat, activeSub, subFilters, activeGender))
+
+    if (queryGenders.length > 0) {
+      filtered = filtered.filter((p) => productMatchesAnyGenders(p, queryGenders))
+    }
+
+    if (queryAges.length > 0) {
+      filtered = filtered.filter((p) => productMatchesAnyAges(p, queryAges))
+    }
+
+    if (queryTitle) {
+      filtered = filtered.filter((p) => String(p?.title || '').toLowerCase().includes(queryTitle))
+    }
   }
 
-  if (queryAges.length > 0) {
-    filtered = filtered.filter((p) => productMatchesAnyAges(p, queryAges))
-  }
-
-  if (queryTitle) {
-    filtered = filtered.filter((p) => String(p?.title || '').toLowerCase().includes(queryTitle))
-  }
-
-  if (sort === 'winter_deals' || sort === 'summer_deals') {
+  if (isSeasonDealSort) {
     const seasonKeyword = sort === 'winter_deals' ? 'winter' : 'summer'
-    filtered = filtered.filter((p) => {
-      const title = String(p?.title || '').toLowerCase()
-      const version = String(p?.product_version || '').toLowerCase().trim()
-      return version === 'old packs' && title.includes(seasonKeyword)
-    })
+    filtered = filtered.filter((p) => isSeasonDealProduct(p, seasonKeyword))
   }
 
   // For Boys/Girls menu filters, prioritize latest products from DB strictly by created_at.

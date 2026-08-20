@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 
 const sizeData = {
   clothing: {
@@ -173,6 +174,28 @@ export default function SizeChart() {
             {tabLabels[t]}
           </button>
         ))}
+      </div>
+
+      {/* Cartoon measurement visual */}
+      <div className="mb-8 rounded-3xl border border-skyblue/40 bg-gradient-to-r from-skyblue/20 via-white to-sunny/20 p-4 sm:p-6">
+        <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr] items-center">
+          <div>
+            <h2 className="font-display text-2xl text-charcoal">Measure Before You Buy</h2>
+            <p className="text-gray-600 mt-2 text-sm sm:text-base">
+              Use an inches tape and compare your child&apos;s actual measurements with the chart below for the best fit.
+            </p>
+          </div>
+          <div className="relative w-full overflow-hidden rounded-2xl border border-white/70 shadow-sm bg-white/60">
+            <Image
+              src="/size-chart-cartoon.svg"
+              alt="Cartoon child standing in front of inches measuring tape"
+              width={960}
+              height={640}
+              className="w-full h-auto"
+              priority
+            />
+          </div>
+        </div>
       </div>
 
       {/* Table */}
