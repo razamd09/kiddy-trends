@@ -97,7 +97,7 @@ export default function Navbar() {
           <div className="hidden lg:flex items-center gap-2">
             {links.map(link => (
               <Link key={link.href} href={link.href}
-                className="font-display text-charcoal hover:text-coral bg-cream/60 border border-gray-100 hover:border-coral/30 px-3 xl:px-4 py-2 rounded-full transition-all text-sm xl:text-base">
+                className="inline-flex items-center justify-center text-center leading-tight font-display text-charcoal hover:text-coral bg-cream/60 border border-gray-100 hover:border-coral/30 px-3 xl:px-4 py-2 rounded-full transition-all text-sm xl:text-base min-h-[3rem]">
                 {link.label}
               </Link>
             ))}

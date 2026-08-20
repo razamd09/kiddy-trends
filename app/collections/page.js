@@ -161,6 +161,7 @@ function compareBySelectedSort(a, b, sort) {
   if (sort === 'za') return String(b?.title || '').localeCompare(String(a?.title || ''))
   if (sort === 'old') return getCreatedAtValue(a) - getCreatedAtValue(b)
   if (sort === 'best_selling') return getInventoryValue(b) - getInventoryValue(a)
+  if (sort === 'winter_deals' || sort === 'summer_deals') return getCreatedAtValue(b) - getCreatedAtValue(a)
   return getCreatedAtValue(b) - getCreatedAtValue(a)
 }
 
@@ -291,6 +292,15 @@ export default function Collections() {
     filtered = filtered.filter((p) => String(p?.title || '').toLowerCase().includes(queryTitle))
   }
 
+  if (sort === 'winter_deals' || sort === 'summer_deals') {
+    const seasonKeyword = sort === 'winter_deals' ? 'winter' : 'summer'
+    filtered = filtered.filter((p) => {
+      const title = String(p?.title || '').toLowerCase()
+      const version = String(p?.product_version || '').toLowerCase().trim()
+      return version === 'old packs' && title.includes(seasonKeyword)
+    })
+  }
+
   // For Boys/Girls menu filters, prioritize latest products from DB strictly by created_at.
   if (queryGenders.length > 0) {
     filtered = [...filtered].sort((a, b) => getCreatedAtValue(b) - getCreatedAtValue(a))
@@ -378,8 +388,10 @@ export default function Collections() {
           {activeSub && <span className="ml-2 text-coral">· {subFilters.find(s => s.id === activeSub)?.label}</span>}
         </p>
         <select value={sort} onChange={e => { setSort(e.target.value); setPage(1) }}
-          className="px-4 py-2 rounded-full border-2 border-gray-100 text-sm font-semibold focus:outline-none focus:border-coral bg-cream">
+          className="px-4 py-2 rounded-full border-2 border-gray-100 text-sm font-semibold text-center focus:outline-none focus:border-coral bg-cream">
           <option value="new">Newest First</option>
+          <option value="winter_deals">Winter Deals</option>
+          <option value="summer_deals">Summer Deals</option>
           <option value="best_selling">Best Selling</option>
           <option value="az">A–Z</option>
           <option value="za">Z–A</option>
