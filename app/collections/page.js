@@ -205,7 +205,7 @@ export default function Collections() {
       .filter(Boolean)
     const queryGenders = (searchParams.get('genders') || '')
       .split(',')
-      .map((x) => x.trim())
+      .map((x) => x.trim().toLowerCase())
       .filter((x) => x === 'boys' || x === 'girls')
     const queryTitle = (searchParams.get('title') || '').trim().toLowerCase()
 
