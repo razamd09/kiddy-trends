@@ -57,6 +57,7 @@ function productMatchesFilter(product, catId, subId, subFilters, gender) {
 
   const type  = (product.product_type || '').toLowerCase()
   const title = (product.title || '').toLowerCase()
+  const category = (product.category || '').toLowerCase()
 
   if (gender) {
     const hasBoys = /\bboys?\b/.test(title)
@@ -76,11 +77,11 @@ function productMatchesFilter(product, catId, subId, subFilters, gender) {
   const kidsKw     = ['4 year','5 year','6 year','7 year','8 year','4yr','5yr','6yr','7yr','8yr','4-5','5-6','6-7','7-8','3-4']
   const tweensKw   = ['9 year','10 year','11 year','12 year','9yr','10yr','11yr','12yr','tween','9-10','11-12']
 
-  if (catId === 'newborn')     return newbornKw.some(k => text.includes(k))
+  if (catId === 'newborn')     return category.includes('newborn') || category.includes('infant')
   if (catId === 'toddler')     return toddlerKw.some(k => text.includes(k))
   if (catId === 'kids')        return kidsKw.some(k => text.includes(k))
   if (catId === 'tweens')      return tweensKw.some(k => text.includes(k))
-  if (catId === 'bedding')     return type.includes('bed') || type.includes('sheet') || type.includes('pillow') || title.includes('bed') || title.includes('sheet')
+  if (catId === 'bedding')     return title.includes('bed')
   if (catId === 'bags')        return type.includes('bag') || type.includes('backpack') || title.includes('bag') || title.includes('backpack')
   if (catId === 'accessories') return type.includes('access') || type.includes('hair') || title.includes('pin') || title.includes('hair') || title.includes('ponytail') || title.includes('scrunchie') || title.includes('clip') || title.includes('headband')
   return true
@@ -290,7 +291,12 @@ export default function Collections() {
     filtered = filtered.filter((p) => String(p?.title || '').toLowerCase().includes(queryTitle))
   }
 
-  filtered = [...filtered].sort((a, b) => compareProducts(a, b, sort))
+  // For Boys/Girls menu filters, prioritize latest products from DB strictly by created_at.
+  if (queryGenders.length > 0) {
+    filtered = [...filtered].sort((a, b) => getCreatedAtValue(b) - getCreatedAtValue(a))
+  } else {
+    filtered = [...filtered].sort((a, b) => compareProducts(a, b, sort))
+  }
 
   // Pagination
   const totalPages   = Math.ceil(filtered.length / ITEMS_PER_PAGE)

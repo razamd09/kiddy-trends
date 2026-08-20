@@ -49,13 +49,14 @@ export default function Navbar() {
             <div className="relative">
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="flex items-center gap-2 px-3 py-2 rounded-full hover:bg-coral/10 transition-colors text-charcoal hover:text-coral text-sm font-semibold"
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-coral to-orange-400 text-white shadow-md hover:shadow-lg hover:scale-[1.02] transition-all text-sm font-display"
                 aria-label="Toggle menu"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <span aria-hidden="true">✨</span>
+                <span className="hidden sm:inline">Explore Now</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M13 5l7 7-7 7" />
                 </svg>
-                <span className="hidden sm:inline">Menu</span>
               </button>
 
               {menuOpen && (
