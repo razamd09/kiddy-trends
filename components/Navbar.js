@@ -16,8 +16,19 @@ const links = [
   { href: '/feedback',        label: '💝 Feedback' },
 ]
 
+const menuLinks = [
+  { href: '/collections?search=winter%202026', label: 'Winter Arrivals 2026' },
+  { href: '/collections?search=boys', label: 'Boys' },
+  { href: '/collections?search=girls', label: 'Girls' },
+  { href: '/collections?search=infants', label: 'Infants' },
+  { href: '/collections?cat=accessories', label: 'Accessories' },
+  { href: '/collections?cat=bedding', label: 'Bedding' },
+  { href: '/collections?search=summer%20clearance%20sale', label: 'Summer Clearance Sale' },
+]
+
 export default function Navbar() {
   const [open, setOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const { totalItems, setCartOpen } = useCart()
 
   return (
@@ -47,6 +58,35 @@ export default function Navbar() {
           <div className="flex items-center gap-2">
             <RewardsNavChecker />
             <SearchBar />
+
+            {/* Menu */}
+            <div className="relative">
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="flex items-center gap-2 px-3 py-2 rounded-full hover:bg-coral/10 transition-colors text-charcoal hover:text-coral text-sm font-semibold"
+                aria-label="Toggle menu"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+                <span className="hidden sm:inline">Menu</span>
+              </button>
+
+              {menuOpen && (
+                <div className="absolute right-0 mt-2 w-72 bg-white border border-gray-100 rounded-2xl shadow-xl p-2 z-50">
+                  {menuLinks.map(link => (
+                    <Link
+                      key={link.href}
+                      href={link.href}
+                      onClick={() => setMenuOpen(false)}
+                      className="block font-semibold text-charcoal hover:text-coral hover:bg-coral/10 px-4 py-3 rounded-xl transition-all"
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Wishlist */}
             <a href="/wishlist" title="Wishlist"
@@ -88,16 +128,12 @@ export default function Navbar() {
       {/* Mobile menu */}
       {open && (
         <div className="md:hidden bg-white border-t border-gray-100 px-4 py-4 space-y-1">
-          {links.map(link => (
+          {menuLinks.map(link => (
             <Link key={link.href} href={link.href} onClick={() => setOpen(false)}
               className="block font-semibold text-charcoal hover:text-coral hover:bg-coral/10 px-4 py-3 rounded-2xl transition-all">
               {link.label}
             </Link>
           ))}
-          <a href="/wishlist" onClick={() => setOpen(false)}
-            className="block font-semibold text-charcoal hover:text-coral hover:bg-coral/10 px-4 py-3 rounded-2xl transition-all">
-            💝 My Wishlist
-          </a>
         </div>
       )}
     </nav>
