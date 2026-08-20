@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 
 const instagramPosts = [
-  { id: 1, url: 'https://www.instagram.com/trenydkids.2020/', image: 'https://source.unsplash.com/300x300/?kids,fashion,pakistan', caption: 'New arrivals! 🎉' },
+  { id: 1, url: 'https://www.instagram.com/trendykids.2020/', image: 'https://source.unsplash.com/300x300/?kids,fashion,pakistan', caption: 'New arrivals! 🎉' },
 ]
 
 export default function SocialProof() {

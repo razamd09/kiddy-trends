@@ -4,7 +4,7 @@ import Image from 'next/image'
 const socials = [
   {
     name: 'Instagram',
-    href: 'https://instagram.com/trenydkids.2020',
+    href: 'https://instagram.com/trendykids.2020',
     color: 'hover:bg-pink-500',
     icon: (
       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -126,10 +126,10 @@ export default function Footer() {
                 </a>
               </li>
               <li>
-                <a href="https://instagram.com/trenydkids.2020" target="_blank" rel="noopener noreferrer"
+                <a href="https://instagram.com/trendykids.2020" target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-2 hover:text-coral transition-colors">
                   <span className="text-lg">📸</span>
-                  <span>@trenydkids.2020</span>
+                  <span>@trendykids.2020</span>
                 </a>
               </li>
               <li>
