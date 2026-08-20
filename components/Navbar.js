@@ -60,13 +60,13 @@ export default function Navbar() {
               </button>
 
               {menuOpen && (
-                <div className="absolute left-0 mt-2 w-72 bg-white border border-gray-100 rounded-2xl shadow-xl p-2 z-50">
+                <div className="absolute left-0 mt-2 w-80 bg-white/95 backdrop-blur border border-gray-100 rounded-3xl shadow-2xl p-3 z-50 space-y-2">
                   {menuLinks.map(link => (
                     <Link
                       key={link.href}
                       href={link.href}
                       onClick={() => setMenuOpen(false)}
-                      className="block font-semibold text-charcoal hover:text-coral hover:bg-coral/10 px-4 py-3 rounded-xl transition-all"
+                      className="block font-display text-[1.5rem] text-charcoal hover:text-coral bg-cream/70 hover:bg-coral/10 border border-white hover:border-coral/30 px-5 py-3 rounded-full transition-all"
                     >
                       {link.label}
                     </Link>
@@ -130,10 +130,10 @@ export default function Navbar() {
 
       {/* Mobile menu */}
       {open && (
-        <div className="md:hidden bg-white border-t border-gray-100 px-4 py-4 space-y-1">
+        <div className="md:hidden bg-white border-t border-gray-100 px-4 py-4 space-y-2">
           {menuLinks.map(link => (
             <Link key={link.href} href={link.href} onClick={() => setOpen(false)}
-              className="block font-semibold text-charcoal hover:text-coral hover:bg-coral/10 px-4 py-3 rounded-2xl transition-all">
+              className="block font-display text-xl text-charcoal hover:text-coral bg-cream/70 hover:bg-coral/10 border border-white hover:border-coral/30 px-5 py-3 rounded-full transition-all">
               {link.label}
             </Link>
           ))}
