@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useCart } from '../context/CartContext'
@@ -9,8 +9,6 @@ import RewardsNavChecker from './RewardsNavChecker'
 const links = [
   { href: '/',                label: 'Home' },
   { href: '/collections',     label: 'Collections' },
-  { href: '/about',           label: 'About Us' },
-  { href: '/refund-policy',   label: 'Refund Policy' },
   { href: '/size-chart',      label: 'Size Chart' },
   { href: '/order-tracking',  label: 'Track Order' },
   { href: '/feedback',        label: '💝 Feedback' },
@@ -30,9 +28,28 @@ export default function Navbar() {
   const [open, setOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const { totalItems, setCartOpen } = useCart()
+  const navRef = useRef(null)
+
+  useEffect(() => {
+    const handleOutsideClick = (event) => {
+      if (!navRef.current) return
+      if (!navRef.current.contains(event.target)) {
+        setMenuOpen(false)
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleOutsideClick)
+    document.addEventListener('touchstart', handleOutsideClick)
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick)
+      document.removeEventListener('touchstart', handleOutsideClick)
+    }
+  }, [])
 
   return (
-    <nav className="bg-white shadow-sm sticky top-0 z-50">
+    <nav ref={navRef} className="bg-white shadow-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
 
