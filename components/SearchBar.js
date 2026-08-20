@@ -57,7 +57,7 @@ export default function SearchBar() {
       {/* Search toggle button */}
       {!showSearch && (
         <button onClick={() => setShowSearch(true)}
-          className="p-2 rounded-full hover:bg-coral/10 transition-colors">
+          className="p-2 rounded-full bg-cream/60 border border-gray-100 hover:border-coral/30 hover:bg-coral/10 transition-colors">
           <svg className="w-6 h-6 text-charcoal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>

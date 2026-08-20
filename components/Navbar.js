@@ -49,7 +49,7 @@ export default function Navbar() {
             <div className="relative">
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-coral to-orange-400 text-white shadow-md hover:shadow-lg hover:scale-[1.02] transition-all text-sm font-display"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-gradient-to-r from-coral to-orange-400 text-white shadow-md hover:shadow-lg hover:scale-[1.02] transition-all text-xs sm:text-sm font-display"
                 aria-label="Toggle menu"
               >
                 <span aria-hidden="true">✨</span>
@@ -60,13 +60,13 @@ export default function Navbar() {
               </button>
 
               {menuOpen && (
-                <div className="absolute left-0 mt-2 w-80 bg-white/95 backdrop-blur border border-gray-100 rounded-3xl shadow-2xl p-3 z-50 space-y-2">
+                <div className="absolute left-0 mt-2 w-[88vw] max-w-[20rem] sm:max-w-[22rem] bg-white/95 backdrop-blur border border-gray-100 rounded-3xl shadow-2xl p-3 z-50 space-y-2">
                   {menuLinks.map(link => (
                     <Link
                       key={link.href}
                       href={link.href}
                       onClick={() => setMenuOpen(false)}
-                      className="block font-display text-[1.5rem] text-charcoal hover:text-coral bg-cream/70 hover:bg-coral/10 border border-white hover:border-coral/30 px-5 py-3 rounded-full transition-all"
+                      className="block font-display text-lg sm:text-2xl text-charcoal hover:text-coral bg-cream/70 hover:bg-coral/10 border border-white hover:border-coral/30 px-4 sm:px-5 py-2.5 sm:py-3 rounded-full transition-all"
                     >
                       {link.label}
                     </Link>
@@ -77,23 +77,23 @@ export default function Navbar() {
           </div>
 
           {/* Desktop links */}
-          <div className="hidden md:flex items-center gap-1">
+          <div className="hidden lg:flex items-center gap-2">
             {links.map(link => (
               <Link key={link.href} href={link.href}
-                className="font-body text-charcoal hover:text-coral px-4 py-2 rounded-full hover:bg-coral/10 transition-all text-sm font-semibold">
+                className="font-display text-charcoal hover:text-coral bg-cream/60 border border-gray-100 hover:border-coral/30 px-3 xl:px-4 py-2 rounded-full transition-all text-sm xl:text-base">
                 {link.label}
               </Link>
             ))}
           </div>
 
           {/* Right icons */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <RewardsNavChecker />
             <SearchBar />
 
             {/* Wishlist */}
             <a href="/wishlist" title="Wishlist"
-              className="relative p-2 rounded-full hover:bg-coral/10 transition-colors text-charcoal hover:text-coral">
+              className="relative p-2 rounded-full bg-cream/60 border border-gray-100 hover:border-coral/30 hover:bg-coral/10 transition-colors text-charcoal hover:text-coral">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
@@ -102,7 +102,7 @@ export default function Navbar() {
             {/* Cart */}
             <div className="relative">
               <button onClick={() => setCartOpen(true)}
-              className={'relative p-2 rounded-full hover:bg-coral/10 transition-colors'}>
+              className={'relative p-2 rounded-full bg-cream/60 border border-gray-100 hover:border-coral/30 hover:bg-coral/10 transition-colors'}>
               <svg className="w-6 h-6 text-charcoal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 9H4L5 9z" />
               </svg>
