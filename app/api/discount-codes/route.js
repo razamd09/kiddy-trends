@@ -10,7 +10,7 @@ export async function GET() {
     
     const { data, error } = await supabase
         .from('discount_codes')
-        .select('code, discount_type, discount_value, expiry_type, expiry_date')
+        .select('title, code, discount_type, discount_value, expiry_type, expiry_date')
         .eq('enabled', true)
         .or(`expiry_type.eq.unlimited,and(expiry_type.eq.limited,expiry_date.gt.${now})`)
         .order('created_at', { ascending: false })

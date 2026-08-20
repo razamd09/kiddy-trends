@@ -3,6 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS discount_codes (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    title VARCHAR(120) NOT NULL,
     code VARCHAR(50) NOT NULL UNIQUE,
     discount_type VARCHAR(20) NOT NULL CHECK (discount_type IN ('percentage', 'amount')),
     discount_value DECIMAL(10, 2) NOT NULL,

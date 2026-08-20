@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 const AGE_OPTIONS = [
   { label: '0-3 Months', cat: 'newborn', sub: '0-3m' },
@@ -216,16 +217,34 @@ export default function LandingPreferencePopup() {
               <button
                 type="button"
                 onClick={() => toggleGender('girls')}
-                className={'rounded-2xl border-2 px-4 py-3 font-semibold transition-all duration-200 ' + (selectedGenders.includes('girls') ? 'border-coral bg-gradient-to-r from-coral to-[#ff8b7a] text-white shadow-md scale-[1.02]' : 'border-coral/20 bg-white/85 text-charcoal hover:border-coral/50')}
+                className={'inline-flex items-center justify-center gap-2.5 rounded-2xl border-2 px-3 py-2 min-h-[3.5rem] font-semibold text-lg transition-all duration-200 ' + (selectedGenders.includes('girls') ? 'border-coral bg-gradient-to-r from-coral to-[#ff8b7a] text-white shadow-md scale-[1.02]' : 'border-coral/20 bg-white/85 text-charcoal hover:border-coral/50')}
               >
-                👧 Girl
+                <span className="relative w-8 h-8 rounded-full overflow-hidden border border-white/70 shadow-sm bg-white/80">
+                  <Image
+                    src="/girl-winter-outfit.jpg"
+                    alt="Girl"
+                    fill
+                    sizes="32px"
+                    className="object-cover object-[center_18%]"
+                  />
+                </span>
+                Girl
               </button>
               <button
                 type="button"
                 onClick={() => toggleGender('boys')}
-                className={'rounded-2xl border-2 px-4 py-3 font-semibold transition-all duration-200 ' + (selectedGenders.includes('boys') ? 'border-skyblue bg-gradient-to-r from-skyblue to-[#70d4ff] text-charcoal shadow-md scale-[1.02]' : 'border-skyblue/30 bg-white/85 text-charcoal hover:border-skyblue/60')}
+                className={'inline-flex items-center justify-center gap-2.5 rounded-2xl border-2 px-3 py-2 min-h-[3.5rem] font-semibold text-lg transition-all duration-200 ' + (selectedGenders.includes('boys') ? 'border-skyblue bg-gradient-to-r from-skyblue to-[#70d4ff] text-charcoal shadow-md scale-[1.02]' : 'border-skyblue/30 bg-white/85 text-charcoal hover:border-skyblue/60')}
               >
-                🧒 Boy
+                <span className="relative w-8 h-8 rounded-full overflow-hidden border border-white/70 shadow-sm bg-white/80">
+                  <Image
+                    src="/kids-running-outfits.jpg"
+                    alt="Boy"
+                    fill
+                    sizes="32px"
+                    className="object-cover object-[center_24%]"
+                  />
+                </span>
+                Boy
               </button>
             </div>
           </div>

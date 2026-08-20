@@ -31,6 +31,9 @@ export default function DiscountBanner() {
           <div className="flex flex-wrap gap-3 justify-center">
             {codes.map((code, idx) => (
               <div key={idx} className="bg-white rounded-full px-4 py-2 shadow-sm border-2 border-coral/20 hover:border-coral/50 transition-all">
+                {code.title && (
+                  <span className="block text-[11px] leading-tight text-charcoal/70 font-semibold mb-0.5">{code.title}</span>
+                )}
                 <span className="font-mono font-bold text-coral text-sm">{code.code}</span>
                 <span className="text-xs text-gray-500 ml-2">
                   {code.discount_type === 'percentage' ? `${code.discount_value}% OFF` : `PKR ${code.discount_value} OFF`}

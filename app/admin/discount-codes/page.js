@@ -9,6 +9,7 @@ export default function AdminDiscountCodes() {
   const router = useRouter()
 
   const [form, setForm] = useState({
+    title: '',
     code: '',
     discount_type: 'percentage',
     discount_value: '',
@@ -59,8 +60,8 @@ export default function AdminDiscountCodes() {
     setError('')
     setSuccess('')
 
-    if (!form.code || !form.discount_value) {
-      setError('Code and discount value are required')
+    if (!form.title || !form.code || !form.discount_value) {
+      setError('Title, code and discount value are required')
       return
     }
 
@@ -127,6 +128,7 @@ export default function AdminDiscountCodes() {
   function handleEdit(code) {
     setEditing(code)
     setForm({
+      title: code.title || '',
       code: code.code,
       discount_type: code.discount_type,
       discount_value: code.discount_value.toString(),
@@ -139,6 +141,7 @@ export default function AdminDiscountCodes() {
 
   function resetForm() {
     setForm({
+      title: '',
       code: '',
       discount_type: 'percentage',
       discount_value: '',
@@ -189,6 +192,14 @@ export default function AdminDiscountCodes() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input
+                type="text"
+                placeholder="Title (e.g., August Mega Deals)"
+                value={form.title}
+                onChange={e => setForm({ ...form, title: e.target.value })}
+                className="px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm"
+              />
+
               <input
                 type="text"
                 placeholder="Discount Code (e.g., SUMMER20)"

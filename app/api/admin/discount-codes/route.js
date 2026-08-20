@@ -22,9 +22,9 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-    const { code, discount_type, discount_value, enabled, expiry_type, expiry_date, max_usage } = await request.json()
+    const { title, code, discount_type, discount_value, enabled, expiry_type, expiry_date, max_usage } = await request.json()
 
-    if (!code || !discount_type || discount_value === undefined || !expiry_type) {
+    if (!title || !code || !discount_type || discount_value === undefined || !expiry_type) {
         return Response.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
@@ -43,6 +43,7 @@ export async function POST(request) {
     const { data, error } = await supabase
         .from('discount_codes')
         .insert([{
+            title: String(title).trim(),
             code: code.toUpperCase(),
             discount_type,
             discount_value: parseFloat(discount_value),
@@ -65,13 +66,14 @@ export async function POST(request) {
 }
 
 export async function PUT(request) {
-    const { id, code, discount_type, discount_value, enabled, expiry_type, expiry_date, max_usage } = await request.json()
+    const { id, title, code, discount_type, discount_value, enabled, expiry_type, expiry_date, max_usage } = await request.json()
 
     if (!id) {
         return Response.json({ error: 'ID is required' }, { status: 400 })
     }
 
     const updates = { updated_at: new Date().toISOString() }
+    if (title !== undefined) updates.title = String(title).trim()
     if (code) updates.code = code.toUpperCase()
     if (discount_type) updates.discount_type = discount_type
     if (discount_value !== undefined) updates.discount_value = parseFloat(discount_value)
