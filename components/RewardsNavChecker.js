@@ -30,7 +30,7 @@ export default function RewardsNavChecker() {
       {/* Trigger button */}
       <button onClick={() => { setOpen(!open); setResult(null); setError(''); setUserId('') }}
         className="flex items-center gap-1.5 bg-sunny/40 hover:bg-sunny/60 text-charcoal font-display text-xs sm:text-sm px-3 py-2 rounded-full border border-yellow-200 transition-all">
-        ⭐ Rewards
+        Rewards
       </button>
 
       {/* Dropdown */}

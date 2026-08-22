@@ -11,7 +11,7 @@ const links = [
   { href: '/collections',     label: 'Collections' },
   { href: '/size-chart',      label: 'Size Chart' },
   { href: '/order-tracking',  label: 'Track Order' },
-  { href: '/feedback',        label: '💝 Feedback' },
+  { href: '/feedback',        label: 'Feedback' },
 ]
 
 const menuLinks = [
@@ -97,7 +97,7 @@ export default function Navbar() {
           <div className="hidden lg:flex items-center gap-2">
             {links.map(link => (
               <Link key={link.href} href={link.href}
-                className="inline-flex items-center justify-center text-center leading-tight font-display text-charcoal hover:text-coral bg-cream/60 border border-gray-100 hover:border-coral/30 px-3 xl:px-4 py-2 rounded-full transition-all text-sm xl:text-base min-h-[3rem]">
+                className="inline-flex items-center justify-center text-center leading-tight whitespace-nowrap font-display text-charcoal hover:text-coral bg-cream/60 border border-gray-100 hover:border-coral/30 px-3 xl:px-4 rounded-full transition-all text-sm xl:text-base h-16 min-w-[8.75rem]">
                 {link.label}
               </Link>
             ))}
