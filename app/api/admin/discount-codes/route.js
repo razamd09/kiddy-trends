@@ -5,6 +5,10 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_KEY
 )
 
+function isMissingTitleColumn(error) {
+    return error?.message?.includes("Could not find the 'title' column")
+}
+
 export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
@@ -40,20 +44,36 @@ export async function POST(request) {
         return Response.json({ error: 'expiry_date required for limited expiry' }, { status: 400 })
     }
 
-    const { data, error } = await supabase
+    const payload = {
+        title: String(title).trim(),
+        code: code.toUpperCase(),
+        discount_type,
+        discount_value: parseFloat(discount_value),
+        enabled: enabled || false,
+        expiry_type,
+        expiry_date: expiry_type === 'limited' ? expiry_date : null,
+        max_usage: max_usage || null
+    }
+
+    let { data, error } = await supabase
         .from('discount_codes')
-        .insert([{
-            title: String(title).trim(),
-            code: code.toUpperCase(),
-            discount_type,
-            discount_value: parseFloat(discount_value),
-            enabled: enabled || false,
-            expiry_type,
-            expiry_date: expiry_type === 'limited' ? expiry_date : null,
-            max_usage: max_usage || null
-        }])
+        .insert([payload])
         .select()
         .single()
+
+    if (isMissingTitleColumn(error)) {
+        const fallbackPayload = { ...payload }
+        delete fallbackPayload.title
+
+        const fallback = await supabase
+            .from('discount_codes')
+            .insert([fallbackPayload])
+            .select()
+            .single()
+
+        data = fallback.data
+        error = fallback.error
+    }
 
     if (error) {
         if (error.code === '23505') {
@@ -82,12 +102,27 @@ export async function PUT(request) {
     if (expiry_date !== undefined) updates.expiry_date = expiry_date
     if (max_usage !== undefined) updates.max_usage = max_usage
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
         .from('discount_codes')
         .update(updates)
         .eq('id', id)
         .select()
         .single()
+
+    if (isMissingTitleColumn(error) && updates.title !== undefined) {
+        const fallbackUpdates = { ...updates }
+        delete fallbackUpdates.title
+
+        const fallback = await supabase
+            .from('discount_codes')
+            .update(fallbackUpdates)
+            .eq('id', id)
+            .select()
+            .single()
+
+        data = fallback.data
+        error = fallback.error
+    }
 
     if (error) {
         if (error.code === '23505') {

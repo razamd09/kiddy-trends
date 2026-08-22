@@ -58,6 +58,7 @@ function productMatchesFilter(product, catId, subId, subFilters, gender) {
   const type  = (product.product_type || '').toLowerCase()
   const title = (product.title || '').toLowerCase()
   const category = (product.category || '').toLowerCase()
+  const beddingKw = ['bedding', 'bedsheet', 'bed sheet', 'duvet', 'razai', 'comforter', 'pillow', 'fitted sheet']
 
   if (gender) {
     const hasBoys = /\bboys?\b/.test(title)
@@ -81,7 +82,7 @@ function productMatchesFilter(product, catId, subId, subFilters, gender) {
   if (catId === 'toddler')     return toddlerKw.some(k => text.includes(k))
   if (catId === 'kids')        return kidsKw.some(k => text.includes(k))
   if (catId === 'tweens')      return tweensKw.some(k => text.includes(k))
-  if (catId === 'bedding')     return title.includes('bed')
+  if (catId === 'bedding')     return beddingKw.some((k) => text.includes(k) || type.includes(k) || category.includes(k))
   if (catId === 'bags')        return type.includes('bag') || type.includes('backpack') || title.includes('bag') || title.includes('backpack')
   if (catId === 'accessories') return type.includes('access') || type.includes('hair') || title.includes('pin') || title.includes('hair') || title.includes('ponytail') || title.includes('scrunchie') || title.includes('clip') || title.includes('headband')
   return true
