@@ -73,6 +73,75 @@ function StarRating({ rating }) {
   )
 }
 
+function ProductInfoIcon({ type, className = 'w-4 h-4' }) {
+  const common = {
+    className,
+    fill: 'none',
+    stroke: 'currentColor',
+    viewBox: '0 0 24 24',
+    strokeWidth: 1.8,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    'aria-hidden': true,
+  }
+
+  if (type === 'truck') {
+    return <svg {...common}><path d="M3 7h11v9H3z" /><path d="M14 11h4l3 3v2h-7z" /><circle cx="7" cy="18" r="1.6" /><circle cx="17.5" cy="18" r="1.6" /></svg>
+  }
+  if (type === 'cash') {
+    return <svg {...common}><rect x="3" y="6" width="18" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /><path d="M6.5 9.5v5M17.5 9.5v5" /></svg>
+  }
+  if (type === 'package') {
+    return <svg {...common}><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9L12 3z" /><path d="M4.5 7.8L12 12l7.5-4.2M12 12v8.5" /></svg>
+  }
+  if (type === 'eye') {
+    return <svg {...common}><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z" /><circle cx="12" cy="12" r="2.6" /></svg>
+  }
+  if (type === 'flame') {
+    return <svg {...common}><path d="M12 22c-3.2 0-5.8-2.2-5.8-5.4 0-2.3 1.4-4.1 3-5.6 1.2-1.2 2.5-2.7 2.6-5 .9.7 3.2 2.9 3.2 6.1.8-.6 1.4-1.5 1.7-2.4 1.1 1 2.1 2.7 2.1 5.1 0 4.1-3 7.2-6.8 7.2z" /></svg>
+  }
+  if (type === 'ruler') {
+    return <svg {...common}><path d="M4 17.5L17.5 4 20 6.5 6.5 20 4 17.5z" /><path d="M14.5 7l2.5 2.5M12 9.5l1.5 1.5M9.5 12l2.5 2.5M7 14.5L8.5 16" /></svg>
+  }
+  return null
+}
+
+function formatRupees(value) {
+  const rounded = Math.round(Number(value) || 0)
+  return rounded.toLocaleString('en-PK')
+}
+
+function getProductTitleParts(product) {
+  const rawTitle = String(product?.title || '').replace(/\s+/g, ' ').trim()
+  const badges = []
+  let cleanTitle = rawTitle
+
+  const badgeRules = [
+    { label: '2026 Collection', pattern: /\b(?:summer\s+|winter\s+)?(?:new\s+)?(?:arrival\s+)?2026(?:\s+collection)?\b/ig },
+    { label: 'Branded Pack', pattern: /\bbranded\s+(?:pack|shirts?|shirt)\b|\bbrand(?:ed)?\s+pack\b/ig },
+  ]
+
+  badgeRules.forEach((rule) => {
+    if (rule.pattern.test(cleanTitle)) {
+      badges.push(rule.label)
+      cleanTitle = cleanTitle.replace(rule.pattern, ' ')
+    }
+  })
+
+  cleanTitle = cleanTitle
+      .replace(/\b(?:last\s+pieces?|limited\s+stock|only|sale|deal)\b/ig, ' ')
+      .replace(/\b\d+\s*(?:years?|yrs?|yr)\b/ig, ' ')
+      .replace(/\b\d+(?:\.\d+)?\s*\/?-?\s*(?:only)?\b/ig, ' ')
+      .replace(/[|_/,-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+
+  return {
+    title: cleanTitle || rawTitle,
+    badges: Array.from(new Set(badges)),
+  }
+}
+
 export default function ProductPage() {
   const { handle } = useParams()
   const { addToCart, cart } = useCart()
@@ -142,6 +211,7 @@ export default function ProductPage() {
   }, [product])
 
   const price        = parseFloat(selectedVariant?.price || 0)
+  const displayPrice = Math.round(price)
   const comparePrice = parseFloat(selectedVariant?.compare_at_price || 0)
   const availableStock = Number.isFinite(Number(selectedVariant?.inventory_quantity))
       ? Number(selectedVariant.inventory_quantity)
@@ -159,9 +229,10 @@ export default function ProductPage() {
     return 50
   })()
 
-  const fakeOriginal = comparePrice > price
-      ? comparePrice
-      : Math.round(price * (1 + discountPct / 100) / 100) * 100
+    const fakeOriginal = comparePrice > displayPrice
+      ? Math.round(comparePrice)
+      : Math.round(displayPrice * (1 + discountPct / 100) / 100) * 100
+    const saveAmount = Math.max(0, fakeOriginal - displayPrice)
 
   const lowStock = availableStock > 0 && availableStock <= 5 ? availableStock : null
 
@@ -215,6 +286,7 @@ export default function ProductPage() {
       ? product.tags.split(',').map(t => t.trim()).filter(Boolean)
       : (product.tags || [])
   const reviewData = getProductReviews(product.id, product.title)
+  const titleParts = getProductTitleParts(product)
 
   return (
       <>
@@ -229,20 +301,19 @@ export default function ProductPage() {
             <span className="text-charcoal font-semibold truncate max-w-xs">{product.title}</span>
           </nav>
 
-          <div className="grid md:grid-cols-2 gap-10 mb-16">
+          <div className="grid md:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)] gap-8 lg:gap-12 mb-16">
 
             {/* Images */}
             <div className="space-y-4">
               {/* Main image with swipe */}
-              <div className="relative bg-white rounded-3xl overflow-hidden shadow-sm border border-gray-100"
-                   style={{paddingBottom:'100%'}}
+                <div className="relative bg-cream rounded-3xl overflow-hidden shadow-sm border border-gray-100 aspect-[4/5] md:aspect-[5/6]"
                    onTouchStart={e => setTouchStart(e.touches[0].clientX)}
                    onTouchEnd={handleSwipe}>
-                <div className={'absolute inset-0 flex items-center justify-center p-4 overflow-hidden ' + (zoomed ? 'cursor-zoom-out' : 'cursor-zoom-in')}
+                <div className={'absolute inset-0 flex items-center justify-center overflow-hidden ' + (zoomed ? 'cursor-zoom-out' : 'cursor-zoom-in')}
                      onClick={() => setZoomed(!zoomed)}>
                   {product.images?.length > 0 ? (
                       <img src={mainImage} alt={product.title}
-                           className={'w-full h-full object-contain mix-blend-multiply transition-transform duration-300 ' + (zoomed ? 'scale-150' : '')} />
+                       className={'w-full h-full object-cover transition-transform duration-300 ' + (zoomed ? 'scale-125' : '')} />
                   ) : (
                       <span className="text-8xl">👕</span>
                   )}
@@ -279,7 +350,7 @@ export default function ProductPage() {
                         <button key={i} onClick={() => setActiveImg(i)}
                                 className={'w-16 h-16 rounded-2xl overflow-hidden border-2 transition-all ' + (activeImg === i ? 'border-coral scale-105' : 'border-gray-100 hover:border-coral/40')}>
                           <img src={img.src} alt={product.title + ' ' + (i+1)}
-                               className="w-full h-full object-contain mix-blend-multiply p-1" />
+                               className="w-full h-full object-cover" />
                         </button>
                     ))}
                   </div>
@@ -291,23 +362,26 @@ export default function ProductPage() {
 
               {/* Badges */}
               <div className="flex flex-wrap gap-2 mb-4">
-                <span className="bg-coral text-white text-xs px-3 py-1 rounded-full font-bold">{discountPct}% OFF</span>
+                <span className="bg-coral text-white text-xs px-3 py-1 rounded-full font-semibold">{discountPct}% OFF</span>
+                {titleParts.badges.map((badge) => (
+                    <span key={badge} className="bg-cream text-charcoal text-xs px-3 py-1 rounded-full font-semibold border border-gray-100">{badge}</span>
+                ))}
                 {product.product_type && (
                     <span className="bg-skyblue/30 text-charcoal text-xs px-3 py-1 rounded-full font-semibold">{product.product_type}</span>
                 )}
               </div>
 
-              <h1 className="font-display text-3xl md:text-4xl text-charcoal leading-tight mb-2">{product.title}</h1>
+              <h1 className="font-display text-2xl md:text-3xl text-charcoal leading-tight mb-3">{titleParts.title}</h1>
 
               {/* Views + Sold */}
               <div className="flex items-center gap-4 mb-3">
                 {views > 0 && (
                     <p className="text-xs text-gray-400 flex items-center gap-1">
-                      👁️ <span className="font-semibold">{(views + 234).toLocaleString()}</span> viewed
+                      <ProductInfoIcon type="eye" className="w-3.5 h-3.5" /> <span className="font-semibold">{(views + 234).toLocaleString()}</span> viewed
                     </p>
                 )}
                 <p className="text-xs text-coral flex items-center gap-1">
-                  🔥 <span className="font-semibold">{((product.id % 89) + 12)}</span> sold this week
+                  <ProductInfoIcon type="flame" className="w-3.5 h-3.5" /> <span className="font-semibold">{((product.id % 89) + 12)}</span> sold this week
                 </p>
               </div>
 
@@ -322,18 +396,18 @@ export default function ProductPage() {
 
               {/* Price */}
               <div className="flex items-center gap-3 mb-4 flex-wrap">
-                <span className="font-display text-3xl text-coral">PKR {price.toLocaleString()}</span>
-                <span className="font-display text-xl text-gray-400 line-through">PKR {fakeOriginal.toLocaleString()}</span>
-                <span className="bg-coral/10 text-coral text-sm px-3 py-1 rounded-full font-bold">
-                Save PKR {(fakeOriginal - price).toLocaleString()}
+                <span className="font-display text-3xl text-coral">PKR {formatRupees(displayPrice)}</span>
+                <span className="font-semibold text-lg text-gray-400 line-through">PKR {formatRupees(fakeOriginal)}</span>
+                <span className="bg-coral/10 text-coral text-sm px-3 py-1 rounded-full font-semibold">
+                Save PKR {formatRupees(saveAmount)}
               </span>
               </div>
 
               {/* Low stock */}
               {lowStock && (
                   <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 mb-4">
-                    <span className="text-orange-500 text-lg">🔥</span>
-                    <p className="text-orange-600 font-bold text-sm">Only {lowStock} left in stock — order soon!</p>
+                    <ProductInfoIcon type="flame" className="w-4 h-4 text-orange-500" />
+                    <p className="text-orange-600 font-semibold text-sm">Only {lowStock} left in stock — order soon!</p>
                   </div>
               )}
 
@@ -360,15 +434,15 @@ export default function ProductPage() {
               {/* Shipping info */}
               <div className="bg-cream rounded-2xl p-4 mb-6 space-y-2">
                 <div className="flex items-center gap-2 text-sm">
-                  <span>🚚</span>
+                  <ProductInfoIcon type="truck" className="w-4 h-4 text-coral" />
                   <span className="text-gray-600">Flat shipping <strong className="text-charcoal">PKR 250</strong> across Pakistan</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  <span>💵</span>
+                  <ProductInfoIcon type="cash" className="w-4 h-4 text-coral" />
                   <span className="text-gray-600"><strong className="text-charcoal">Cash on Delivery</strong> available</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
-                  <span>📦</span>
+                  <ProductInfoIcon type="package" className="w-4 h-4 text-coral" />
                   <span className="text-gray-600">Delivery in <strong className="text-charcoal">3-5 business days</strong></span>
                 </div>
               </div>
@@ -376,7 +450,7 @@ export default function ProductPage() {
               {/* Buttons */}
               <div className="flex gap-3 mb-4">
                 <button onClick={handleAddToCart} disabled={isSoldOut || isMaxed}
-                        className={'flex-1 py-4 rounded-2xl font-display text-base border-2 transition-all ' +
+                    className={'flex-1 py-4 rounded-2xl font-semibold text-base border-2 transition-all ' +
                             (isSoldOut ? 'border-gray-200 text-gray-300 cursor-not-allowed'
                                 : isMaxed ? 'border-orange-200 text-orange-300 cursor-not-allowed'
                                     : added ? 'border-mint bg-mint text-white'
@@ -384,15 +458,15 @@ export default function ProductPage() {
                   {isSoldOut ? 'Sold Out' : isMaxed ? 'Max Qty Reached' : added ? '✓ Added!' : '+ Add to Cart'}
                 </button>
                 <button onClick={() => !isSoldOut && setShowCheckout(true)} disabled={isSoldOut}
-                        className={'flex-1 py-4 rounded-2xl font-display text-base transition-all ' +
+                        className={'flex-1 py-4 rounded-2xl font-semibold text-base transition-all ' +
                             (isSoldOut ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-coral text-white hover:bg-opacity-90 hover:scale-[1.02]')}>
                   Buy Now
                 </button>
               </div>
 
               <button onClick={() => setShowSizeChart(true)}
-                      className="text-center text-sm text-coral hover:underline mb-4 block w-full">
-                📏 View Size Chart
+                      className="text-center text-sm text-coral hover:underline mb-4 inline-flex items-center justify-center gap-1.5 w-full">
+                <ProductInfoIcon type="ruler" className="w-4 h-4" /> View Size Chart
               </button>
               <SizeRecommender />
 
