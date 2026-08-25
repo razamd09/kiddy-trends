@@ -92,6 +92,7 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
                     {[
                         { label: 'Manage Orders',   href: '/admin/orders',     icon: '📦', color: 'bg-coral text-white' },
+                        { label: 'Product Management', href: '/admin/product-management', icon: 'P', color: 'bg-mint text-charcoal' },
                         { label: 'Manage Products', href: '/admin/products',   icon: '👕', color: 'bg-charcoal text-white' },
                         { label: 'Employees',       href: '/admin/employees',  icon: '👥', color: 'bg-skyblue text-white' },
                         { label: 'Customers',       href: '/admin/customers',  icon: '📱', color: 'bg-emerald-500 text-white' },

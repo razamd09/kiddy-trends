@@ -5,8 +5,12 @@ import { usePathname } from 'next/navigation'
 
 const moduleLinks = [
   { href: '/admin/dashboard', label: 'Dashboard' },
+  { href: '/admin/product-management', label: 'Product Management' },
   { href: '/admin/orders', label: 'Orders' },
   { href: '/admin/products', label: 'Products' },
+  { href: '/admin/product-categories', label: 'Categories' },
+  { href: '/admin/product-versions', label: 'Versions' },
+  { href: '/admin/product-types', label: 'Types' },
   { href: '/admin/collections', label: 'Collections' },
   { href: '/admin/customers', label: 'Customers' },
   { href: '/admin/employees', label: 'Employees' },
