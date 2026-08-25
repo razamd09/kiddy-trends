@@ -1,7 +1,12 @@
 'use client'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Snowfall from './Snowfall'
 import AnimatedLogo from './AnimatedLogo'
+
+const ONE_DAY_PROMO_IMAGE = '/ChatGPT%20Image%20Aug%2026%2C%202026%2C%2012_10_38%20AM.png'
+const ONE_DAY_PROMO_START = new Date('2026-08-26T00:00:00+05:00').getTime()
+const ONE_DAY_PROMO_END = new Date('2026-08-26T23:59:59+05:00').getTime()
 
 function SnowflakeIcon() {
   return (
@@ -15,6 +20,35 @@ function SnowflakeIcon() {
 // (Previously a 2-slide carousel with an Independence Day promo slide,
 // removed since that offer has ended.)
 export default function HomeHeroSlider() {
+  const [showOneDayPromo, setShowOneDayPromo] = useState(false)
+
+  useEffect(() => {
+    function updatePromoVisibility() {
+      const now = Date.now()
+      setShowOneDayPromo(now >= ONE_DAY_PROMO_START && now <= ONE_DAY_PROMO_END)
+    }
+
+    updatePromoVisibility()
+    const timer = window.setInterval(updatePromoVisibility, 60 * 1000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  if (showOneDayPromo) {
+    return (
+      <section className="relative overflow-hidden bg-[#013f2a]">
+        <Link href="/collections" className="block" aria-label="Shop Milad-un-Nabi free shipping offer">
+          <picture>
+            <img
+              src={ONE_DAY_PROMO_IMAGE}
+              alt="Kiddy Trends Milad-un-Nabi 0% shipping on every order, valid till 11:59 PM tonight"
+              className="w-full min-h-[420px] object-cover object-center sm:min-h-[520px] lg:min-h-[640px]"
+            />
+          </picture>
+        </Link>
+      </section>
+    )
+  }
+
   return (
     <section
       className="relative overflow-hidden"
