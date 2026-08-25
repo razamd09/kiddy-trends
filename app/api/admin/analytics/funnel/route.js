@@ -38,6 +38,10 @@ function uniqueSessionCount(list, eventName) {
   ).size
 }
 
+function uniqueAnySessionCount(list) {
+  return new Set(list.map((item) => item.session_id).filter(Boolean)).size
+}
+
 function emptyFunnelPayload(days, since) {
   return {
     success: true,
@@ -98,7 +102,8 @@ export async function GET(request) {
 
     const list = events || []
 
-    const uniqueLandingSessions = uniqueSessionCount(list, 'landing')
+    const uniqueLandingSessionsRaw = uniqueSessionCount(list, 'landing')
+    const uniqueLandingSessions = Math.max(uniqueLandingSessionsRaw, uniqueAnySessionCount(list))
     const productViews = uniqueSessionCount(list, 'product_view')
     const addToCart = uniqueSessionCount(list, 'add_to_cart')
     const checkoutStarted = uniqueSessionCount(list, 'checkout_started')

@@ -7,7 +7,7 @@ import { useCart } from '../../../context/CartContext'
 import CheckoutModal from '../../../components/CheckoutModal'
 import RecentlyViewed from '../../../components/RecentlyViewed'
 import SizeRecommender from '../../../components/SizeRecommender'
-import { trackEvent } from '../../../lib/analyticsClient'
+import { getAnalyticsSessionId, trackEvent } from '../../../lib/analyticsClient'
 
 const girlReviewers = [
   { name: 'Ayesha K.',   city: 'Lahore',      review: 'Love this product! The fabric is so soft and my daughter absolutely adores it. Will definitely order again!' },
@@ -128,7 +128,11 @@ export default function ProductPage() {
     fetch('/api/products/views', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ product_id: product._id || product.id })
+      body:    JSON.stringify({
+        product_id: product._id || product.id,
+        session_id: getAnalyticsSessionId(),
+        path: typeof window !== 'undefined' ? window.location.pathname : '/products',
+      })
     }).then(r => r.json()).then(d => setViews(d.views)).catch(() => {})
 
     trackEvent('product_view', {

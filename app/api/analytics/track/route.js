@@ -1,9 +1,16 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const serviceKey = process.env.SUPABASE_SERVICE_KEY
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+const supabaseService = supabaseUrl && serviceKey
+  ? createClient(supabaseUrl, serviceKey)
+  : null
+
+const supabaseAnon = supabaseUrl && anonKey
+  ? createClient(supabaseUrl, anonKey)
+  : null
 
 const ALLOWED_EVENTS = new Set([
   'landing',
@@ -17,6 +24,32 @@ const ALLOWED_EVENTS = new Set([
 function sanitizeText(value, maxLen = 200) {
   const text = String(value || '').trim()
   return text.slice(0, maxLen)
+}
+
+async function insertAnalyticsEvent(payload) {
+  const errors = []
+
+  if (supabaseService) {
+    const { error } = await supabaseService
+      .from('website_analytics_events')
+      .insert([payload])
+    if (!error) return null
+    errors.push('service: ' + error.message)
+  }
+
+  if (supabaseAnon) {
+    const { error } = await supabaseAnon
+      .from('website_analytics_events')
+      .insert([payload])
+    if (!error) return null
+    errors.push('anon: ' + error.message)
+  }
+
+  if (!supabaseService && !supabaseAnon) {
+    errors.push('missing supabase client envs')
+  }
+
+  return errors.join(' | ')
 }
 
 export async function POST(request) {
@@ -43,12 +76,9 @@ export async function POST(request) {
       metadata: body?.metadata && typeof body.metadata === 'object' ? body.metadata : {},
     }
 
-    const { error } = await supabase
-      .from('website_analytics_events')
-      .insert([payload])
-
-    if (error) {
-      return Response.json({ success: false, error: error.message }, { status: 500 })
+    const insertError = await insertAnalyticsEvent(payload)
+    if (insertError) {
+      return Response.json({ success: false, error: insertError }, { status: 500 })
     }
 
     return Response.json({ success: true })
