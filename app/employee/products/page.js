@@ -52,14 +52,7 @@ export default function EmployeeProducts() {
         product_version: '',
         status: '',
     })
-    const [importFile, setImportFile] = useState(null)
-    const [importing, setImporting] = useState(false)
-    const [importSummary, setImportSummary] = useState(null)
     const [loadError, setLoadError] = useState('')
-    const [syncing, setSyncing] = useState(false)
-    const [syncResult, setSyncResult] = useState(null)
-    const [cdnStatus, setCdnStatus] = useState(null)
-    const [loadingCdnStatus, setLoadingCdnStatus] = useState(false)
     const [form, setForm] = useState({
         title: '', description: '', price: '', compare_price: '',
         category: '', product_type: '', tags: '', stock: '',
@@ -141,70 +134,6 @@ export default function EmployeeProducts() {
         }
 
         return []
-    }
-
-    function parseCsvText(text) {
-        const rows = []
-        let row = []
-        let value = ''
-        let inQuotes = false
-
-        for (let i = 0; i < text.length; i++) {
-            const ch = text[i]
-            const next = text[i + 1]
-
-            if (ch === '"') {
-                if (inQuotes && next === '"') {
-                    value += '"'
-                    i++
-                } else {
-                    inQuotes = !inQuotes
-                }
-                continue
-            }
-
-            if (ch === ',' && !inQuotes) {
-                row.push(value)
-                value = ''
-                continue
-            }
-
-            if ((ch === '\n' || ch === '\r') && !inQuotes) {
-                if (ch === '\r' && next === '\n') i++
-                row.push(value)
-                rows.push(row)
-                row = []
-                value = ''
-                continue
-            }
-
-            value += ch
-        }
-
-        if (value.length > 0 || row.length > 0) {
-            row.push(value)
-            rows.push(row)
-        }
-
-        if (rows.length === 0) return []
-        const headers = rows[0].map(h => String(h || '').trim())
-        const dataRows = rows.slice(1).filter(r => r.some(c => String(c || '').trim() !== ''))
-
-        return dataRows.map(r => {
-            const obj = {}
-            for (let i = 0; i < headers.length; i++) {
-                obj[headers[i]] = r[i] ?? ''
-            }
-            return obj
-        })
-    }
-
-    function chunkArray(values, chunkSize) {
-        const chunks = []
-        for (let i = 0; i < values.length; i += chunkSize) {
-            chunks.push(values.slice(i, i + chunkSize))
-        }
-        return chunks
     }
 
     async function readApiJson(res) {
@@ -698,128 +627,6 @@ export default function EmployeeProducts() {
         setRecentBgRemoving(false)
     }
 
-    async function handleImportCsv() {
-        if (!importFile) {
-            setImportSummary({ error: 'Please select a CSV file first' })
-            return
-        }
-
-        setImporting(true)
-        setImportSummary(null)
-        const token = localStorage.getItem('admin_token') || ''
-        try {
-            if (importFile.size >= 0) {
-                const csvText = await importFile.text()
-                const parsedRows = parseCsvText(csvText)
-                if (parsedRows.length === 0) {
-                    setImportSummary({ error: 'CSV is empty or invalid' })
-                    setImporting(false)
-                    return
-                }
-
-                const chunks = chunkArray(parsedRows, 25)
-                const aggregate = {
-                    totalRows: parsedRows.length,
-                    validProducts: 0,
-                    inserted: 0,
-                    updated: 0,
-                    failed: 0,
-                    errors: [],
-                }
-
-                for (const chunk of chunks) {
-                    const chunkRes = await fetch('/api/admin/products/import/chunk', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'x-admin-token': token || ''
-                        },
-                        body: JSON.stringify({ rows: chunk }),
-                    })
-
-                    const chunkData = await readApiJson(chunkRes)
-
-                    if (!chunkRes.ok || !chunkData.success) {
-                        setImportSummary({ error: chunkData.error || ('Chunk import failed (' + chunkRes.status + ')') })
-                        setImporting(false)
-                        return
-                    }
-
-                    const s = chunkData.summary || {}
-                    aggregate.validProducts += s.validProducts || 0
-                    aggregate.inserted += s.inserted || 0
-                    aggregate.updated += s.updated || 0
-                    aggregate.failed += s.failed || 0
-                    if (Array.isArray(s.errors) && s.errors.length > 0) {
-                        aggregate.errors.push(...s.errors.slice(0, 20))
-                    }
-                }
-
-                setImportSummary(aggregate)
-                setImportFile(null)
-                setPage(1)
-                fetchProducts()
-                setImporting(false)
-                return
-            }
-
-            const formData = new FormData()
-            formData.append('file', importFile)
-
-            const res = await fetch('/api/admin/products/import', {
-                method: 'POST',
-                headers: { 'x-admin-token': token || '' },
-                body: formData,
-            })
-            const data = await readApiJson(res)
-            if (!res.ok || !data.success) {
-                setImportSummary({ error: data.error || ('Import failed (' + res.status + ')') })
-            } else {
-                setImportSummary(data.summary)
-                setImportFile(null)
-                setPage(1)
-                fetchProducts()
-            }
-        } catch (err) {
-            setImportSummary({ error: err.message || 'Import failed' })
-        }
-        setImporting(false)
-    }
-
-    async function handleSyncImages() {
-        setSyncing(true)
-        setSyncResult(null)
-        const token = localStorage.getItem('admin_token') || ''
-        try {
-            const res = await fetch('/api/admin/sync-images', {
-                method: 'POST',
-                headers: { 'x-admin-token': token || '' }
-            })
-            const data = await readApiJson(res)
-            if (!res.ok || !data.success) {
-                setSyncResult({ error: data.error || 'Sync failed' })
-            } else {
-                setSyncResult(data.results)
-                fetchProducts()
-                fetchCdnStatus()
-            }
-        } catch (err) {
-            setSyncResult({ error: err.message || 'Sync failed' })
-        }
-        setSyncing(false)
-    }
-
-    async function fetchCdnStatus() {
-        setLoadingCdnStatus(true)
-        const token = localStorage.getItem('admin_token') || ''
-        try {
-            const res = await fetch('/api/admin/cdn-status', { headers: { 'x-admin-token': token || '' } })
-            const data = await readApiJson(res)
-            if (data.success) setCdnStatus(data)
-        } catch {}
-        setLoadingCdnStatus(false)
-    }
-
     async function handleImageUpload(e) {
         const files = e.target.files
         if (!files) return
@@ -1032,135 +839,7 @@ export default function EmployeeProducts() {
                     <button onClick={logout} className="text-sm text-gray-400 hover:text-coral">Logout →</button>
                 </div>
             </div>
-
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {!showForm && (
-                    <div className="bg-white rounded-2xl p-4 shadow-sm mb-6 border border-gray-100">
-                        <div className="flex flex-col md:flex-row md:items-end gap-3">
-                            <div className="flex-1">
-                                <label className="block font-semibold text-sm text-charcoal mb-1">Import Shopify CSV</label>
-                                <input
-                                    type="file"
-                                    accept=".csv,text/csv"
-                                    onChange={e => {
-                                        setImportSummary(null)
-                                        setImportFile(e.target.files?.[0] || null)
-                                    }}
-                                    className="w-full px-3 py-2 rounded-xl border-2 border-gray-100 text-sm"
-                                />
-                                <p className="text-xs text-gray-400 mt-1">Upload full Shopify product export CSV. Existing handles are updated; new ones are created.</p>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={handleImportCsv}
-                                disabled={importing || !importFile}
-                                className="px-5 py-2.5 bg-charcoal text-white font-display text-sm rounded-xl hover:bg-coral disabled:opacity-50"
-                            >
-                                {importing ? 'Importing...' : 'Import CSV'}
-                            </button>
-                        </div>
-
-                        {importSummary?.error && (
-                            <p className="text-sm text-red-500 mt-3">{importSummary.error}</p>
-                        )}
-                        {importSummary && !importSummary.error && (
-                            <div className="mt-3 text-xs text-gray-600 bg-cream rounded-xl p-3">
-                                <span className="font-semibold text-charcoal">Rows:</span> {importSummary.totalRows} ·{' '}
-                                <span className="font-semibold text-charcoal">Valid:</span> {importSummary.validProducts} ·{' '}
-                                <span className="font-semibold text-green-600">Inserted:</span> {importSummary.inserted} ·{' '}
-                                <span className="font-semibold text-blue-600">Updated:</span> {importSummary.updated} ·{' '}
-                                <span className="font-semibold text-red-500">Failed:</span> {importSummary.failed}
-                                {importSummary.errors?.length > 0 && (
-                                    <div className="mt-2 space-y-1 text-red-500">
-                                        {importSummary.errors.slice(0, 5).map((e, i) => (
-                                            <p key={i}>• {e.handle}: {e.error}</p>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                        
-                        <div className="mt-4 border-t pt-4">
-                            <h3 className="font-semibold text-sm text-charcoal mb-3">🖼️ Image CDN Sync</h3>
-                            <p className="text-xs text-gray-500 mb-3">Migrate all Shopify images to Supabase CDN for faster loading</p>
-
-                            {/* CDN Status Card */}
-                            {cdnStatus && (
-                                <div className="mb-3 bg-cream rounded-xl p-3 text-xs">
-                                    <div className="flex items-center gap-2 mb-2">
-                                        <span className="font-bold text-charcoal text-sm">CDN Status</span>
-                                        <span className={`px-2 py-0.5 rounded-full font-bold ${cdnStatus.stats.syncedPercent === 100 ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                                            {cdnStatus.stats.syncedPercent}% synced
-                                        </span>
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <div className="bg-white rounded-lg p-2 text-center">
-                                            <p className="text-lg font-bold text-charcoal">{cdnStatus.stats.totalProducts}</p>
-                                            <p className="text-gray-500">Products</p>
-                                        </div>
-                                        <div className="bg-white rounded-lg p-2 text-center">
-                                            <p className="text-lg font-bold text-green-600">{cdnStatus.stats.supabaseImages}</p>
-                                            <p className="text-gray-500">On CDN ✅</p>
-                                        </div>
-                                        <div className="bg-white rounded-lg p-2 text-center">
-                                            <p className="text-lg font-bold text-orange-500">{cdnStatus.stats.shopifyImages}</p>
-                                            <p className="text-gray-500">Pending ⏳</p>
-                                        </div>
-                                    </div>
-                                    {cdnStatus.stats.noImages > 0 && (
-                                        <p className="mt-2 text-gray-400">{cdnStatus.stats.noImages} products have no images</p>
-                                    )}
-                                    {cdnStatus.stats.pendingSync > 0 && cdnStatus.pendingProducts?.length > 0 && (
-                                        <div className="mt-2">
-                                            <p className="font-semibold text-orange-600 mb-1">Still on Shopify CDN:</p>
-                                            {cdnStatus.pendingProducts.slice(0, 5).map((p, i) => (
-                                                <p key={i} className="text-gray-500 truncate">• {p.title}</p>
-                                            ))}
-                                            {cdnStatus.stats.pendingSync > 5 && (
-                                                <p className="text-gray-400">...and {cdnStatus.stats.pendingSync - 5} more</p>
-                                            )}
-                                        </div>
-                                    )}
-                                    {cdnStatus.stats.syncedPercent === 100 && (
-                                        <p className="mt-2 text-green-600 font-semibold">✅ All images are on your CDN!</p>
-                                    )}
-                                </div>
-                            )}
-
-                            {syncResult && (
-                                <div className="mb-3 text-xs text-gray-600 bg-cream rounded-xl p-3">
-                                    {syncResult.error ? (
-                                        <p className="text-red-500 font-semibold">{syncResult.error}</p>
-                                    ) : (
-                                        <>
-                                            <span className="font-semibold text-charcoal">Last Sync:</span> {syncResult.processed} migrated · {syncResult.failed} failed · {syncResult.skipped} skipped
-                                        </>
-                                    )}
-                                </div>
-                            )}
-
-                            <div className="flex gap-2 flex-wrap">
-                                <button
-                                    type="button"
-                                    onClick={fetchCdnStatus}
-                                    disabled={loadingCdnStatus}
-                                    className="px-4 py-2.5 bg-blue-500 text-white font-display text-sm rounded-xl hover:bg-blue-600 disabled:opacity-50"
-                                >
-                                    {loadingCdnStatus ? 'Checking...' : '📊 Check CDN Status'}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleSyncImages}
-                                    disabled={syncing}
-                                    className="px-4 py-2.5 bg-purple-600 text-white font-display text-sm rounded-xl hover:bg-purple-700 disabled:opacity-50"
-                                >
-                                    {syncing ? 'Syncing Images...' : 'Sync All Images to CDN'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
                 {showForm ? (
                     <div className="bg-white rounded-2xl p-6 shadow-sm">
                         <h2 className="font-display text-xl text-charcoal mb-6">
@@ -1459,7 +1138,7 @@ export default function EmployeeProducts() {
                                         <input type="file" multiple accept="image/*" onChange={handleImageUpload} className="hidden" />
                                     </label>
                                 </div>
-                                <p className="text-xs text-gray-400">First image is the main/thumbnail · Use Edit Image for larger Shopify-style controls</p>
+                                <p className="text-xs text-gray-400">First image is the main/thumbnail · Use Edit Image for larger image controls</p>
                             </div>
 
                             <div className="flex gap-3 pt-2">

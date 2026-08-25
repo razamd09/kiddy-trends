@@ -47,7 +47,7 @@ export default function ProductCard({ product }) {
   const lowStock     = availableStock > 0 && availableStock <= 3 ? availableStock : null
   const discountPct  = getFakeDiscount(product)
 
-  // If no compare price set by Shopify, generate fake original price
+  // If no compare price is set, generate a display original price.
   const hasRealSale    = comparePrice > price
   const fakeOriginal   = hasRealSale ? comparePrice : Math.round(price * (1 + discountPct / 100) / 100) * 100
   const displayOriginal = fakeOriginal
