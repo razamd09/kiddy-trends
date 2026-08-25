@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import ProductCard from '../../components/ProductCard'
-import { compareNewestNewArrivalsFirst, isNewArrivalsVersion } from '../../lib/newArrivals'
+import { isNewArrivalsVersion } from '../../lib/newArrivals'
 
 const categories = [
   {
@@ -315,15 +315,6 @@ export default function Collections() {
   const subFilters   = activeCatObj?.subFilters || []
   const showGenderFilter = ['kids', 'toddler', 'tweens'].includes(activeCat)
   const isSeasonDealSort = sort === 'winter_deals' || sort === 'summer_deals'
-  const hasActiveFilters = Boolean(
-    querySeason ||
-    activeCat !== 'all' ||
-    activeSub ||
-    activeGender ||
-    queryGenders.length > 0 ||
-    queryAges.length > 0 ||
-    queryTitle
-  )
 
   let filtered = products
 
@@ -355,13 +346,7 @@ export default function Collections() {
   }
 
   if (sort === 'new') {
-    if (hasActiveFilters) {
-      filtered = [...filtered].sort((a, b) => getCreatedAtValue(b) - getCreatedAtValue(a))
-    } else {
-      filtered = filtered
-        .filter((p) => isNewArrivalsVersion(p?.product_version))
-        .sort(compareNewestNewArrivalsFirst)
-    }
+    filtered = [...filtered].sort((a, b) => getCreatedAtValue(b) - getCreatedAtValue(a))
   } else if (queryGenders.length > 0) {
     // For Boys/Girls menu filters, prioritize latest products from DB strictly by created_at.
     filtered = [...filtered].sort((a, b) => getCreatedAtValue(b) - getCreatedAtValue(a))
