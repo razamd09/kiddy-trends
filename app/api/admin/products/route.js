@@ -183,6 +183,19 @@ function validateRequiredProductFields(payload) {
     return null
 }
 
+function validatePartialProductFields(payload) {
+    if (payload?.product_type !== undefined && !String(payload.product_type || '').trim()) {
+        return 'Product Type cannot be empty'
+    }
+    if (payload?.product_version !== undefined && !String(payload.product_version || '').trim()) {
+        return 'Product Version cannot be empty'
+    }
+    if (payload?.status !== undefined && !String(payload.status || '').trim()) {
+        return 'Status cannot be empty'
+    }
+    return null
+}
+
 function normalizeProductSeasonId(value) {
     if (value === undefined) return undefined
     if (value === null || value === '') return null
@@ -396,7 +409,7 @@ export async function PUT(request) {
             return Response.json({ success: false, error: 'Product ID is required' }, { status: 400 })
         }
 
-        const validationError = validateRequiredProductFields(updates)
+        const validationError = validatePartialProductFields(updates)
         if (validationError) {
             return Response.json({ success: false, error: validationError }, { status: 400 })
         }
