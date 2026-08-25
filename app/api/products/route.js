@@ -145,6 +145,30 @@ function getTitlePriority(title) {
     return 0
 }
 
+function normalizeProductVersion(value) {
+    return String(value || '')
+        .toLowerCase()
+        .replace(/[^a-z]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+}
+
+function normalizeSeasonValue(value) {
+    return String(value || '').trim().toLowerCase().replace(/[^a-z_]/g, '')
+}
+
+const SEASON_NAME_BY_QUERY = {
+    winter: 'Winter',
+    summer: 'Summer',
+    mid_weather: 'Mid_Weather',
+    midweather: 'Mid_Weather',
+}
+
+function getSeasonNameFromQuery(value) {
+    const normalized = normalizeSeasonValue(value)
+    return SEASON_NAME_BY_QUERY[normalized] || null
+}
+
 function transformProduct(product) {
     const rawVariants = normalizeVariants(Array.isArray(product.variants) ? product.variants : [])
     const hasRealVariants = rawVariants.some((v) => v && v.option1_value)
@@ -185,6 +209,7 @@ function transformProduct(product) {
     if (opt2Values.length > 0) options.push({ name: rawVariants[0]?.option2_name || 'Color', values: opt2Values })
 
     const imageUrls = normalizeImages(product.images).filter(url => url && url.trim())
+    const seasonName = product?.product_seasons?.name || null
 
     return {
         id: seededNumericId(product.id),
@@ -208,6 +233,7 @@ function transformProduct(product) {
         stock: product.stock || 0,
         is_active: product.is_active !== false,
         product_version: product.product_version || null,
+        product_season: seasonName,
     }
 }
 
@@ -220,6 +246,8 @@ export async function GET(request) {
         const search = (searchParams.get('search') || '').trim()
         const handle = (searchParams.get('handle') || '').trim()
         const category = (searchParams.get('category') || '').trim()
+        const seasonQuery = (searchParams.get('season') || '').trim()
+        const seasonName = getSeasonNameFromQuery(seasonQuery)
         const offset = (page - 1) * limit
 
         let data = []
@@ -236,7 +264,7 @@ export async function GET(request) {
             for (const candidate of candidates) {
                 const byHandle = await supabase
                     .from('products')
-                    .select('*', { count: 'exact' })
+                    .select('*, product_seasons(name)', { count: 'exact' })
                     .eq('is_active', true)
                     .or('source.is.null,source.neq.' + DRAFT_SOURCE)
                     .eq('shopify_handle', candidate)
@@ -251,7 +279,7 @@ export async function GET(request) {
             if (data.length === 0) {
                 const byId = await supabase
                     .from('products')
-                    .select('*', { count: 'exact' })
+                    .select('*, product_seasons(name)', { count: 'exact' })
                     .eq('is_active', true)
                     .or('source.is.null,source.neq.' + DRAFT_SOURCE)
                     .eq('id', handle)
@@ -266,7 +294,7 @@ export async function GET(request) {
                 const slugQuery = slugifyTitle(handle).replace(/-/g, ' ').trim()
                 const byTitle = await supabase
                     .from('products')
-                    .select('*', { count: 'exact' })
+                    .select('*, product_seasons(name)', { count: 'exact' })
                     .eq('is_active', true)
                     .or('source.is.null,source.neq.' + DRAFT_SOURCE)
                     .ilike('title', '%' + slugQuery + '%')
@@ -281,12 +309,13 @@ export async function GET(request) {
         } else {
             let query = supabase
                 .from('products')
-                .select('*', { count: 'exact' })
+                .select('*, product_seasons(name)', { count: 'exact' })
                 .eq('is_active', true)
                 .or('source.is.null,source.neq.' + DRAFT_SOURCE)
                 .order('created_at', { ascending: false })
 
             if (category) query = query.eq('category', category)
+            if (seasonName) query = query.eq('product_seasons.name', seasonName)
             if (search) {
                 const escaped = search.replace(/,/g, ' ')
                 query = query.or(`title.ilike.%${escaped}%,product_type.ilike.%${escaped}%`)
@@ -300,12 +329,13 @@ export async function GET(request) {
             if (error && /created_at/i.test(error.message || '')) {
                 let fallback = supabase
                     .from('products')
-                    .select('*', { count: 'exact' })
+                    .select('*, product_seasons(name)', { count: 'exact' })
                     .eq('is_active', true)
                     .or('source.is.null,source.neq.' + DRAFT_SOURCE)
                     .order('id', { ascending: false })
 
                 if (category) fallback = fallback.eq('category', category)
+                if (seasonName) fallback = fallback.eq('product_seasons.name', seasonName)
                 if (search) {
                     const escaped = search.replace(/,/g, ' ')
                     fallback = fallback.or(`title.ilike.%${escaped}%,product_type.ilike.%${escaped}%`)
@@ -342,8 +372,8 @@ export async function GET(request) {
             .map(transformProduct)
             .sort((a, b) => {
                 function versionPriority(p) {
-                    const v = String(p?.product_version || '').toLowerCase()
-                    return v === 'new arrivals' ? 2 : 0
+                    const v = normalizeProductVersion(p?.product_version)
+                    return v.includes('new') && v.includes('arrival') ? 2 : 0
                 }
                 const aVer = versionPriority(a)
                 const bVer = versionPriority(b)

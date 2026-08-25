@@ -15,13 +15,13 @@ const links = [
 ]
 
 const menuLinks = [
-  { href: '/collections?title=winter', label: 'Winter Arrivals 2026' },
+  { href: '/collections?season=Winter', label: 'Winter Arrivals 2026' },
   { href: '/collections?genders=Boys', label: 'Boys' },
   { href: '/collections?genders=Girls', label: 'Girls' },
   { href: '/collections?cat=newborn', label: 'Infants' },
   { href: '/collections?cat=accessories', label: 'Accessories' },
   { href: '/collections?cat=bedding', label: 'Bedding' },
-  { href: '/collections?title=summer', label: 'Summer Clearance Sale' },
+  { href: '/collections?season=Summer', label: 'Summer Clearance Sale' },
 ]
 
 export default function Navbar() {

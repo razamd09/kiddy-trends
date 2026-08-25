@@ -63,10 +63,12 @@ export default function Home() {
   }, [])
 
   const visibleProducts = useMemo(() => {
-    const matchesWinterTitle = (product) => String(product.title || '').toLowerCase().includes('winter')
+    const isWinterSeason = (product) => String(product?.product_season || '') === 'Winter'
 
     if (activeView === 'winter-arrivals') {
-      return allProducts.filter(matchesWinterTitle)
+      return allProducts
+        .filter(isWinterSeason)
+        .sort((a, b) => new Date(b?.created_at || 0).getTime() - new Date(a?.created_at || 0).getTime())
     }
 
     const prioritizedNewArrivals = allProducts
@@ -94,7 +96,7 @@ export default function Home() {
               <h2 className="font-display text-3xl md:text-5xl text-white mb-2">Shop the Winter Deals</h2>
               <p className="font-display text-4xl md:text-6xl font-extrabold text-white mb-5 leading-none">Upto 50% OFF</p>
               <Link
-                href="/collections?title=winter"
+                href="/collections?season=Winter"
                 className="inline-block bg-white text-charcoal font-display text-sm px-6 py-3 rounded-full hover:opacity-90"
               >
                 Explore collection
@@ -194,7 +196,7 @@ export default function Home() {
                 </div>
                 <div className="text-center mt-8">
                   <Link
-                    href={activeView === 'winter-arrivals' ? '/collections?search=winter' : '/collections'}
+                    href={activeView === 'winter-arrivals' ? '/collections?season=Winter' : '/collections'}
                     className="text-coral font-semibold hover:underline"
                   >
                     Show more {'->'}

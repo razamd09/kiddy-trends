@@ -44,7 +44,7 @@ export default function HomeHeroSlider() {
             </p>
             <div className="flex flex-wrap gap-4 justify-center md:justify-start">
               <Link
-                href="/collections?title=winter"
+                href="/collections?season=Winter"
                 className="rounded-full font-display text-sm px-6 py-3"
                 style={{ background: '#1f3a52', color: '#ffffff' }}
               >

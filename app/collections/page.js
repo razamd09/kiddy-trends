@@ -172,6 +172,14 @@ function normalizeSearchText(value) {
     .trim()
 }
 
+function normalizeSeasonQuery(value) {
+  const normalized = String(value || '').trim().toLowerCase().replace(/[^a-z_]/g, '')
+  if (normalized === 'winter') return 'Winter'
+  if (normalized === 'summer') return 'Summer'
+  if (normalized === 'mid_weather' || normalized === 'midweather') return 'Mid_Weather'
+  return null
+}
+
 function isOldPackProduct(product) {
   const version = normalizeProductVersion(product?.product_version)
   return version.includes('old') && version.includes('pack')
@@ -221,6 +229,7 @@ export default function Collections() {
   const [queryGenders, setQueryGenders] = useState([])
   const [queryAges, setQueryAges] = useState([])
   const [queryTitle, setQueryTitle] = useState('')
+  const [querySeason, setQuerySeason] = useState(null)
   const [sort, setSort]           = useState('new')
   const [page, setPage]           = useState(1)
   const ITEMS_PER_PAGE = 40
@@ -238,6 +247,7 @@ export default function Collections() {
       .map((x) => x.trim().toLowerCase())
       .filter((x) => x === 'boys' || x === 'girls')
     const queryTitle = (searchParams.get('title') || '').trim().toLowerCase()
+    const querySeason = normalizeSeasonQuery(searchParams.get('season'))
 
     const validCat = categories.some((c) => c.id === queryCat) ? queryCat : null
     const catId = validCat || 'all'
@@ -261,6 +271,7 @@ export default function Collections() {
     setQueryAges(queryAges)
     setQueryGenders(queryGenders)
     setQueryTitle(queryTitle)
+    setQuerySeason(querySeason)
   }, [searchParams])
 
   useEffect(() => {
@@ -323,6 +334,10 @@ export default function Collections() {
     if (queryTitle) {
       filtered = filtered.filter((p) => String(p?.title || '').toLowerCase().includes(queryTitle))
     }
+
+    if (querySeason) {
+      filtered = filtered.filter((p) => String(p?.product_season || '') === querySeason)
+    }
   }
 
   if (isSeasonDealSort) {
@@ -331,9 +346,13 @@ export default function Collections() {
   }
 
   if (sort === 'new') {
-    filtered = filtered
-      .filter((p) => isNewArrivalsVersion(p?.product_version))
-      .sort(compareNewestNewArrivalsFirst)
+    if (querySeason) {
+      filtered = [...filtered].sort((a, b) => getCreatedAtValue(b) - getCreatedAtValue(a))
+    } else {
+      filtered = filtered
+        .filter((p) => isNewArrivalsVersion(p?.product_version))
+        .sort(compareNewestNewArrivalsFirst)
+    }
   } else if (queryGenders.length > 0) {
     // For Boys/Girls menu filters, prioritize latest products from DB strictly by created_at.
     filtered = [...filtered].sort((a, b) => getCreatedAtValue(b) - getCreatedAtValue(a))
