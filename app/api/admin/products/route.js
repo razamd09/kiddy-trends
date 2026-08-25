@@ -157,7 +157,10 @@ async function resolveSignedImageUrl(url) {
 
 function getActorIdentity(request) {
     const actorId = String(request.headers.get('x-actor-id') || '').trim()
+    const actorName = String(request.headers.get('x-actor-name') || '').trim()
     const actorRole = String(request.headers.get('x-actor-role') || '').trim().toLowerCase()
+
+    if (actorName) return actorName
 
     if (actorId) {
         if (actorRole) return actorId + ' (' + actorRole + ')'

@@ -43,6 +43,7 @@ export default function AdminProducts() {
     const [categoryOptions, setCategoryOptions] = useState(DEFAULT_CATEGORY_OPTIONS)
     const [productVersionOptions, setProductVersionOptions] = useState(DEFAULT_PRODUCT_VERSION_OPTIONS)
     const [productTypeOptions, setProductTypeOptions] = useState(DEFAULT_PRODUCT_TYPE_OPTIONS)
+    const [employeeNameByCode, setEmployeeNameByCode] = useState({})
     const [bulkProcessing, setBulkProcessing] = useState(false)
     const [recentBgRemoving, setRecentBgRemoving] = useState(false)
     const [bulkEditOpen, setBulkEditOpen] = useState(false)
@@ -175,6 +176,10 @@ export default function AdminProducts() {
     }, [verified])
 
     useEffect(() => {
+        if (verified) fetchEmployeeNames()
+    }, [verified])
+
+    useEffect(() => {
         if (!verified) return
         setPage(1)
     }, [searchTerm, categoryFilter, variantFilter, sortBy, sortDir, verified])
@@ -205,6 +210,34 @@ export default function AdminProducts() {
         setCategoryOptions(categories)
         setProductVersionOptions(versions)
         setProductTypeOptions(types)
+    }
+
+    async function fetchEmployeeNames() {
+        const token = localStorage.getItem('admin_token') || ''
+        try {
+            const res = await fetch('/api/admin/employees', { headers: { 'x-admin-token': token } })
+            const data = await readApiJson(res)
+            if (!res.ok || !Array.isArray(data?.employees)) return
+
+            const nextMap = {}
+            data.employees.forEach((employee) => {
+                const name = String(employee?.name || '').trim()
+                if (!name) return
+                const employeeCode = String(employee?.employee_id || '').trim()
+                const id = String(employee?.id || '').trim()
+                if (employeeCode) nextMap[employeeCode.toLowerCase()] = name
+                if (id) nextMap[id.toLowerCase()] = name
+            })
+            setEmployeeNameByCode(nextMap)
+        } catch {}
+    }
+
+    function formatProductActor(value) {
+        const text = String(value || '').trim()
+        if (!text) return '—'
+
+        const code = text.replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase()
+        return employeeNameByCode[code] || text
     }
 
     async function fetchProducts() {
@@ -278,12 +311,15 @@ export default function AdminProducts() {
         try {
             const employee = JSON.parse(localStorage.getItem('employee') || '{}')
             const actorId = String(employee?.employee_id || employee?.id || '').trim()
+            const actorName = String(employee?.name || '').trim()
             const actorRole = String(employee?.role || (token ? 'admin' : '')).trim()
             if (actorId) headers['x-actor-id'] = actorId
+            if (actorName) headers['x-actor-name'] = actorName
             if (actorRole) headers['x-actor-role'] = actorRole
         } catch {
             if (token) {
                 headers['x-actor-id'] = 'admin'
+                headers['x-actor-name'] = 'Admin'
                 headers['x-actor-role'] = 'admin'
             }
         }
@@ -1344,7 +1380,7 @@ export default function AdminProducts() {
                                                    </td>
                                                    <td className="px-4 py-3 text-xs text-gray-500">
                                                            <div className="space-y-1">
-                                                               <p>{product.last_action_by || '—'}</p>
+                                                               <p>{formatProductActor(product.last_action_by)}</p>
                                                                <p className="text-gray-400">{product.created_at ? new Date(product.created_at).toLocaleDateString() : '—'}</p>
                                                            </div>
                                                    </td>
