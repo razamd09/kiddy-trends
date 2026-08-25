@@ -183,6 +183,13 @@ function validateRequiredProductFields(payload) {
     return null
 }
 
+function normalizeProductSeasonId(value) {
+    if (value === undefined) return undefined
+    if (value === null || value === '') return null
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? Math.trunc(parsed) : null
+}
+
 export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const page   = Math.max(parseInt(searchParams.get('page') || '1', 10), 1)
@@ -364,6 +371,7 @@ export async function POST(request) {
                     is_active:     isActive,
                     source:        'custom',
                     product_version: body.product_version || null,
+                    product_season_id: normalizeProductSeasonId(body.product_season_id),
                     shopify_handle: body.shopify_handle || null,
                     last_action_by: actorIdentity,
                     last_action_type: 'added',
@@ -441,6 +449,10 @@ export async function PUT(request) {
 
         if (updates.product_version !== undefined) {
             cleanUpdates.product_version = String(updates.product_version || '').trim()
+        }
+
+        if (updates.product_season_id !== undefined) {
+            cleanUpdates.product_season_id = normalizeProductSeasonId(updates.product_season_id)
         }
 
         if (updates.variants !== undefined) {

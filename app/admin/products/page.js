@@ -43,6 +43,7 @@ export default function AdminProducts() {
     const [categoryOptions, setCategoryOptions] = useState(DEFAULT_CATEGORY_OPTIONS)
     const [productVersionOptions, setProductVersionOptions] = useState(DEFAULT_PRODUCT_VERSION_OPTIONS)
     const [productTypeOptions, setProductTypeOptions] = useState(DEFAULT_PRODUCT_TYPE_OPTIONS)
+    const [productSeasonOptions, setProductSeasonOptions] = useState([])
     const [employeeNameByCode, setEmployeeNameByCode] = useState({})
     const [bulkProcessing, setBulkProcessing] = useState(false)
     const [recentBgRemoving, setRecentBgRemoving] = useState(false)
@@ -57,7 +58,7 @@ export default function AdminProducts() {
     const [form, setForm] = useState({
         title: '', description: '', price: '', compare_price: '',
         category: '', product_type: '', tags: '', stock: '',
-        product_version: '', status: ''
+        product_version: '', product_season_id: '', status: ''
     })
     const [formImages, setFormImages] = useState([])   // [{url, rotating}]
     const [formVariants, setFormVariants] = useState([]) // [{option1_name,option1_value,option2_name,option2_value,price,stock,sku}]
@@ -201,15 +202,28 @@ export default function AdminProducts() {
         }
     }
 
+    async function fetchSeasonOptions() {
+        const token = localStorage.getItem('admin_token') || ''
+        try {
+            const res = await fetch('/api/admin/product-seasons', { headers: { 'x-admin-token': token } })
+            const data = await readApiJson(res)
+            return res.ok && Array.isArray(data?.seasons) ? data.seasons : []
+        } catch {
+            return []
+        }
+    }
+
     async function fetchProductMetadata() {
-        const [categories, versions, types] = await Promise.all([
+        const [categories, versions, types, seasons] = await Promise.all([
             fetchMetadataOptions('/api/admin/product-categories', 'categories', DEFAULT_CATEGORY_OPTIONS),
             fetchMetadataOptions('/api/admin/product-versions', 'versions', DEFAULT_PRODUCT_VERSION_OPTIONS),
             fetchMetadataOptions('/api/admin/product-types', 'types', DEFAULT_PRODUCT_TYPE_OPTIONS),
+            fetchSeasonOptions(),
         ])
         setCategoryOptions(categories)
         setProductVersionOptions(versions)
         setProductTypeOptions(types)
+        setProductSeasonOptions(seasons)
     }
 
     async function fetchEmployeeNames() {
@@ -390,6 +404,7 @@ export default function AdminProducts() {
                 variants: Array.isArray(product.variants) ? product.variants : null,
                 shopify_handle: baseHandle ? (baseHandle + '-copy-' + Date.now()) : null,
                             product_version: product.product_version || 'Old Packs',
+                            product_season_id: product.product_season_id || null,
                             is_active: product.is_active !== false,
                         }
 
@@ -411,7 +426,7 @@ export default function AdminProducts() {
     }
 
     function resetForm() {
-        setForm({ title: '', description: '', price: '', compare_price: '', category: '', product_type: '', tags: '', stock: '', product_version: '', status: '' })
+        setForm({ title: '', description: '', price: '', compare_price: '', category: '', product_type: '', tags: '', stock: '', product_version: '', product_season_id: '', status: '' })
         setFormImages([])
         setFormVariants([])
         setEditingId(null)
@@ -451,6 +466,7 @@ export default function AdminProducts() {
             tags:          (product.tags || []).join(', '),
             stock:         product.stock         || '',
             product_version: product.product_version || '',
+            product_season_id: product.product_season_id ? String(product.product_season_id) : '',
             status: product.is_active === false ? 'draft' : 'active',
         })
         setEditingId(product.id)
@@ -461,10 +477,11 @@ export default function AdminProducts() {
         e.preventDefault()
         const productType = String(form.product_type || '').trim()
         const productVersion = String(form.product_version || '').trim()
+        const productSeasonId = String(form.product_season_id || '').trim()
         const status = String(form.status || '').trim()
 
-        if (!productType || !productVersion || !status) {
-            alert('Product Type, Product Version, and Status are required.')
+        if (!productType || !productVersion || !productSeasonId || !status) {
+            alert('Product Type, Product Version, Product Season, and Status are required.')
             return
         }
 
@@ -502,6 +519,7 @@ export default function AdminProducts() {
                 .filter((url) => typeof url === 'string' && url.trim() && !url.startsWith('blob:')),
             variants:      variants.length > 0 ? variants : null,
             product_version: productVersion,
+            product_season_id: Number(productSeasonId),
             status,
             is_active: status === 'active',
         }
@@ -900,6 +918,15 @@ export default function AdminProducts() {
                                                 className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm">
                                             <option value="">Select category</option>
                                             {categoryOptions.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block font-semibold text-xs text-charcoal mb-1">Product Season *</label>
+                                        <select required value={form.product_season_id}
+                                                onChange={e => setForm({...form, product_season_id: e.target.value})}
+                                                className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm">
+                                            <option value="">Select season</option>
+                                            {productSeasonOptions.map((season) => <option key={season.id} value={season.id}>{season.name}</option>)}
                                         </select>
                                     </div>
                                     <div>
