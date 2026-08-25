@@ -152,18 +152,6 @@ export default function SizeChart() {
         </p>
       </div>
 
-      {/* Tip banner */}
-      <div className="bg-sunny/40 rounded-2xl p-5 mb-8 flex items-start gap-3">
-        <span className="text-2xl">💡</span>
-        <div>
-          <p className="font-semibold text-charcoal">How to measure</p>
-          <p className="text-sm text-gray-600 mt-0.5">
-            Shirt: measure chest width flat (half chest). Bottom: measure waist flat (half waist).
-            Always compare to your child's actual measurements — not just their age.
-          </p>
-        </div>
-      </div>
-
       {/* Tabs */}
       <div className="flex flex-wrap gap-2 mb-7">
         {tabs.map(t => (
@@ -184,6 +172,13 @@ export default function SizeChart() {
             <p className="text-gray-600 mt-2 text-sm sm:text-base">
               Use an inches tape and compare your child&apos;s actual measurements with the chart below for the best fit.
             </p>
+            <button
+              type="button"
+              onClick={openSizeHelpModal}
+              className="mt-5 inline-block bg-coral text-white font-display px-7 py-3 rounded-full text-base sm:text-lg hover:scale-105 transition-transform shadow-md"
+            >
+              📱 Ask Us for Size Help
+            </button>
           </div>
           <div className="relative w-full overflow-hidden rounded-2xl border border-white/70 shadow-sm bg-white/60">
             <Image
@@ -239,17 +234,6 @@ export default function SizeChart() {
           <li>• If between two sizes, we recommend sizing up for room to grow.</li>
           <li>• Still unsure? WhatsApp us with your child's measurements!</li>
         </ul>
-      </div>
-
-      {/* CTA */}
-      <div className="mt-8 text-center">
-        <button
-          type="button"
-          onClick={openSizeHelpModal}
-          className="inline-block bg-coral text-white font-display px-8 py-3 rounded-full text-lg hover:scale-105 transition-transform shadow-md"
-        >
-          📱 Ask Us for Size Help
-        </button>
       </div>
 
       {isSizeHelpOpen && (
