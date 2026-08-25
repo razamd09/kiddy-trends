@@ -315,6 +315,15 @@ export default function Collections() {
   const subFilters   = activeCatObj?.subFilters || []
   const showGenderFilter = ['kids', 'toddler', 'tweens'].includes(activeCat)
   const isSeasonDealSort = sort === 'winter_deals' || sort === 'summer_deals'
+  const hasActiveFilters = Boolean(
+    querySeason ||
+    activeCat !== 'all' ||
+    activeSub ||
+    activeGender ||
+    queryGenders.length > 0 ||
+    queryAges.length > 0 ||
+    queryTitle
+  )
 
   let filtered = products
 
@@ -346,7 +355,7 @@ export default function Collections() {
   }
 
   if (sort === 'new') {
-    if (querySeason) {
+    if (hasActiveFilters) {
       filtered = [...filtered].sort((a, b) => getCreatedAtValue(b) - getCreatedAtValue(a))
     } else {
       filtered = filtered
