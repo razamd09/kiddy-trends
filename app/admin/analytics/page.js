@@ -10,6 +10,10 @@ export default function AdminAnalyticsPage() {
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
   const [setupMessage, setSetupMessage] = useState('')
+  const [selectedAction, setSelectedAction] = useState('landingWebsite')
+  const [detailsLoading, setDetailsLoading] = useState(false)
+  const [detailsError, setDetailsError] = useState('')
+  const [detailsRows, setDetailsRows] = useState([])
   const router = useRouter()
 
   useEffect(() => {
@@ -67,6 +71,33 @@ export default function AdminAnalyticsPage() {
     load()
   }, [verified, days])
 
+  useEffect(() => {
+    if (!verified || !selectedAction) return
+
+    async function loadDetails() {
+      setDetailsLoading(true)
+      setDetailsError('')
+      try {
+        const token = localStorage.getItem('admin_token') || ''
+        const res = await fetch('/api/admin/analytics/action-details?action=' + selectedAction + '&days=' + days, {
+          headers: { 'x-admin-token': token },
+          cache: 'no-store',
+        })
+        const result = await res.json().catch(() => ({}))
+        if (!res.ok || !result.success) {
+          throw new Error(result.error || 'Failed to load action details')
+        }
+        setDetailsRows(Array.isArray(result.rows) ? result.rows : [])
+      } catch (err) {
+        setDetailsRows([])
+        setDetailsError(err.message || 'Failed to load action details')
+      }
+      setDetailsLoading(false)
+    }
+
+    loadDetails()
+  }, [verified, selectedAction, days])
+
   if (!verified) {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center">
@@ -76,6 +107,13 @@ export default function AdminAnalyticsPage() {
   }
 
   const actions = data?.actions || {}
+  const actionCards = [
+    { key: 'landingWebsite', label: 'Landing on Website', value: actions.landingWebsite || 0, color: 'bg-blue-50' },
+    { key: 'productViews', label: 'Product Views', value: actions.productViews || 0, color: 'bg-mint/20' },
+    { key: 'addToCart', label: 'Add to Cart', value: actions.addToCart || 0, color: 'bg-sunny/20' },
+    { key: 'checkoutInitiated', label: 'Checkout Initiated', value: actions.checkoutInitiated || 0, color: 'bg-orange-50' },
+    { key: 'checkoutCompleted', label: 'Checkout Completed', value: actions.checkoutCompleted || 0, color: 'bg-emerald-50' },
+  ]
 
   return (
     <div className="min-h-screen bg-cream">
@@ -114,11 +152,16 @@ export default function AdminAnalyticsPage() {
         ) : (
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              <MetricCard label="Landing on Website" value={actions.landingWebsite || 0} color="bg-blue-50" />
-              <MetricCard label="Product Views" value={actions.productViews || 0} color="bg-mint/20" />
-              <MetricCard label="Add to Cart" value={actions.addToCart || 0} color="bg-sunny/20" />
-              <MetricCard label="Checkout Initiated" value={actions.checkoutInitiated || 0} color="bg-orange-50" />
-              <MetricCard label="Checkout Completed" value={actions.checkoutCompleted || 0} color="bg-emerald-50" />
+              {actionCards.map((card) => (
+                <MetricCard
+                  key={card.key}
+                  label={card.label}
+                  value={card.value}
+                  color={card.color}
+                  active={selectedAction === card.key}
+                  onClick={() => setSelectedAction(card.key)}
+                />
+              ))}
             </div>
 
             <div className="bg-white rounded-2xl p-5">
@@ -127,6 +170,54 @@ export default function AdminAnalyticsPage() {
                 Each metric is tracked independently (not as a sequence), exactly as actions happen on the website.
               </p>
             </div>
+
+            <div className="bg-white rounded-2xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-display text-lg text-charcoal">Action Details</h2>
+                <span className="text-xs text-gray-500">Selected: {actionCards.find((c) => c.key === selectedAction)?.label || '-'}</span>
+              </div>
+
+              {detailsError && (
+                <div className="mb-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-600">{detailsError}</div>
+              )}
+
+              {detailsLoading ? (
+                <p className="text-sm text-gray-500">Loading details...</p>
+              ) : detailsRows.length === 0 ? (
+                <p className="text-sm text-gray-500">No records found for selected action in this range.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs sm:text-sm">
+                    <thead>
+                      <tr className="text-left text-gray-500 border-b border-gray-100">
+                        <th className="py-2 pr-3 whitespace-nowrap">Time</th>
+                        <th className="py-2 pr-3 whitespace-nowrap">IP</th>
+                        <th className="py-2 pr-3 whitespace-nowrap">User Agent</th>
+                        <th className="py-2 pr-3 whitespace-nowrap">Path</th>
+                        <th className="py-2 pr-3 whitespace-nowrap">Referrer</th>
+                        <th className="py-2 pr-3 whitespace-nowrap">Session</th>
+                        <th className="py-2 pr-3 whitespace-nowrap">Product</th>
+                        <th className="py-2 pr-3 whitespace-nowrap">Order</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detailsRows.map((row) => (
+                        <tr key={row.id} className="border-b border-gray-50 align-top">
+                          <td className="py-2 pr-3 whitespace-nowrap text-gray-700">{formatDateTime(row.created_at)}</td>
+                          <td className="py-2 pr-3 whitespace-nowrap text-gray-700">{row.ip || '-'}</td>
+                          <td className="py-2 pr-3 text-gray-700 min-w-[280px] break-words">{row.user_agent || '-'}</td>
+                          <td className="py-2 pr-3 text-gray-700 break-words">{row.path || '-'}</td>
+                          <td className="py-2 pr-3 text-gray-700 break-words">{row.referrer || '-'}</td>
+                          <td className="py-2 pr-3 text-gray-700 break-all">{row.session_id || '-'}</td>
+                          <td className="py-2 pr-3 text-gray-700 break-all">{row.product_id || '-'}</td>
+                          <td className="py-2 pr-3 text-gray-700 break-all">{row.order_number || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>
@@ -134,11 +225,25 @@ export default function AdminAnalyticsPage() {
   )
 }
 
-function MetricCard({ label, value, color }) {
+function MetricCard({ label, value, color, active, onClick }) {
   return (
-    <div className={color + ' rounded-2xl p-4'}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={
+        color +
+        ' rounded-2xl p-4 text-left transition-all border ' +
+        (active ? 'border-coral ring-2 ring-coral/20' : 'border-transparent hover:border-coral/30')
+      }
+    >
       <p className="font-display text-2xl text-charcoal">{value}</p>
       <p className="text-xs text-gray-500 mt-1">{label}</p>
-    </div>
+    </button>
   )
+}
+
+function formatDateTime(value) {
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return '-'
+  return date.toLocaleString()
 }

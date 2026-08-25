@@ -17,7 +17,22 @@ function sanitizeText(value, maxLen = 200) {
     return String(value || '').trim().slice(0, maxLen)
 }
 
-async function writeAnalyticsProductView({ sessionId, productId, path }) {
+function buildRequestMetadata(request) {
+    const forwardedFor = request.headers.get('x-forwarded-for') || ''
+    const ip = sanitizeText(forwardedFor.split(',')[0] || request.headers.get('x-real-ip') || '', 80)
+    const userAgent = sanitizeText(request.headers.get('user-agent') || '', 300)
+    const referrer = sanitizeText(request.headers.get('referer') || '', 300)
+    const host = sanitizeText(request.headers.get('host') || '', 120)
+
+    return {
+        ip: ip || null,
+        user_agent: userAgent || null,
+        referrer: referrer || null,
+        host: host || null,
+    }
+}
+
+async function writeAnalyticsProductView({ sessionId, productId, path, requestMetadata }) {
     if (!sessionId || !productId || !supabaseService) return
     await supabaseService
         .from('website_analytics_events')
@@ -26,7 +41,10 @@ async function writeAnalyticsProductView({ sessionId, productId, path }) {
             event_name: 'product_view',
             path: sanitizeText(path, 300) || '/products',
             product_id: sanitizeText(productId, 120),
-            metadata: { source: 'products_views_api' },
+            metadata: {
+                source: 'products_views_api',
+                ...requestMetadata,
+            },
         }])
 }
 
@@ -35,12 +53,13 @@ export async function POST(request) {
     const product_id = String(body?.product_id || '')
     const sessionId = String(body?.session_id || request.headers.get('x-analytics-session') || '')
     const path = String(body?.path || '')
+    const requestMetadata = buildRequestMetadata(request)
 
     if (!product_id) {
         return Response.json({ success: false, error: 'product_id is required' }, { status: 400 })
     }
 
-    writeAnalyticsProductView({ sessionId, productId: product_id, path }).catch(() => {})
+    writeAnalyticsProductView({ sessionId, productId: product_id, path, requestMetadata }).catch(() => {})
 
     // Use upsert to increment view count
     const { data: existing } = await supabase

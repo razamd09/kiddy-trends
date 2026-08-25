@@ -53,6 +53,25 @@ function splitCustomerName(value) {
     return { firstName, lastName }
 }
 
+    function sanitizeText(value, maxLen = 200) {
+        return String(value || '').trim().slice(0, maxLen)
+    }
+
+    function buildRequestMetadata(request) {
+        const forwardedFor = request.headers.get('x-forwarded-for') || ''
+        const ip = sanitizeText(forwardedFor.split(',')[0] || request.headers.get('x-real-ip') || '', 80)
+        const userAgent = sanitizeText(request.headers.get('user-agent') || '', 300)
+        const referrer = sanitizeText(request.headers.get('referer') || '', 300)
+        const host = sanitizeText(request.headers.get('host') || '', 120)
+
+        return {
+            ip: ip || null,
+            user_agent: userAgent || null,
+            referrer: referrer || null,
+            host: host || null,
+        }
+    }
+
 async function syncCustomerSnapshot(customer) {
     const phone = normalizePhone(customer?.phone || customer?.whatsapp || '')
     if (!phone) return
@@ -345,7 +364,8 @@ export async function POST(request) {
 
         const analyticsSessionId = String(request.headers.get('x-analytics-session') || '').trim()
         if (analyticsSessionId) {
-            await supabase
+                const requestMetadata = buildRequestMetadata(request)
+                await supabase
                 .from('website_analytics_events')
                 .insert([{
                     session_id: analyticsSessionId,
@@ -355,6 +375,7 @@ export async function POST(request) {
                     metadata: {
                         total,
                         items_count: Array.isArray(cartItems) ? cartItems.length : 0,
+                            ...requestMetadata,
                     },
                 }])
         }

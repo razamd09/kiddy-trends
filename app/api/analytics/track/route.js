@@ -26,6 +26,21 @@ function sanitizeText(value, maxLen = 200) {
   return text.slice(0, maxLen)
 }
 
+function buildRequestMetadata(request) {
+  const forwardedFor = request.headers.get('x-forwarded-for') || ''
+  const ip = sanitizeText(forwardedFor.split(',')[0] || request.headers.get('x-real-ip') || '', 80)
+  const userAgent = sanitizeText(request.headers.get('user-agent') || '', 300)
+  const referrer = sanitizeText(request.headers.get('referer') || '', 300)
+  const host = sanitizeText(request.headers.get('host') || '', 120)
+
+  return {
+    ip: ip || null,
+    user_agent: userAgent || null,
+    referrer: referrer || null,
+    host: host || null,
+  }
+}
+
 async function insertAnalyticsEvent(payload) {
   const errors = []
 
@@ -55,6 +70,7 @@ async function insertAnalyticsEvent(payload) {
 export async function POST(request) {
   try {
     const body = await request.json().catch(() => ({}))
+    const requestMetadata = buildRequestMetadata(request)
 
     const event_name = sanitizeText(body?.event_name || body?.eventName, 64)
     const session_id = sanitizeText(body?.session_id || body?.sessionId, 128)
@@ -73,7 +89,10 @@ export async function POST(request) {
       path: sanitizeText(body?.path, 300) || null,
       product_id: sanitizeText(body?.product_id || body?.productId, 120) || null,
       order_number: sanitizeText(body?.order_number || body?.orderNumber, 120) || null,
-      metadata: body?.metadata && typeof body.metadata === 'object' ? body.metadata : {},
+      metadata: {
+        ...(body?.metadata && typeof body.metadata === 'object' ? body.metadata : {}),
+        ...requestMetadata,
+      },
     }
 
     const insertError = await insertAnalyticsEvent(payload)
