@@ -17,12 +17,21 @@ function sanitizeText(value, maxLen = 200) {
     return String(value || '').trim().slice(0, maxLen)
 }
 
+function firstHeader(request, keys) {
+    for (const key of keys) {
+        const value = request.headers.get(key)
+        if (value && String(value).trim()) return String(value).trim()
+    }
+    return ''
+}
+
 function buildRequestMetadata(request) {
-    const forwardedFor = request.headers.get('x-forwarded-for') || ''
-    const ip = sanitizeText(forwardedFor.split(',')[0] || request.headers.get('x-real-ip') || '', 80)
-    const userAgent = sanitizeText(request.headers.get('user-agent') || '', 300)
-    const referrer = sanitizeText(request.headers.get('referer') || '', 300)
-    const host = sanitizeText(request.headers.get('host') || '', 120)
+    const forwardedFor = firstHeader(request, ['x-forwarded-for', 'x-vercel-forwarded-for', 'cf-connecting-ip', 'true-client-ip', 'x-real-ip', 'x-client-ip'])
+    const forwardedIp = forwardedFor.includes(',') ? forwardedFor.split(',')[0] : forwardedFor
+    const ip = sanitizeText(forwardedIp, 80)
+    const userAgent = sanitizeText(firstHeader(request, ['user-agent', 'sec-ch-ua']), 300)
+    const referrer = sanitizeText(firstHeader(request, ['referer', 'referrer']), 300)
+    const host = sanitizeText(firstHeader(request, ['host', 'x-forwarded-host']), 120)
 
     return {
         ip: ip || null,
