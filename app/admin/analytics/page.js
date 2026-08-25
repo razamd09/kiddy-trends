@@ -9,6 +9,7 @@ export default function AdminAnalyticsPage() {
   const [days, setDays] = useState(30)
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
+  const [setupMessage, setSetupMessage] = useState('')
   const router = useRouter()
 
   useEffect(() => {
@@ -42,6 +43,7 @@ export default function AdminAnalyticsPage() {
     async function load() {
       setLoading(true)
       setError('')
+      setSetupMessage('')
       try {
         const token = localStorage.getItem('admin_token') || ''
         const res = await fetch('/api/admin/analytics/funnel?days=' + days, {
@@ -51,6 +53,9 @@ export default function AdminAnalyticsPage() {
         const result = await res.json().catch(() => ({}))
         if (!res.ok || !result.success) {
           throw new Error(result.error || 'Failed to load analytics')
+        }
+        if (result.setupRequired) {
+          setSetupMessage(result.setupMessage || 'Analytics storage is not initialized yet.')
         }
         setData(result)
       } catch (err) {
@@ -98,6 +103,12 @@ export default function AdminAnalyticsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {error && (
           <div className="bg-white rounded-2xl p-4 border border-red-100 text-red-500 text-sm">{error}</div>
+        )}
+
+        {setupMessage && (
+          <div className="bg-white rounded-2xl p-4 border border-amber-100 text-amber-700 text-sm">
+            {setupMessage}
+          </div>
         )}
 
         {loading ? (

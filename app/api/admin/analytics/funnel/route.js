@@ -38,6 +38,36 @@ function uniqueSessionCount(list, eventName) {
   ).size
 }
 
+function emptyFunnelPayload(days, since) {
+  return {
+    success: true,
+    days,
+    since,
+    setupRequired: true,
+    setupMessage: 'Run add_website_analytics_events_table.sql in Supabase SQL editor, then refresh this page.',
+    funnel: {
+      landingUsers: 0,
+      productView: 0,
+      addToCart: 0,
+      checkoutStarted: 0,
+      checkoutCompleted: 0,
+    },
+    dropOff: {
+      landingToView: 0,
+      viewToCart: 0,
+      cartToCheckout: 0,
+      checkoutToComplete: 0,
+    },
+    conversion: {
+      landingToViewPct: 0,
+      viewToCartPct: 0,
+      cartToCheckoutPct: 0,
+      checkoutToCompletePct: 0,
+      landingToCompletePct: 0,
+    },
+  }
+}
+
 export async function GET(request) {
   try {
     const valid = await validateAdmin(request)
@@ -53,6 +83,16 @@ export async function GET(request) {
       .gte('created_at', since)
 
     if (error) {
+      const message = String(error.message || '').toLowerCase()
+      const missingTable =
+        message.includes('could not find the table') ||
+        message.includes('relation') ||
+        message.includes('does not exist')
+
+      if (missingTable) {
+        return Response.json(emptyFunnelPayload(days, since))
+      }
+
       return Response.json({ success: false, error: error.message }, { status: 500 })
     }
 
