@@ -231,10 +231,10 @@ export default function EmployeeDashboard() {
                         />
                         <ModuleCard
                             enabled={true}
-                            title="Manage Products"
-                            icon="👕"
-                            href="/employee/products"
-                            subtitle="Update stock and pricing"
+                            title="Product Management"
+                            icon="P"
+                            href="/employee/product-management"
+                            subtitle="Products, categories, versions, and types"
                         />
                         <ModuleCard
                             enabled={true}

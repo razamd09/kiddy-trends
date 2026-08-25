@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-export default function ProductMetadataManager({ title, subtitle, apiPath, responseKey, singularLabel }) {
+export default function ProductMetadataManager({ title, subtitle, apiPath, responseKey, singularLabel, authMode = 'admin' }) {
     const [verified, setVerified] = useState(false)
     const [loading, setLoading] = useState(true)
     const [items, setItems] = useState([])
@@ -14,6 +14,20 @@ export default function ProductMetadataManager({ title, subtitle, apiPath, respo
 
     useEffect(() => {
         async function verify() {
+            if (authMode === 'employee') {
+                const stored = localStorage.getItem('employee')
+                if (!stored) { router.push('/admin'); return }
+                try {
+                    const employee = JSON.parse(stored)
+                    if (!employee?.employee_id) { router.push('/admin'); return }
+                    setVerified(true)
+                    fetchItems('')
+                } catch {
+                    router.push('/admin')
+                }
+                return
+            }
+
             const token = localStorage.getItem('admin_token')
             if (!token) { router.push('/admin'); return }
             try {
@@ -136,7 +150,7 @@ export default function ProductMetadataManager({ title, subtitle, apiPath, respo
     }
 
     function logout() {
-        localStorage.removeItem('admin_token')
+        localStorage.removeItem(authMode === 'employee' ? 'employee' : 'admin_token')
         router.push('/admin')
     }
 

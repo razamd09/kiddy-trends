@@ -5,6 +5,8 @@ import Link from 'next/link'
 
 const MONOCHROME_BG_COLORS = ['transparent', '#000000', '#1f2937', '#374151', '#6b7280', '#9ca3af', '#ffffff']
 const STANDARD_BG_COLORS = ['#991b1b', '#7c7a00', '#166534', '#0f766e', '#1d4ed8', '#6b21a8', '#ea580c', '#ec4899']
+const DEFAULT_CATEGORY_OPTIONS = ['Clothing', 'Bedding', 'Bags', 'Accessories', 'Footwear', 'Toys', 'Shoes', 'Other']
+const DEFAULT_PRODUCT_VERSION_OPTIONS = ['new arrivals', 'Old Packs']
 const DEFAULT_PRODUCT_TYPE_OPTIONS = ['T-Shirt', 'Full Sleeves Shirt', 'Shorts', 'Denim Jeans', 'Trouser', 'Girl-Top', 'Frock', 'Socks', 'Jacket', 'Button Shirts', 'Jeans Shorts', 'Cargo Pents', 'Cargo Trousers', 'School Bags', 'Ladies Bags', 'Bag-Pack', 'Rompers', 'Kurta Trouser', 'Girls Kurti with Gharara', 'Girls Kurti with Trouser']
 
 function getEditorPreviewBackgroundStyle(color) {
@@ -38,6 +40,8 @@ export default function EmployeeProducts() {
     const [duplicatingId, setDuplicatingId] = useState(null)
     const [deleteConfirm, setDeleteConfirm] = useState(null)
     const [selectedIds, setSelectedIds] = useState([])
+    const [categoryOptions, setCategoryOptions] = useState(DEFAULT_CATEGORY_OPTIONS)
+    const [productVersionOptions, setProductVersionOptions] = useState(DEFAULT_PRODUCT_VERSION_OPTIONS)
     const [productTypeOptions, setProductTypeOptions] = useState(DEFAULT_PRODUCT_TYPE_OPTIONS)
     const [bulkProcessing, setBulkProcessing] = useState(false)
     const [recentBgRemoving, setRecentBgRemoving] = useState(false)
@@ -77,7 +81,6 @@ export default function EmployeeProducts() {
     })
     const router = useRouter()
 
-    const categories = ['Clothing', 'Bedding', 'Bags', 'Accessories', 'Footwear', 'Toys', 'Shoes', 'Other']
     const COMMON_SIZES = ['0-3M','3-6M','6-9M','9-12M','1-2Y','2-3Y','3-4Y','4-5Y','5-6Y','6-7Y','7-8Y','8-9Y','9-10Y','10-11Y','11-12Y','XS','S','M','L','XL']
 
     function normalizeVariantLabel(value) {
@@ -248,7 +251,7 @@ export default function EmployeeProducts() {
     }, [verified, page, searchTerm, categoryFilter, variantFilter, sortBy, sortDir])
 
     useEffect(() => {
-        if (verified) fetchProductTypes()
+        if (verified) fetchProductMetadata()
     }, [verified])
 
     useEffect(() => {
@@ -291,23 +294,30 @@ export default function EmployeeProducts() {
         setLoading(false)
     }
 
-    async function fetchProductTypes() {
+    async function fetchMetadataOptions(path, key, fallback) {
         const token = localStorage.getItem('admin_token') || ''
         try {
-            const res = await fetch('/api/admin/product-types', { headers: { 'x-admin-token': token } })
+            const res = await fetch(path, { headers: { 'x-admin-token': token } })
             const data = await readApiJson(res)
-            const nextOptions = Array.isArray(data?.types)
-                ? data.types.map((type) => String(type?.name || '').trim()).filter(Boolean)
+            const nextOptions = Array.isArray(data?.[key])
+                ? data[key].map((item) => String(item?.name || '').trim()).filter(Boolean)
                 : []
 
-            if (res.ok && nextOptions.length > 0) {
-                setProductTypeOptions(nextOptions)
-            } else {
-                setProductTypeOptions(DEFAULT_PRODUCT_TYPE_OPTIONS)
-            }
+            return res.ok && nextOptions.length > 0 ? nextOptions : fallback
         } catch {
-            setProductTypeOptions(DEFAULT_PRODUCT_TYPE_OPTIONS)
+            return fallback
         }
+    }
+
+    async function fetchProductMetadata() {
+        const [categories, versions, types] = await Promise.all([
+            fetchMetadataOptions('/api/admin/product-categories', 'categories', DEFAULT_CATEGORY_OPTIONS),
+            fetchMetadataOptions('/api/admin/product-versions', 'versions', DEFAULT_PRODUCT_VERSION_OPTIONS),
+            fetchMetadataOptions('/api/admin/product-types', 'types', DEFAULT_PRODUCT_TYPE_OPTIONS),
+        ])
+        setCategoryOptions(categories)
+        setProductVersionOptions(versions)
+        setProductTypeOptions(types)
     }
 
     function toggleSelectProduct(productId) {
@@ -1178,7 +1188,7 @@ export default function EmployeeProducts() {
                                                 onChange={e => setForm({...form, category: e.target.value})}
                                                 className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm">
                                             <option value="">Select category</option>
-                                            {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                            {categoryOptions.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                                         </select>
                                     </div>
                                     <div>
@@ -1187,8 +1197,7 @@ export default function EmployeeProducts() {
                                                 onChange={e => setForm({...form, product_version: e.target.value})}
                                                 className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm">
                                             <option value="">Select version</option>
-                                            <option value="new arrivals">new arrivals</option>
-                                            <option value="Old Packs">Old Packs</option>
+                                            {productVersionOptions.map((version) => <option key={version} value={version}>{version}</option>)}
                                         </select>
                                     </div>
                                     <div>
@@ -1483,7 +1492,7 @@ export default function EmployeeProducts() {
                                 className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm bg-white"
                             >
                                 <option value="all">All Categories</option>
-                                {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                {categoryOptions.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                             </select>
                             <select
                                 value={variantFilter}
@@ -1919,7 +1928,7 @@ export default function EmployeeProducts() {
                                     className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
                                 >
                                     <option value="">No change</option>
-                                    {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                    {categoryOptions.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                                 </select>
                             </div>
 
@@ -1931,8 +1940,7 @@ export default function EmployeeProducts() {
                                     className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
                                 >
                                     <option value="">No change</option>
-                                    <option value="new arrivals">new arrivals</option>
-                                    <option value="Old Packs">Old Packs</option>
+                                    {productVersionOptions.map((version) => <option key={version} value={version}>{version}</option>)}
                                 </select>
                             </div>
 
