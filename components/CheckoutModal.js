@@ -343,7 +343,6 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
             image: image || '',
           }]
       const waNumber = form.sameAsPhone ? form.phone : form.whatsapp
-      const spinState = readSpinState()
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
