@@ -8,6 +8,7 @@ import LiveNotifications from '../components/LiveNotifications'
 import BottomNav from '../components/BottomNav'
 import AmbientMusicPlayer from '../components/AmbientMusicPlayer'
 import DynamicSocialProofBar from '../components/DynamicSocialProofBar'
+import AnalyticsTracker from '../components/AnalyticsTracker'
 
 export const metadata = {
   title: 'Kiddy Trends – Fun Fashion for Little Ones',
@@ -76,6 +77,7 @@ export default function RootLayout({ children }) {
       <Script src="https://www.instagram.com/embed.js" strategy="lazyOnload" />
 
       <CartProvider>
+        <AnalyticsTracker />
         <LiveNotifications />
         <Navbar />
         <DynamicSocialProofBar />

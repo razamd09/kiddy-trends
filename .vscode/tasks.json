@@ -1,0 +1,406 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "git-status-check",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"--short"
+			]
+		},
+		{
+			"label": "git-add-navbar-sync",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"add",
+				"components/Navbar.js",
+				"components/RewardsNavChecker.js",
+				"components/SearchBar.js"
+			]
+		},
+		{
+			"label": "git-status-after-add",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"--short"
+			]
+		},
+		{
+			"label": "git-commit-navbar-sync",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"commit",
+				"-m",
+				"Unify navbar controls with bubbly responsive style"
+			]
+		},
+		{
+			"label": "git-push-main",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"push",
+				"origin",
+				"main"
+			]
+		},
+		{
+			"label": "git-status-before-commit-navbar-cleanup",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"--short"
+			]
+		},
+		{
+			"label": "git-commit-navbar-cleanup",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"add",
+				"components/Navbar.js",
+				"&&",
+				"git",
+				"commit",
+				"-m",
+				"Remove top About/Refund links and close menus on outside click"
+			]
+		},
+		{
+			"label": "git-add-navbar-cleanup",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"git add components/Navbar.js; git commit -m \"Remove top About/Refund links and close menus on outside click\""
+			]
+		},
+		{
+			"label": "git-push-navbar-cleanup",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"push",
+				"origin",
+				"main"
+			]
+		},
+		{
+			"label": "git-add-navbar-cleanup-only",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"add",
+				"components/Navbar.js"
+			]
+		},
+		{
+			"label": "git-commit-navbar-cleanup-only",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"commit",
+				"-m",
+				"Remove top About and Refund links and close menus on outside click"
+			]
+		},
+		{
+			"label": "git-push-main-navbar-cleanup",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"push",
+				"origin",
+				"main"
+			]
+		},
+		{
+			"label": "git-status-post-push-navbar-cleanup",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"--short"
+			]
+		},
+		{
+			"label": "git-status-before-seasonal-commit",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"--short"
+			]
+		},
+		{
+			"label": "git-add-seasonal-center-align",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"add",
+				"app/collections/page.js",
+				"components/Navbar.js"
+			]
+		},
+		{
+			"label": "git-commit-seasonal-center-align",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"commit",
+				"-m",
+				"Add Summer/Winter deals filters and center top nav pills"
+			]
+		},
+		{
+			"label": "git-push-main-seasonal-center-align",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"push",
+				"origin",
+				"main"
+			]
+		},
+		{
+			"label": "git-status-after-seasonal-push",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"--short"
+			]
+		},
+		{
+			"label": "git-status-before-sizechart-commit",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"--short"
+			]
+		},
+		{
+			"label": "git-add-seasonal-and-sizechart",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"add",
+				"app/collections/page.js",
+				"app/size-chart/page.js",
+				"public/size-chart-cartoon.svg"
+			]
+		},
+		{
+			"label": "git-commit-seasonal-and-sizechart",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"commit",
+				"-m",
+				"Fix seasonal deals filtering and add size chart cartoon visual"
+			]
+		},
+		{
+			"label": "git-push-main-seasonal-sizechart",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"push",
+				"origin",
+				"main"
+			]
+		},
+		{
+			"label": "git-status-after-seasonal-sizechart-push",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"--short"
+			]
+		},
+		{
+			"label": "check-seasonal-products-data",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"-e",
+				"const fs=require('fs'); const {createClient}=require('@supabase/supabase-js'); const lines=fs.readFileSync('.env.local','utf8').split(/\\r?\\n/); const env={}; for(const line of lines){ if(!line || /^\\s*#/.test(line) || !line.includes('=')) continue; const i=line.indexOf('='); const k=line.slice(0,i).trim(); const v=line.slice(i+1).trim().replace(/^\\\"|\\\"$/g,''); env[k]=v; } const supabase=createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_KEY); const norm=(v)=>String(v||'').toLowerCase().replace(/[^a-z]/g,' ').replace(/\\s+/g,' ').trim(); (async()=>{ let from=0; const step=1000; const all=[]; while(true){ const {data,error}=await supabase.from('products').select('title,product_version,is_active,source,created_at').eq('is_active',true).or('source.is.null,source.neq.draft_workspace').range(from, from+step-1); if(error){ console.error('ERR', error.message); process.exit(1);} if(!data||data.length===0) break; all.push(...data); if(data.length<step) break; from+=step; } const winter=all.filter(p=>norm(p.product_version).includes('old') && norm(p.product_version).includes('pack') && String(p.title||'').toLowerCase().includes('winter')); const summer=all.filter(p=>norm(p.product_version).includes('old') && norm(p.product_version).includes('pack') && String(p.title||'').toLowerCase().includes('summer')); console.log('TOTAL_ACTIVE_NON_DRAFT', all.length); console.log('WINTER_OLD_PACKS', winter.length); console.log('SUMMER_OLD_PACKS', summer.length); console.log('SAMPLE_SUMMER', summer.slice(0,10).map(p=>p.title).join(' | ')); })();"
+			]
+		},
+		{
+			"label": "run-seasonal-data-check-script",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"tmp_check_seasonal_data.js"
+			]
+		},
+		{
+			"label": "check-live-api-seasonal-counts",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$base='https://www.thekiddytrends.com/api/products?limit=400&page='; $all=@(); $page=1; while($true){ $res=Invoke-RestMethod -Uri ($base + $page) -Method Get; if(-not $res.products -or $res.products.Count -eq 0){ break }; $all += $res.products; if($page -ge [int]$res.pages){ break }; $page++ }; function norm($v){ return (($v | Out-String).Trim().ToLower() -replace '[^a-z]',' ' -replace '\\s+',' ').Trim() }; $winter=@($all | Where-Object { (norm $_.product_version).Contains('old') -and (norm $_.product_version).Contains('pack') -and ($_.title.ToLower().Contains('winter')) }); $summer=@($all | Where-Object { (norm $_.product_version).Contains('old') -and (norm $_.product_version).Contains('pack') -and ($_.title.ToLower().Contains('summer')) }); Write-Output ('TOTAL=' + $all.Count); Write-Output ('WINTER_OLD_PACKS=' + $winter.Count); Write-Output ('SUMMER_OLD_PACKS=' + $summer.Count); Write-Output 'SAMPLE_SUMMER:'; $summer | Select-Object -First 8 | ForEach-Object { Write-Output ('- ' + $_.title + ' | ' + $_.product_version) }"
+			]
+		},
+		{
+			"label": "check-live-api-seasonal-counts-v2",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"$all=@(); $page=1; while($true){ $url = \"https://www.thekiddytrends.com/api/products?limit=400&page=$page\"; $res=Invoke-RestMethod -Uri $url -Method Get; if(-not $res.products -or $res.products.Count -eq 0){ break }; $all += $res.products; if($page -ge [int]$res.pages){ break }; $page++ }; function norm($v){ return (($v | Out-String).Trim().ToLower() -replace \"[^a-z]\",\" \" -replace \"\\s+\",\" \").Trim() }; $winter=@($all | Where-Object { (norm $_.product_version).Contains(\"old\") -and (norm $_.product_version).Contains(\"pack\") -and ($_.title.ToLower().Contains(\"winter\")) }); $summer=@($all | Where-Object { (norm $_.product_version).Contains(\"old\") -and (norm $_.product_version).Contains(\"pack\") -and ($_.title.ToLower().Contains(\"summer\")) }); Write-Output (\"TOTAL=\" + $all.Count); Write-Output (\"WINTER_OLD_PACKS=\" + $winter.Count); Write-Output (\"SUMMER_OLD_PACKS=\" + $summer.Count); Write-Output \"SAMPLE_SUMMER:\"; $summer | Select-Object -First 8 | ForEach-Object { Write-Output (\"- \" + $_.title + \" | \" + $_.product_version) }"
+			]
+		},
+		{
+			"label": "git-status-before-seasonal-fix-commit",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"--short"
+			]
+		},
+		{
+			"label": "git-add-seasonal-fix-only",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"add",
+				"app/collections/page.js"
+			]
+		},
+		{
+			"label": "git-commit-seasonal-fix-only",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"commit",
+				"-m",
+				"Fix Summer/Winter deals filtering with global reset mode"
+			]
+		},
+		{
+			"label": "git-push-main-seasonal-fix",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"push",
+				"origin",
+				"main"
+			]
+		},
+		{
+			"label": "git-status-after-seasonal-fix-push",
+			"type": "shell",
+			"command": "git",
+			"args": [
+				"status",
+				"--short"
+			]
+		},
+		{
+			"label": "git-status-short",
+			"type": "shell",
+			"command": "git status --short"
+		},
+		{
+			"label": "git-commit-discount-title",
+			"type": "shell",
+			"command": "git add add_discount_codes.sql add_discount_code_title.sql app/admin/discount-codes/page.js app/api/admin/discount-codes/route.js app/api/discount-codes/route.js components/DiscountBanner.js components/LandingPreferencePopup.js; git commit -m \"Add discount code titles end-to-end and update popup avatars\""
+		},
+		{
+			"label": "git-commit-discount-title-fixed",
+			"type": "shell",
+			"command": "git add add_discount_codes.sql add_discount_code_title.sql app/admin/discount-codes/page.js app/api/admin/discount-codes/route.js app/api/discount-codes/route.js components/DiscountBanner.js components/LandingPreferencePopup.js; git commit -m 'Add discount code titles end-to-end and update popup avatars'"
+		},
+		{
+			"label": "git-push-main",
+			"type": "shell",
+			"command": "git push origin main"
+		},
+		{
+			"label": "git-status-after-push",
+			"type": "shell",
+			"command": "git status --short"
+		},
+		{
+			"label": "git-status-after-title-fallback",
+			"type": "shell",
+			"command": "git status --short"
+		},
+		{
+			"label": "git-status-before-commit",
+			"type": "shell",
+			"command": "git status --short"
+		},
+		{
+			"label": "git-commit-bedding-and-discount-fallback",
+			"type": "shell",
+			"command": "git add app/api/admin/discount-codes/route.js app/api/discount-codes/route.js app/collections/page.js; git commit -m 'Fix bedding filter and add discount title schema fallbacks'"
+		},
+		{
+			"label": "git-push-main-after-commit",
+			"type": "shell",
+			"command": "git push origin main"
+		},
+		{
+			"label": "git-status-after-push-2",
+			"type": "shell",
+			"command": "git status --short"
+		},
+		{
+			"label": "git-status-before-newborn-commit",
+			"type": "shell",
+			"command": "git status --short"
+		},
+		{
+			"label": "git-commit-newborn-fix",
+			"type": "shell",
+			"command": "git add app/collections/page.js; git commit -m 'Fix newborn category filter to include 0-12 month ranges'"
+		},
+		{
+			"label": "git-push-main-newborn-fix",
+			"type": "shell",
+			"command": "git push origin main"
+		},
+		{
+			"label": "git-status-after-newborn-push",
+			"type": "shell",
+			"command": "git status --short"
+		},
+		{
+			"label": "git-status-before-navbar-commit",
+			"type": "shell",
+			"command": "git status --short"
+		},
+		{
+			"label": "git-commit-navbar-alignment",
+			"type": "shell",
+			"command": "git add components/Navbar.js components/RewardsNavChecker.js; git commit -m 'Align nav buttons and remove feedback rewards emojis'"
+		},
+		{
+			"label": "git-push-main-navbar-updates",
+			"type": "shell",
+			"command": "git push origin main"
+		},
+		{
+			"label": "git-status-after-navbar-push",
+			"type": "shell",
+			"command": "git status --short"
+		}
+	]
+}

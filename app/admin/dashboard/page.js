@@ -100,6 +100,7 @@ export default function AdminDashboard() {
                         { label: 'Rewards Points',  href: '/admin/rewards',    icon: '⭐', color: 'bg-sunny text-charcoal' },
                         { label: 'Discount Codes',  href: '/admin/discount-codes', icon: '🎟️', color: 'bg-green-500 text-white' },
                         { label: 'Feedback', href: '/admin/feedback', icon: '💝', color: 'bg-pink-400 text-white' },
+                        { label: 'Analytics', href: '/admin/analytics', icon: '📊', color: 'bg-blue-500 text-white' },
                         { label: 'View Website',    href: '/',                 icon: '🌐', color: 'bg-charcoal text-white' },
                     ].map((link, i) => (
                         <Link key={i} href={link.href}

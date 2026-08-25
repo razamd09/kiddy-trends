@@ -343,6 +343,22 @@ export async function POST(request) {
             .update({ order_number: orderNumber })
             .eq('id', savedOrder.id)
 
+        const analyticsSessionId = String(request.headers.get('x-analytics-session') || '').trim()
+        if (analyticsSessionId) {
+            await supabase
+                .from('website_analytics_events')
+                .insert([{
+                    session_id: analyticsSessionId,
+                    event_name: 'checkout_completed',
+                    path: '/checkout',
+                    order_number: orderNumber,
+                    metadata: {
+                        total,
+                        items_count: Array.isArray(cartItems) ? cartItems.length : 0,
+                    },
+                }])
+        }
+
         try {
             await sendOrderNotification({
                 orderNumber,

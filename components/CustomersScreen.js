@@ -98,6 +98,17 @@ function mapCsvToCustomers(text) {
     return rows
 }
 
+function formatInsertedDate(value) {
+    if (!value) return '-'
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return '-'
+    return date.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+    })
+}
+
 export default function CustomersScreen({ mode = 'admin' }) {
     const [verified, setVerified] = useState(false)
     const [loading, setLoading] = useState(true)
@@ -107,43 +118,16 @@ export default function CustomersScreen({ mode = 'admin' }) {
     const [total, setTotal] = useState(0)
     const [statusMessage, setStatusMessage] = useState('')
     const [promotionSubject, setPromotionSubject] = useState('')
-    const [whatsappMessage, setWhatsappMessage] = useState('')
-    const [localSenderUrl, setLocalSenderUrl] = useState('')
-    const [localApiKey, setLocalApiKey] = useState('')
     const [syncingOrders, setSyncingOrders] = useState(false)
     const [importingCsv, setImportingCsv] = useState(false)
     const [sendingPromotion, setSendingPromotion] = useState(false)
-    const [sendingWhatsAppPromotion, setSendingWhatsAppPromotion] = useState(false)
-    const [campaignProgress, setCampaignProgress] = useState(null) // { total, sent, failed, done }
     const [csvName, setCsvName] = useState('')
     const fileRef = useRef(null)
-    const pollRef = useRef(null)
     const router = useRouter()
     const pageSize = 30
     const isAdmin = mode === 'admin'
     const apiPath = isAdmin ? '/api/admin/customers' : '/api/employee/customers'
     const backHref = isAdmin ? '/admin/dashboard' : '/employee/dashboard'
-
-    // Remember the local sender URL + API key in this browser so you don't
-    // have to retype them every time you start a new campaign.
-    useEffect(() => {
-        setLocalSenderUrl(localStorage.getItem('wa_local_sender_url') || '')
-        setLocalApiKey(localStorage.getItem('wa_local_api_key') || '')
-    }, [])
-
-    useEffect(() => {
-        if (localSenderUrl) localStorage.setItem('wa_local_sender_url', localSenderUrl)
-    }, [localSenderUrl])
-
-    useEffect(() => {
-        if (localApiKey) localStorage.setItem('wa_local_api_key', localApiKey)
-    }, [localApiKey])
-
-    useEffect(() => {
-        return () => {
-            if (pollRef.current) clearInterval(pollRef.current)
-        }
-    }, [])
 
     useEffect(() => {
         async function verify() {
@@ -346,109 +330,6 @@ export default function CustomersScreen({ mode = 'admin' }) {
         setSendingPromotion(false)
     }
 
-    function stopPolling() {
-        if (pollRef.current) {
-            clearInterval(pollRef.current)
-            pollRef.current = null
-        }
-    }
-
-    function pollCampaignProgress(cleanedUrl, apiKey) {
-        stopPolling()
-        pollRef.current = setInterval(async () => {
-            try {
-                const res = await fetch(cleanedUrl + '/send-campaign/status', {
-                    headers: { 'x-api-key': apiKey },
-                })
-                const data = await res.json().catch(() => ({}))
-                if (data?.noJob) return
-
-                setCampaignProgress(data)
-
-                if (data.done) {
-                    stopPolling()
-                    setSendingWhatsAppPromotion(false)
-                    setStatusMessage(
-                        'WhatsApp campaign finished: ' + data.sent + ' sent, ' + data.failed + ' failed (of ' + data.total + ')'
-                    )
-                }
-            } catch {
-                // local sender may be temporarily unreachable between polls — keep trying
-            }
-        }, 3000)
-    }
-
-    async function sendPromotionWhatsApp() {
-        const message = whatsappMessage.trim()
-        if (!message) {
-            setStatusMessage('WhatsApp message is required')
-            return
-        }
-        if (!localSenderUrl.trim()) {
-            setStatusMessage('Local sender URL is required (start local-server.js and ngrok on your PC first)')
-            return
-        }
-        if (!localApiKey.trim()) {
-            setStatusMessage('Local sender API key is required')
-            return
-        }
-
-        let employeeId = ''
-        const headers = { 'Content-Type': 'application/json' }
-        if (isAdmin) {
-            const token = localStorage.getItem('admin_token')
-            if (!token) {
-                router.push('/admin')
-                return
-            }
-            headers['x-admin-token'] = token
-        } else {
-            const employee = JSON.parse(localStorage.getItem('employee') || '{}')
-            employeeId = employee.employee_id || ''
-            if (!employeeId) {
-                router.push('/admin')
-                return
-            }
-        }
-
-        setSendingWhatsAppPromotion(true)
-        setCampaignProgress(null)
-        setStatusMessage('')
-
-        const cleanedUrl = localSenderUrl.trim().replace(/\/$/, '')
-
-        try {
-            const payload = {
-                action: 'send-promotions-whatsapp',
-                message,
-                localSenderUrl: cleanedUrl,
-                apiKey: localApiKey.trim(),
-            }
-            if (!isAdmin) payload.employee_id = employeeId
-
-            const res = await fetch(apiPath, {
-                method: 'POST',
-                headers,
-                body: JSON.stringify(payload),
-            })
-
-            const data = await res.json().catch(() => ({}))
-            if (!res.ok) throw new Error(data?.error || 'Failed to start WhatsApp campaign')
-
-            if (!data.started) {
-                setStatusMessage('No customers with phone numbers found to message')
-                setSendingWhatsAppPromotion(false)
-                return
-            }
-
-            setStatusMessage('Campaign started for ' + data.totalRecipients + ' customers. Tracking progress...')
-            pollCampaignProgress(cleanedUrl, localApiKey.trim())
-        } catch (error) {
-            setStatusMessage(error.message || 'Failed to send WhatsApp promotions')
-            setSendingWhatsAppPromotion(false)
-        }
-    }
-
     function logout() {
         localStorage.removeItem(isAdmin ? 'admin_token' : 'employee')
         router.push('/admin')
@@ -547,73 +428,6 @@ export default function CustomersScreen({ mode = 'admin' }) {
                     </div>
                 </div>
 
-                {/* WHATSAPP PROMOTION */}
-                <div className="bg-white rounded-2xl p-4 space-y-3">
-                    <div>
-                        <p className="font-semibold text-charcoal">Send WhatsApp Campaign</p>
-                        <p className="text-xs text-gray-400">
-                            Sends to every customer with a phone number ({total} total). Use {'{{name}}'} in your message to insert each customer's name.
-                        </p>
-                    </div>
-
-                    <textarea
-                        value={whatsappMessage}
-                        onChange={(e) => setWhatsappMessage(e.target.value)}
-                        placeholder={'Hi {{name}}! Our sale is live — 19% to 47% off with code 14AUGUST. Shop now: thekiddytrends.com'}
-                        rows={3}
-                        className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm outline-none focus:border-coral"
-                    />
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <div>
-                            <label className="text-xs text-gray-400 block mb-1">Local sender URL (from ngrok, e.g. https://xxxx.ngrok-free.app)</label>
-                            <input
-                                value={localSenderUrl}
-                                onChange={(e) => setLocalSenderUrl(e.target.value)}
-                                placeholder="https://xxxx.ngrok-free.app"
-                                className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm outline-none focus:border-coral"
-                            />
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-400 block mb-1">Local sender API key</label>
-                            <input
-                                value={localApiKey}
-                                onChange={(e) => setLocalApiKey(e.target.value)}
-                                type="password"
-                                placeholder="Same key set as LOCAL_API_KEY on your PC"
-                                className="w-full rounded-xl border border-gray-200 px-4 py-2 text-sm outline-none focus:border-coral"
-                            />
-                        </div>
-                    </div>
-
-                    <button
-                        onClick={sendPromotionWhatsApp}
-                        disabled={sendingWhatsAppPromotion}
-                        className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold disabled:opacity-50"
-                    >
-                        {sendingWhatsAppPromotion ? 'Sending WhatsApp...' : 'Send WhatsApp To All'}
-                    </button>
-
-                    {campaignProgress && (
-                        <div className="pt-2">
-                            <div className="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                                <div
-                                    className="bg-emerald-500 h-2.5 rounded-full transition-all"
-                                    style={{
-                                        width: campaignProgress.total
-                                            ? Math.round(((campaignProgress.sent + campaignProgress.failed) / campaignProgress.total) * 100) + '%'
-                                            : '0%',
-                                    }}
-                                />
-                            </div>
-                            <p className="text-xs text-gray-500 mt-1">
-                                {campaignProgress.sent} sent, {campaignProgress.failed} failed, of {campaignProgress.total} total
-                                {campaignProgress.done ? ' — done' : ' — sending...'}
-                            </p>
-                        </div>
-                    )}
-                </div>
-
                 {statusMessage && (
                     <div className="bg-white rounded-2xl p-3">
                         <p className={headerMessageClass}>{statusMessage}</p>
@@ -636,6 +450,7 @@ export default function CustomersScreen({ mode = 'admin' }) {
                                         <th className="text-left px-4 py-3 font-semibold">First Name</th>
                                         <th className="text-left px-4 py-3 font-semibold">Last Name</th>
                                         <th className="text-left px-4 py-3 font-semibold">Phone</th>
+                                        <th className="text-left px-4 py-3 font-semibold">Date Added</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -644,6 +459,7 @@ export default function CustomersScreen({ mode = 'admin' }) {
                                             <td className="px-4 py-3 font-medium text-charcoal">{customer.first_name || '-'}</td>
                                             <td className="px-4 py-3 text-charcoal">{customer.last_name || '-'}</td>
                                             <td className="px-4 py-3 text-charcoal font-semibold">{customer.phone || '-'}</td>
+                                            <td className="px-4 py-3 text-charcoal whitespace-nowrap">{formatInsertedDate(customer.created_at)}</td>
                                         </tr>
                                     ))}
                                 </tbody>

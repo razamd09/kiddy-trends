@@ -1,5 +1,6 @@
 'use client'
 import { createContext, useContext, useState, useEffect } from 'react'
+import { trackEvent } from '../lib/analyticsClient'
 
 const CartContext = createContext()
 
@@ -25,6 +26,15 @@ export function CartProvider({ children }) {
   }, [cart])
 
   function addToCart(product, variant) {
+    trackEvent('add_to_cart', {
+      path: typeof window !== 'undefined' ? window.location.pathname : '/',
+      product_id: String(product?._id || product?.id || ''),
+      metadata: {
+        variant_id: String(variant?.id || ''),
+        price: Number(variant?.price || 0),
+      },
+    })
+
     setCart(prev => {
       const variantStock = Number.isFinite(Number(variant?.inventory_quantity))
         ? Number(variant.inventory_quantity)

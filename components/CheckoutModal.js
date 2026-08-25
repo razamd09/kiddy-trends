@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import emailjs from '@emailjs/browser'
 import RewardsSection from './RewardsSection'
+import { getAnalyticsSessionId, trackEvent } from '../lib/analyticsClient'
 
 const EMAILJS_SERVICE_ID =
   process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || 'service_9p08wct'
@@ -87,6 +88,16 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
     : 0 : 0
   const rewardsDiscount = rewards.redeemed || 0
   const total = price + shipping - (discount?.type !== 'shipping' ? discountAmount : 0) - rewardsDiscount
+
+  useEffect(() => {
+    trackEvent('checkout_started', {
+      path: typeof window !== 'undefined' ? window.location.pathname : '/',
+      metadata: {
+        is_cart: Boolean(isCart),
+        items_count: isCart ? Number((cartItems || []).length) : 1,
+      },
+    })
+  }, [])
 
   useEffect(() => {
     if (discount) return
@@ -345,7 +356,10 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
       const waNumber = form.sameAsPhone ? form.phone : form.whatsapp
       const res = await fetch('/api/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-analytics-session': getAnalyticsSessionId(),
+        },
         body: JSON.stringify({
           cartItems: items,
           customer: {
@@ -378,6 +392,18 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
 
       if (data.success) {
         const orderNumber = data.orderNumber || data.orderName || ('#' + data.orderId)
+
+        try {
+          await trackEvent('checkout_completed', {
+            path: typeof window !== 'undefined' ? window.location.pathname : '/',
+            order_number: String(orderNumber || ''),
+            metadata: {
+              total: Number(data.total ?? total),
+              is_cart: Boolean(isCart),
+            },
+          })
+        } catch {}
+
         try {
           await Promise.race([
             sendAdminOrderEmail(orderNumber, items),

@@ -14,6 +14,7 @@ const moduleLinks = [
   { href: '/admin/rewards', label: 'Rewards' },
   { href: '/admin/discount-codes', label: 'Discount Codes' },
   { href: '/admin/shipping-rates', label: 'Shipping Rates' },
+  { href: '/admin/analytics', label: 'Analytics' },
   { href: '/admin/feedback', label: 'Feedback' },
 ]
 
