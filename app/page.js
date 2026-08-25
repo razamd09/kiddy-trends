@@ -8,6 +8,7 @@ import DiscountBanner from '../components/DiscountBanner'
 import LandingPreferencePopup from '../components/LandingPreferencePopup'
 import HomeHeroSlider from '../components/HomeHeroSlider'
 import LazyMount from '../components/LazyMount'
+import { compareNewestNewArrivalsFirst, isNewArrivalsVersion } from '../lib/newArrivals'
 
 const NEW_ARRIVALS_TARGET = 15
 
@@ -51,7 +52,7 @@ export default function Home() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const data = await fetch('/api/products?limit=120&page=1').then(r => r.json())
+        const data = await fetch('/api/products?limit=400&page=1').then(r => r.json())
         const nextProducts = Array.isArray(data?.products) ? data.products : []
 
         setAllProducts(nextProducts)
@@ -66,6 +67,13 @@ export default function Home() {
 
     if (activeView === 'winter-arrivals') {
       return allProducts.filter(matchesWinterTitle)
+    }
+
+    const prioritizedNewArrivals = allProducts
+      .filter((product) => isNewArrivalsVersion(product?.product_version))
+      .sort(compareNewestNewArrivalsFirst)
+    if (prioritizedNewArrivals.length > 0) {
+      return prioritizedNewArrivals.slice(0, NEW_ARRIVALS_TARGET)
     }
 
     return allProducts.slice(0, NEW_ARRIVALS_TARGET)

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import ProductCard from '../../components/ProductCard'
+import { compareNewestNewArrivalsFirst, isNewArrivalsVersion } from '../../lib/newArrivals'
 
 const categories = [
   {
@@ -131,7 +132,7 @@ function productMatchesAnyGenders(product, genders) {
 }
 
 function getVersionPriority(product) {
-  return String(product?.product_version || '').toLowerCase() === 'new arrivals' ? 1 : 0
+  return isNewArrivalsVersion(product?.product_version) ? 1 : 0
 }
 
 function getTitlePriority(product) {
@@ -329,8 +330,12 @@ export default function Collections() {
     filtered = filtered.filter((p) => isSeasonDealProduct(p, seasonKeyword))
   }
 
-  // For Boys/Girls menu filters, prioritize latest products from DB strictly by created_at.
-  if (queryGenders.length > 0) {
+  if (sort === 'new') {
+    filtered = filtered
+      .filter((p) => isNewArrivalsVersion(p?.product_version))
+      .sort(compareNewestNewArrivalsFirst)
+  } else if (queryGenders.length > 0) {
+    // For Boys/Girls menu filters, prioritize latest products from DB strictly by created_at.
     filtered = [...filtered].sort((a, b) => getCreatedAtValue(b) - getCreatedAtValue(a))
   } else {
     filtered = [...filtered].sort((a, b) => compareProducts(a, b, sort))
