@@ -75,9 +75,7 @@ export default function AdminAnalyticsPage() {
     )
   }
 
-  const funnel = data?.funnel || {}
-  const dropOff = data?.dropOff || {}
-  const conversion = data?.conversion || {}
+  const actions = data?.actions || {}
 
   return (
     <div className="min-h-screen bg-cream">
@@ -115,23 +113,19 @@ export default function AdminAnalyticsPage() {
           <div className="bg-white rounded-2xl p-8 text-gray-400">Loading analytics...</div>
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              <MetricCard label="Landing Users" value={funnel.landingUsers || 0} color="bg-blue-50" />
-              <MetricCard label="Product View" value={funnel.productView || 0} color="bg-mint/20" />
-              <MetricCard label="Add To Cart" value={funnel.addToCart || 0} color="bg-sunny/20" />
-              <MetricCard label="Checkout Started" value={funnel.checkoutStarted || 0} color="bg-orange-50" />
-              <MetricCard label="Checkout Completed" value={funnel.checkoutCompleted || 0} color="bg-emerald-50" />
-              <MetricCard label="Landing→Complete" value={(conversion.landingToCompletePct || 0) + '%'} color="bg-coral/10" />
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              <MetricCard label="Landing on Website" value={actions.landingWebsite || 0} color="bg-blue-50" />
+              <MetricCard label="Product Views" value={actions.productViews || 0} color="bg-mint/20" />
+              <MetricCard label="Add to Cart" value={actions.addToCart || 0} color="bg-sunny/20" />
+              <MetricCard label="Checkout Initiated" value={actions.checkoutInitiated || 0} color="bg-orange-50" />
+              <MetricCard label="Checkout Completed" value={actions.checkoutCompleted || 0} color="bg-emerald-50" />
             </div>
 
             <div className="bg-white rounded-2xl p-5">
-              <h2 className="font-display text-lg text-charcoal mb-4">Drop-Off At Each Step</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                <Row label="Landing → Product View" dropped={dropOff.landingToView || 0} conv={(conversion.landingToViewPct || 0) + '%'} />
-                <Row label="Product View → Add To Cart" dropped={dropOff.viewToCart || 0} conv={(conversion.viewToCartPct || 0) + '%'} />
-                <Row label="Add To Cart → Checkout Started" dropped={dropOff.cartToCheckout || 0} conv={(conversion.cartToCheckoutPct || 0) + '%'} />
-                <Row label="Checkout Started → Completed" dropped={dropOff.checkoutToComplete || 0} conv={(conversion.checkoutToCompletePct || 0) + '%'} />
-              </div>
+              <h2 className="font-display text-lg text-charcoal mb-2">Action-Based Tracking</h2>
+              <p className="text-sm text-gray-500">
+                Each metric is tracked independently (not as a sequence), exactly as actions happen on the website.
+              </p>
             </div>
           </>
         )}
@@ -145,21 +139,6 @@ function MetricCard({ label, value, color }) {
     <div className={color + ' rounded-2xl p-4'}>
       <p className="font-display text-2xl text-charcoal">{value}</p>
       <p className="text-xs text-gray-500 mt-1">{label}</p>
-    </div>
-  )
-}
-
-function Row({ label, dropped, conv }) {
-  return (
-    <div className="rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between">
-      <div>
-        <p className="font-semibold text-charcoal">{label}</p>
-        <p className="text-xs text-gray-400">Conversion: {conv}</p>
-      </div>
-      <div className="text-right">
-        <p className="text-xs text-gray-400">Drop-off</p>
-        <p className="font-display text-lg text-coral">{dropped}</p>
-      </div>
     </div>
   )
 }

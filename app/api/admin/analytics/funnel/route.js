@@ -24,22 +24,17 @@ function toNumber(value) {
   return Number.isFinite(num) ? num : 0
 }
 
-function rate(next, current) {
-  if (current <= 0) return 0
-  return Math.round((next / current) * 100)
+function eventCount(list, eventName) {
+  return list.filter((item) => item.event_name === eventName).length
 }
 
-function uniqueSessionCount(list, eventName) {
+function uniqueLandingCount(list) {
   return new Set(
     list
-      .filter((item) => item.event_name === eventName)
+      .filter((item) => item.event_name === 'landing')
       .map((item) => item.session_id)
       .filter(Boolean)
   ).size
-}
-
-function uniqueAnySessionCount(list) {
-  return new Set(list.map((item) => item.session_id).filter(Boolean)).size
 }
 
 function emptyFunnelPayload(days, since) {
@@ -49,25 +44,12 @@ function emptyFunnelPayload(days, since) {
     since,
     setupRequired: true,
     setupMessage: 'Run add_website_analytics_events_table.sql in Supabase SQL editor, then refresh this page.',
-    funnel: {
-      landingUsers: 0,
-      productView: 0,
+    actions: {
+      landingWebsite: 0,
+      productViews: 0,
       addToCart: 0,
-      checkoutStarted: 0,
+      checkoutInitiated: 0,
       checkoutCompleted: 0,
-    },
-    dropOff: {
-      landingToView: 0,
-      viewToCart: 0,
-      cartToCheckout: 0,
-      checkoutToComplete: 0,
-    },
-    conversion: {
-      landingToViewPct: 0,
-      viewToCartPct: 0,
-      cartToCheckoutPct: 0,
-      checkoutToCompletePct: 0,
-      landingToCompletePct: 0,
     },
   }
 }
@@ -102,41 +84,22 @@ export async function GET(request) {
 
     const list = events || []
 
-    const uniqueLandingSessionsRaw = uniqueSessionCount(list, 'landing')
-    const uniqueLandingSessions = Math.max(uniqueLandingSessionsRaw, uniqueAnySessionCount(list))
-    const productViews = uniqueSessionCount(list, 'product_view')
-    const addToCart = uniqueSessionCount(list, 'add_to_cart')
-    const checkoutStarted = uniqueSessionCount(list, 'checkout_started')
-    const checkoutCompleted = uniqueSessionCount(list, 'checkout_completed')
-
-    const dropLandingToView = Math.max(0, uniqueLandingSessions - productViews)
-    const dropViewToCart = Math.max(0, productViews - addToCart)
-    const dropCartToCheckout = Math.max(0, addToCart - checkoutStarted)
-    const dropCheckoutToComplete = Math.max(0, checkoutStarted - checkoutCompleted)
+    const landingWebsite = uniqueLandingCount(list)
+    const productViews = eventCount(list, 'product_view')
+    const addToCart = eventCount(list, 'add_to_cart')
+    const checkoutInitiated = eventCount(list, 'checkout_started')
+    const checkoutCompleted = eventCount(list, 'checkout_completed')
 
     return Response.json({
       success: true,
       days,
       since,
-      funnel: {
-        landingUsers: toNumber(uniqueLandingSessions),
-        productView: toNumber(productViews),
+      actions: {
+        landingWebsite: toNumber(landingWebsite),
+        productViews: toNumber(productViews),
         addToCart: toNumber(addToCart),
-        checkoutStarted: toNumber(checkoutStarted),
+        checkoutInitiated: toNumber(checkoutInitiated),
         checkoutCompleted: toNumber(checkoutCompleted),
-      },
-      dropOff: {
-        landingToView: toNumber(dropLandingToView),
-        viewToCart: toNumber(dropViewToCart),
-        cartToCheckout: toNumber(dropCartToCheckout),
-        checkoutToComplete: toNumber(dropCheckoutToComplete),
-      },
-      conversion: {
-        landingToViewPct: rate(productViews, uniqueLandingSessions),
-        viewToCartPct: rate(addToCart, productViews),
-        cartToCheckoutPct: rate(checkoutStarted, addToCart),
-        checkoutToCompletePct: rate(checkoutCompleted, checkoutStarted),
-        landingToCompletePct: rate(checkoutCompleted, uniqueLandingSessions),
       },
     })
   } catch (error) {
