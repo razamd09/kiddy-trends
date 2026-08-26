@@ -19,6 +19,19 @@ const categories = [
   { label: 'Little Accessories', desc: 'Pins, ponytails & more',      icon: 'sparkle',  href: '/collections?cat=accessories' },
 ]
 
+const collectionTiles = [
+  {
+    label: 'All Colors Available',
+    image: '/Gemini_Generated_Image_j4k5pfj4k5pfj4k5.jpg',
+    href: '/collections?cat=clothing',
+  },
+  {
+    label: 'Mock Necks Available',
+    image: '/Gemini_Generated_Image_tx8qfqtx8qfqtx8q.jpg',
+    href: '/collections?cat=clothing',
+  },
+]
+
 /* --- small inline icon set -- no new dependency required --- */
 function Icon({ name, className = 'w-6 h-6' }) {
   const common = { className, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.7 }
@@ -88,30 +101,26 @@ export default function Home() {
         {/* HERO */}
         <HomeHeroSlider />
 
-        {/* WINTER LIFESTYLE BANNER */}
+        {/* SHOP BY COLLECTION */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
-          <div className="rounded-3xl overflow-hidden bg-[#1f3a52] grid md:grid-cols-2 items-center">
-            <div className="p-8 md:p-10 order-2 md:order-1">
-              <p className="text-white/70 text-xs tracking-widest mb-2">WINTER 2026</p>
-              <h2 className="font-display text-3xl md:text-5xl text-white mb-2">Shop the Winter Deals</h2>
-              <p className="font-display text-4xl md:text-6xl font-extrabold text-white mb-5 leading-none">Upto 50% OFF</p>
+          <h2 className="section-title text-center mb-6">Shop by Collection</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-1 overflow-hidden rounded-3xl bg-white shadow-sm">
+            {collectionTiles.map((tile) => (
               <Link
-                href="/collections?season=Winter"
-                className="inline-block bg-white text-charcoal font-display text-sm px-6 py-3 rounded-full hover:opacity-90"
+                key={tile.label}
+                href={tile.href}
+                className="group relative block h-[320px] overflow-hidden bg-cream md:h-[440px]"
               >
-                Explore collection
+                <Image
+                  src={tile.image}
+                  alt={tile.label + ' collection'}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  quality={95}
+                />
               </Link>
-            </div>
-            <div className="relative w-full h-[280px] md:h-[380px] order-1 md:order-2">
-              <Image
-                src="/girl-winter-outfit.jpg"
-                alt="Child wearing a cream Kiddy Trends winter outfit"
-                fill
-                sizes="(max-width: 768px) 100vw, 50vw"
-                className="object-cover object-top"
-                quality={95}
-              />
-            </div>
+            ))}
           </div>
         </section>
 
