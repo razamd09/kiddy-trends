@@ -23,12 +23,12 @@ const collectionTiles = [
   {
     label: 'All Colors Available',
     image: '/Gemini_Generated_Image_bbwliebbwliebbwl.jpg',
-    href: '/collections?cat=clothing',
+    href: '/collections?product_type=Mock%20Necks',
   },
   {
     label: 'Mock Necks Available',
     image: '/Gemini_Generated_Image_rbdt3zrbdt3zrbdt.jpg',
-    href: '/collections?cat=clothing',
+    href: '/collections?product_type=Mock%20Necks',
   },
 ]
 

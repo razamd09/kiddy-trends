@@ -51,6 +51,7 @@ export default function EmployeeProducts() {
     const [bulkEditForm, setBulkEditForm] = useState({
         title: '',
         category: '',
+        product_type: '',
         product_season_id: '',
         product_version: '',
         status: '',
@@ -627,6 +628,7 @@ export default function EmployeeProducts() {
         const updates = {}
         if (bulkEditForm.title.trim()) updates.title = bulkEditForm.title.trim()
         if (bulkEditForm.category) updates.category = bulkEditForm.category
+        if (bulkEditForm.product_type) updates.product_type = bulkEditForm.product_type
         if (bulkEditForm.product_season_id) updates.product_season_id = Number(bulkEditForm.product_season_id)
         if (bulkEditForm.product_version) updates.product_version = bulkEditForm.product_version
         if (bulkEditForm.status) updates.is_active = bulkEditForm.status === 'active'
@@ -651,7 +653,7 @@ export default function EmployeeProducts() {
                 }
             }))
             setBulkEditOpen(false)
-            setBulkEditForm({ title: '', category: '', product_season_id: '', product_version: '', status: '' })
+            setBulkEditForm({ title: '', category: '', product_type: '', product_season_id: '', product_version: '', status: '' })
             clearSelection()
             fetchProducts()
         } catch (err) {
@@ -1685,6 +1687,18 @@ export default function EmployeeProducts() {
                                 >
                                     <option value="">No change</option>
                                     {productVersionOptions.map((version) => <option key={version} value={version}>{version}</option>)}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-charcoal mb-1">Product Type</label>
+                                <select
+                                    value={bulkEditForm.product_type}
+                                    onChange={e => setBulkEditForm(prev => ({ ...prev, product_type: e.target.value }))}
+                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
+                                >
+                                    <option value="">No change</option>
+                                    {productTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
                                 </select>
                             </div>
 

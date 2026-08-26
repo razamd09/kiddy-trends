@@ -229,6 +229,7 @@ export default function Collections() {
   const [queryGenders, setQueryGenders] = useState([])
   const [queryAges, setQueryAges] = useState([])
   const [queryTitle, setQueryTitle] = useState('')
+  const [queryProductType, setQueryProductType] = useState('')
   const [querySeason, setQuerySeason] = useState(null)
   const [sort, setSort]           = useState('new')
   const [page, setPage]           = useState(1)
@@ -247,6 +248,7 @@ export default function Collections() {
       .map((x) => x.trim().toLowerCase())
       .filter((x) => x === 'boys' || x === 'girls')
     const queryTitle = (searchParams.get('title') || '').trim().toLowerCase()
+    const queryProductType = (searchParams.get('product_type') || '').trim().toLowerCase()
     const querySeason = normalizeSeasonQuery(searchParams.get('season'))
 
     const validCat = categories.some((c) => c.id === queryCat) ? queryCat : null
@@ -271,6 +273,7 @@ export default function Collections() {
     setQueryAges(queryAges)
     setQueryGenders(queryGenders)
     setQueryTitle(queryTitle)
+    setQueryProductType(queryProductType)
     setQuerySeason(querySeason)
   }, [searchParams])
 
@@ -333,6 +336,10 @@ export default function Collections() {
 
     if (queryTitle) {
       filtered = filtered.filter((p) => String(p?.title || '').toLowerCase().includes(queryTitle))
+    }
+
+    if (queryProductType) {
+      filtered = filtered.filter((p) => String(p?.product_type || '').trim().toLowerCase() === queryProductType)
     }
 
     if (querySeason) {
