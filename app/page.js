@@ -22,12 +22,12 @@ const categories = [
 const collectionTiles = [
   {
     label: 'All Colors Available',
-    image: '/Gemini_Generated_Image_j4k5pfj4k5pfj4k5.jpg',
+    image: '/Gemini_Generated_Image_bbwliebbwliebbwl.jpg',
     href: '/collections?cat=clothing',
   },
   {
     label: 'Mock Necks Available',
-    image: '/Gemini_Generated_Image_tx8qfqtx8qfqtx8q.jpg',
+    image: '/Gemini_Generated_Image_rbdt3zrbdt3zrbdt.jpg',
     href: '/collections?cat=clothing',
   },
 ]
