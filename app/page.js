@@ -102,9 +102,9 @@ export default function Home() {
         <HomeHeroSlider />
 
         {/* SHOP BY COLLECTION */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12">
+        <section className="w-full pt-12">
           <h2 className="section-title text-center mb-6">Shop by Collection</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-1 overflow-hidden rounded-3xl bg-white shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-1 overflow-hidden bg-white shadow-sm">
             {collectionTiles.map((tile) => (
               <Link
                 key={tile.label}
