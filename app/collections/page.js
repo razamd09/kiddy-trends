@@ -101,6 +101,16 @@ function getProductText(product) {
   ].join(' ').toLowerCase()
 }
 
+function productTypeMatches(productType, queryProductType) {
+  const productValue = String(productType || '').trim().toLowerCase()
+  const queryValue = String(queryProductType || '').trim().toLowerCase()
+
+  if (productValue === queryValue) return true
+
+  const mockNeckValues = new Set(['mock neck', 'mock necks'])
+  return mockNeckValues.has(productValue) && mockNeckValues.has(queryValue)
+}
+
 function productMatchesAnyAges(product, ageIds) {
   if (!Array.isArray(ageIds) || ageIds.length === 0) return true
 
@@ -339,7 +349,7 @@ export default function Collections() {
     }
 
     if (queryProductType) {
-      filtered = filtered.filter((p) => String(p?.product_type || '').trim().toLowerCase() === queryProductType)
+      filtered = filtered.filter((p) => productTypeMatches(p?.product_type, queryProductType))
     }
 
     if (querySeason) {
