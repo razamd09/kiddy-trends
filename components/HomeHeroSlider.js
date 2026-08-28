@@ -138,7 +138,7 @@ export default function HomeHeroSlider() {
 
                 <div className="relative flex justify-center px-6">
                   <div
-                    className="relative w-full max-w-md rounded-3xl border overflow-hidden flex items-center justify-center p-10"
+                    className="relative w-full max-w-md h-64 md:h-80 rounded-3xl border overflow-hidden flex items-center justify-center p-10"
                     style={{
                       background: 'linear-gradient(160deg, #f4f9fd 0%, #dbe9f5 100%)',
                       borderColor: 'rgba(31,58,82,0.12)',
@@ -187,7 +187,7 @@ export default function HomeHeroSlider() {
 
                 <div className="relative flex justify-center px-6">
                   <div
-                    className="relative w-full max-w-md rounded-3xl border overflow-hidden flex items-center justify-center p-10 h-64 md:h-80"
+                    className="relative w-full max-w-md h-64 md:h-80 rounded-3xl border overflow-hidden flex items-center justify-center p-10"
                     style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(245,230,192,0.2)' }}
                   >
                     <FreeShippingIllustration />
