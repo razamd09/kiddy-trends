@@ -60,6 +60,9 @@ export function CartProvider({ children }) {
         stock:        variantStock,
       }]
     })
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('kt-cart-item-added'))
+    }
     setCartOpen(true)
   }
 

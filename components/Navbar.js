@@ -27,8 +27,25 @@ const menuLinks = [
 export default function Navbar() {
   const [open, setOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [cartBump, setCartBump] = useState(false)
   const { totalItems, setCartOpen } = useCart()
   const navRef = useRef(null)
+
+  useEffect(() => {
+    function handleCartItemAdded() {
+      setCartBump(false)
+      requestAnimationFrame(() => setCartBump(true))
+    }
+
+    window.addEventListener('kt-cart-item-added', handleCartItemAdded)
+    return () => window.removeEventListener('kt-cart-item-added', handleCartItemAdded)
+  }, [])
+
+  useEffect(() => {
+    if (!cartBump) return
+    const timer = window.setTimeout(() => setCartBump(false), 500)
+    return () => window.clearTimeout(timer)
+  }, [cartBump])
 
   useEffect(() => {
     const handleOutsideClick = (event) => {
@@ -119,7 +136,7 @@ export default function Navbar() {
             <div className="relative">
               <button onClick={() => setCartOpen(true)}
               className={'relative p-2 rounded-full bg-cream/60 border border-gray-100 hover:border-coral/30 hover:bg-coral/10 transition-colors'}>
-              <svg className="w-6 h-6 text-charcoal" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className={'w-6 h-6 text-charcoal ' + (cartBump ? 'kt-cart-bump' : '')} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 9H4L5 9z" />
               </svg>
               {totalItems > 0 && (

@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { useCart } from '../context/CartContext'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 function NavIcon({ name }) {
     const common = { className: 'w-5 h-5', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' }
@@ -18,6 +19,23 @@ function NavIcon({ name }) {
 export default function BottomNav() {
     const { totalItems, setCartOpen } = useCart()
     const pathname = usePathname()
+    const [cartBump, setCartBump] = useState(false)
+
+    useEffect(() => {
+        function handleCartItemAdded() {
+            setCartBump(false)
+            requestAnimationFrame(() => setCartBump(true))
+        }
+
+        window.addEventListener('kt-cart-item-added', handleCartItemAdded)
+        return () => window.removeEventListener('kt-cart-item-added', handleCartItemAdded)
+    }, [])
+
+    useEffect(() => {
+        if (!cartBump) return
+        const timer = window.setTimeout(() => setCartBump(false), 500)
+        return () => window.clearTimeout(timer)
+    }, [cartBump])
 
     // Hide on admin and employee pages
     if (pathname.startsWith('/admin') || pathname.startsWith('/employee')) return null
@@ -42,7 +60,7 @@ export default function BottomNav() {
                 ))}
                 <button onClick={() => setCartOpen(true)}
                         className="flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-gray-400 relative">
-                    <NavIcon name="cart" />
+                    <span className={cartBump ? 'kt-cart-bump' : ''}><NavIcon name="cart" /></span>
                     <span className="text-xs font-semibold">Cart</span>
                     {totalItems > 0 && (
                         <span className="absolute -top-1 right-1 bg-coral text-white text-xs w-4 h-4 rounded-full flex items-center justify-center font-bold">

@@ -159,11 +159,11 @@ export default function ProductCard({ product }) {
         <button
           type="button"
           onClick={() => setShowQuickView(true)}
-          className="absolute bottom-3 right-3 z-20 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-2 text-xs font-bold text-charcoal shadow-md transition-colors hover:bg-coral hover:text-white"
+          title="Quick View"
+          className="absolute right-3 top-3 z-20 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-charcoal shadow-md transition-colors hover:bg-coral hover:text-white"
           aria-label={'Quick view ' + product.title}
         >
           <CardIcon type="eye" className="w-4 h-4" />
-          <span className="hidden sm:inline">Quick View</span>
         </button>
 
         {/* Info */}
