@@ -7,7 +7,6 @@ import RewardsChecker from '../components/RewardsChecker'
 import DiscountBanner from '../components/DiscountBanner'
 import LandingPreferencePopup from '../components/LandingPreferencePopup'
 import HomeHeroSlider from '../components/HomeHeroSlider'
-import FreeShippingLoyaltyBanner from '../components/FreeShippingLoyaltyBanner'
 import LazyMount from '../components/LazyMount'
 import { compareNewestNewArrivalsFirst, isNewArrivalsVersion } from '../lib/newArrivals'
 
@@ -101,7 +100,6 @@ export default function Home() {
         <DiscountBanner />
         {/* HERO */}
         <HomeHeroSlider />
-        <FreeShippingLoyaltyBanner />
 
         {/* SHOP BY COLLECTION */}
         <section className="w-full pt-12">
