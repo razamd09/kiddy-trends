@@ -159,27 +159,27 @@ export default function HomeHeroSlider() {
         <div className="w-full flex-shrink-0">
           <section
             className="relative overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, #1f3a52 0%, #0f2438 100%)' }}
+            style={{ background: 'linear-gradient(180deg, #eef5fb 0%, #dbe9f5 100%)' }}
           >
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-20">
               <div className="grid md:grid-cols-2 gap-10 items-center">
                 <div className="text-center md:text-left">
                   <span
                     className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 mb-5 text-xs tracking-wide"
-                    style={{ background: 'rgba(255,255,255,0.1)', color: '#f5e6c0' }}
+                    style={{ background: '#ffffff', color: '#1f3a52' }}
                   >
                     <TruckIcon className="w-3.5 h-3.5" /> LOYALTY PERK
                   </span>
-                  <h2 className="font-display text-4xl md:text-5xl text-white leading-tight mb-4">
+                  <h2 className="font-display text-4xl md:text-5xl leading-tight mb-4" style={{ color: '#1f3a52' }}>
                     3 orders. Free shipping<br className="hidden md:block" /> all month.
                   </h2>
-                  <p className="text-sm md:text-base mb-8" style={{ color: 'rgba(245,230,192,0.85)' }}>
+                  <p className="text-sm md:text-base mb-8" style={{ color: '#4f6c85' }}>
                     Tracked automatically by your phone number — no code needed.
                   </p>
                   <Link
                     href="/collections"
                     className="inline-block font-display text-sm px-6 py-3 rounded-full"
-                    style={{ background: '#f5e6c0', color: '#1f3a52' }}
+                    style={{ background: '#1f3a52', color: '#ffffff' }}
                   >
                     Start shopping
                   </Link>
@@ -188,7 +188,7 @@ export default function HomeHeroSlider() {
                 <div className="relative flex justify-center px-6">
                   <div
                     className="relative w-full max-w-md h-64 md:h-80 rounded-3xl border overflow-hidden flex items-center justify-center p-10"
-                    style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(245,230,192,0.2)' }}
+                    style={{ background: 'linear-gradient(160deg, #f4f9fd 0%, #dbe9f5 100%)', borderColor: 'rgba(31,58,82,0.12)' }}
                   >
                     <FreeShippingIllustration />
                   </div>
