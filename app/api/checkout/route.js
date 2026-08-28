@@ -9,6 +9,11 @@ const POINTS_PER_1000 = 25
 const BONUS_THRESHOLD = 500
 const BONUS_POINTS = 100
 
+// --- Monthly free-shipping loyalty perk ---
+// Once a phone number has placed this many orders in the current calendar
+// month, every order after that (within the same month) ships free.
+const FREE_SHIPPING_ORDER_THRESHOLD = 3
+
 function toNumber(value) {
     const parsed = Number(value)
     return Number.isFinite(parsed) ? parsed : 0
@@ -30,6 +35,48 @@ function normalizePkPhoneDigits(value) {
 
 function buildPhoneVariants(phoneDigits) {
     return ['+92' + phoneDigits, '92' + phoneDigits, '0' + phoneDigits, phoneDigits]
+}
+
+function currentMonthStartISO() {
+    const now = new Date()
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0))
+    return start.toISOString()
+}
+
+// Counts distinct orders placed this calendar month for a phone number,
+// matching either the customer_phone or customer_whatsapp column (a phone
+// number can appear in either field depending on how the order was placed).
+async function countOrdersThisMonth(supabase, phoneVariants) {
+    const monthStartISO = currentMonthStartISO()
+    const orFilter = phoneVariants
+        .map((p) => `customer_phone.eq.${p}`)
+        .concat(phoneVariants.map((p) => `customer_whatsapp.eq.${p}`))
+        .join(',')
+
+    const { data, error } = await supabase
+        .from('orders')
+        .select('id')
+        .or(orFilter)
+        .gte('created_at', monthStartISO)
+
+    if (error) {
+        console.log('countOrdersThisMonth error:', error.message)
+        return 0
+    }
+
+    // De-duplicate: an order can match both the phone and whatsapp condition
+    // (common when they're the same number), so count unique order ids.
+    return new Set((data || []).map((row) => row.id)).size
+}
+
+function buildFreeShippingStatus(ordersThisMonth) {
+    const unlocked = ordersThisMonth >= FREE_SHIPPING_ORDER_THRESHOLD
+    return {
+        ordersThisMonth,
+        threshold: FREE_SHIPPING_ORDER_THRESHOLD,
+        unlocked,
+        ordersUntilUnlock: unlocked ? 0 : Math.max(0, FREE_SHIPPING_ORDER_THRESHOLD - ordersThisMonth),
+    }
 }
 
 function normalizeWhatsApp(value) {
@@ -186,7 +233,7 @@ export async function GET(request) {
 
         const phoneVariants = buildPhoneVariants(phoneDigits)
 
-        const [phoneOrderRes, whatsappOrderRes, rewardsRes] = await Promise.all([
+        const [phoneOrderRes, whatsappOrderRes, rewardsRes, ordersThisMonth] = await Promise.all([
             supabase
                 .from('orders')
                 .select('customer_name, customer_email, customer_phone, customer_whatsapp, customer_city, customer_address, created_at')
@@ -204,6 +251,7 @@ export async function GET(request) {
                 .select('user_id, points, phone')
                 .in('phone', phoneVariants)
                 .limit(1),
+            countOrdersThisMonth(supabase, phoneVariants),
         ])
 
         const orderCandidates = []
@@ -212,8 +260,10 @@ export async function GET(request) {
         orderCandidates.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         const latest = orderCandidates[0]
 
+        const freeShipping = buildFreeShippingStatus(ordersThisMonth)
+
         if (!latest && !(rewardsRes.data?.[0])) {
-            return Response.json({ exists: false })
+            return Response.json({ exists: false, freeShipping })
         }
 
         const rewardsUser = rewardsRes.data?.[0] || null
@@ -234,6 +284,7 @@ export async function GET(request) {
                 phone: rewardsUser.phone || '',
                 whatsapp: rewardsUser.whatsapp || '',
             } : null,
+            freeShipping,
         }, { headers: { 'Cache-Control': 'no-store' } })
     } catch (error) {
         return Response.json({ exists: false, error: error.message }, { status: 500 })
@@ -270,7 +321,20 @@ export async function POST(request) {
             .limit(1)
 
         const shippingRate = activeRates?.[0] || { flat_price: 250, shipping_percentage: 0 }
-        const shipping = computeShipping(subtotal, shippingRate)
+
+        // --- Monthly free-shipping loyalty check (authoritative, server-side) ---
+        // Count this phone's orders so far this calendar month BEFORE this new
+        // order is inserted. If they've already hit the threshold, this order
+        // (the 4th+) ships free. This is deliberately computed from the orders
+        // table itself, not trusted from anything the client sends.
+        const phoneDigitsForLoyalty = normalizePkPhoneDigits(customer?.phone || customer?.whatsapp || '')
+        const phoneVariantsForLoyalty = buildPhoneVariants(phoneDigitsForLoyalty)
+        const ordersThisMonthSoFar = phoneDigitsForLoyalty.length === 10
+            ? await countOrdersThisMonth(supabase, phoneVariantsForLoyalty)
+            : 0
+        const freeShippingStatus = buildFreeShippingStatus(ordersThisMonthSoFar)
+
+        const shipping = freeShippingStatus.unlocked ? 0 : computeShipping(subtotal, shippingRate)
         const promoDiscount = Math.max(0, Math.min(requestedPromoDiscount, subtotal + shipping))
 
         let rewardsSummary = null
@@ -337,6 +401,9 @@ export async function POST(request) {
             rewardsSummary
                 ? ('[Rewards] ' + rewardsSummary.userId + ' redeemed ' + rewardsSummary.redeemedPoints + ' pts, earned ' + rewardsSummary.earnedPoints + ' pts, balance ' + rewardsSummary.availablePoints + ' pts')
                 : '',
+            freeShippingStatus.unlocked
+                ? ('[Loyalty] Free shipping applied \u2014 order #' + (ordersThisMonthSoFar + 1) + ' this month for this phone number')
+                : '',
         ].filter(Boolean).join(' | ')
 
         const { data: savedOrder, error } = await supabase
@@ -384,6 +451,7 @@ export async function POST(request) {
                     metadata: {
                         total,
                         items_count: Array.isArray(cartItems) ? cartItems.length : 0,
+                        free_shipping_applied: freeShippingStatus.unlocked,
                             ...requestMetadata,
                     },
                 }])
@@ -412,6 +480,10 @@ export async function POST(request) {
             orderNumber: orderNumber,
             total,
             rewards: rewardsSummary,
+            freeShipping: {
+                applied: freeShippingStatus.unlocked,
+                ordersThisMonth: ordersThisMonthSoFar + 1,
+            },
         })
 
     } catch (error) {

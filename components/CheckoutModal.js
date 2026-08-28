@@ -67,6 +67,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   const [discountCodeLoading, setDiscountCodeLoading] = useState(false)
   const [discountCodeError, setDiscountCodeError] = useState('')
   const [rewards, setRewards]         = useState({ userId: '', points: 0, redeemed: 0 })
+  const [freeShippingInfo, setFreeShippingInfo] = useState(null)
   const [showGiftFlash, setShowGiftFlash] = useState(false)
   const [shippingRate, setShippingRate] = useState({
     flat_price: 250,
@@ -78,7 +79,8 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   const isOnSale       = !isCart && comparePrice > price
   const image          = product?.images?.[0]?.src
   const baseShipping   = computeShippingAmount(price, shippingRate)
-  const shipping       = discount?.type === 'shipping' ? 0 : baseShipping
+  const loyaltyFreeShipping = Boolean(freeShippingInfo?.unlocked)
+  const shipping       = (discount?.type === 'shipping' || loyaltyFreeShipping) ? 0 : baseShipping
   const billAmountForDiscount = price + shipping
   const discountAmount = discount
     ? discount.type === 'percent' ? Math.round(billAmountForDiscount * discount.value / 100)
@@ -185,6 +187,11 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
     try {
       const res = await fetch('/api/checkout?phone=' + phoneDigits, { cache: 'no-store' })
       const data = await res.json()
+
+      if (data?.freeShipping) {
+        setFreeShippingInfo(data.freeShipping)
+      }
+
       if (data?.exists && data?.customer) {
         const c = data.customer
         const customerPhone = formatPhone(c.phone || phoneDigits)
@@ -214,7 +221,10 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
 
   function handlePhoneInputChange(val) {
     const digits = formatPhone(val)
-    if (digits !== form.phone) setAutoFilledMessage('')
+    if (digits !== form.phone) {
+      setAutoFilledMessage('')
+      setFreeShippingInfo(null)
+    }
     setForm(prev => ({ ...prev, phone: digits }))
     if (digits.length === 10) {
       lookupCustomerByPhone(digits)
@@ -526,6 +536,22 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                 {phoneLookupLoading && <p className="text-xs text-gray-400 mt-1">Checking existing customer...</p>}
                 {autoFilledMessage && <p className="text-xs text-green-600 mt-1">{autoFilledMessage}</p>}
                 {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone}</p>}
+
+                {freeShippingInfo && (
+                  freeShippingInfo.unlocked ? (
+                    <div className="mt-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+                      <p className="text-xs text-green-700 font-semibold">
+                        🚚 Free shipping unlocked! This is your {freeShippingInfo.ordersThisMonth + 1}th order this month.
+                      </p>
+                    </div>
+                  ) : freeShippingInfo.ordersThisMonth > 0 ? (
+                    <div className="mt-2 bg-skyblue/10 border border-skyblue/30 rounded-xl px-3 py-2">
+                      <p className="text-xs text-charcoal">
+                        Place <strong>{freeShippingInfo.ordersUntilUnlock}</strong> more order{freeShippingInfo.ordersUntilUnlock === 1 ? '' : 's'} this month to unlock free shipping on every order after.
+                      </p>
+                    </div>
+                  ) : null
+                )}
               </div>
 
               {/* Name */}
@@ -682,7 +708,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                 )}
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Shipping</span>
-                  {discount?.type === 'shipping'
+                  {(discount?.type === 'shipping' || loyaltyFreeShipping)
                     ? <div className="flex gap-2"><span className="line-through text-gray-400">PKR {baseShipping.toLocaleString()}</span><span className="text-green-600 font-semibold">FREE</span></div>
                     : <span className="font-semibold">PKR {baseShipping.toLocaleString()}</span>
                   }
