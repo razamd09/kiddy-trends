@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useCart } from '../context/CartContext'
 import CheckoutModal from './CheckoutModal'
 import WishlistButton from './WishlistButton'
@@ -20,6 +20,9 @@ function CardIcon({ type, className = 'w-5 h-5' }) {
   }
   if (type === 'flame') {
     return <svg {...common}><path d="M12 22c-3.2 0-5.8-2.2-5.8-5.4 0-2.3 1.4-4.1 3-5.6 1.2-1.2 2.5-2.7 2.6-5 .9.7 3.2 2.9 3.2 6.1.8-.6 1.4-1.5 1.7-2.4 1.1 1 2.1 2.7 2.1 5.1 0 4.1-3 7.2-6.8 7.2z" /></svg>
+  }
+  if (type === 'eye') {
+    return <svg {...common}><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z" /><circle cx="12" cy="12" r="2.6" /></svg>
   }
   return null
 }
@@ -44,6 +47,7 @@ export default function ProductCard({ product }) {
   const [selectedVariant, setSelectedVariant] = useState(product.variants?.[0])
   const [added, setAdded]               = useState(false)
   const [showCheckout, setShowCheckout] = useState(false)
+  const [showQuickView, setShowQuickView] = useState(false)
   const [imageIndex, setImageIndex]     = useState(0)
   const [imageFailed, setImageFailed]   = useState(false)
 
@@ -72,6 +76,21 @@ export default function ProductCard({ product }) {
   const displayOriginal = fakeOriginal
   const isOnSale       = true // always show sale
 
+  useEffect(() => {
+    if (!showQuickView) return
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') setShowQuickView(false)
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = ''
+    }
+  }, [showQuickView])
+
   const hasVariants = Array.isArray(product.variants) && product.variants.some((variant) => {
     const title = String(variant?.title || '').trim()
     const option1 = String(variant?.option1 || '').trim()
@@ -88,7 +107,7 @@ export default function ProductCard({ product }) {
 
   return (
     <>
-      <div className="bg-white rounded-3xl overflow-hidden card-hover shadow-sm border border-gray-100 flex flex-col">
+      <div className="relative bg-white rounded-3xl overflow-hidden card-hover shadow-sm border border-gray-100 flex flex-col">
 
         {/* Image */}
         <a href={'/products/' + product.handle} className="block relative bg-white" style={{paddingBottom:'100%'}}>
@@ -134,7 +153,18 @@ export default function ProductCard({ product }) {
               <span className="bg-white text-charcoal font-display text-sm px-3 py-1 rounded-full">Sold Out</span>
             </div>
           )}
+
         </a>
+
+        <button
+          type="button"
+          onClick={() => setShowQuickView(true)}
+          className="absolute bottom-3 right-3 z-20 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-2 text-xs font-bold text-charcoal shadow-md transition-colors hover:bg-coral hover:text-white"
+          aria-label={'Quick view ' + product.title}
+        >
+          <CardIcon type="eye" className="w-4 h-4" />
+          <span className="hidden sm:inline">Quick View</span>
+        </button>
 
         {/* Info */}
         <div className="p-4 flex flex-col flex-1">
@@ -214,6 +244,107 @@ export default function ProductCard({ product }) {
           variant={selectedVariant}
           onClose={() => setShowCheckout(false)}
         />
+      )}
+
+      {showQuickView && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowQuickView(false)
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={'quick-view-title-' + product.id}
+            className="relative grid max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl md:grid-cols-2"
+          >
+            <button
+              type="button"
+              onClick={() => setShowQuickView(false)}
+              className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white text-charcoal shadow-md hover:bg-coral hover:text-white"
+              aria-label="Close quick view"
+            >
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M6 6l12 12M18 6 6 18" />
+              </svg>
+            </button>
+
+            <div className="flex min-h-[18rem] items-center justify-center bg-gray-50 p-6 md:min-h-[28rem]">
+              {image ? (
+                <img src={image} alt={product.title} className="max-h-[26rem] w-full object-contain" />
+              ) : (
+                <CardIcon type="shirt" className="h-20 w-20 text-gray-300" />
+              )}
+            </div>
+
+            <div className="flex flex-col p-6 md:p-8">
+              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-coral">Quick View</p>
+              <h2 id={'quick-view-title-' + product.id} className="font-display text-2xl leading-tight text-charcoal">
+                {product.title}
+              </h2>
+              <div className="mt-4 flex items-center gap-3">
+                <p className="text-xl font-bold text-coral">PKR {price.toLocaleString()}</p>
+                <p className="text-sm text-gray-400 line-through">PKR {displayOriginal.toLocaleString()}</p>
+              </div>
+
+              {hasVariants && (
+                <label className="mt-6 text-sm font-semibold text-charcoal">
+                  Choose an option
+                  <select
+                    value={selectedVariant?.id}
+                    onChange={(event) => {
+                      const variant = product.variants.find((item) => String(item.id) === String(event.target.value))
+                      setSelectedVariant(variant)
+                    }}
+                    className="mt-2 w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-semibold focus:border-coral focus:outline-none"
+                  >
+                    {product.variants.map((variant) => (
+                      <option key={variant.id} value={variant.id} disabled={!variant.available}>
+                        {variant.title} {!variant.available ? '(Sold Out)' : '— PKR ' + parseFloat(variant.price).toLocaleString()}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
+              {lowStock && !isSoldOut && (
+                <p className="mt-3 text-sm font-semibold text-orange-500">Only {lowStock} left in stock</p>
+              )}
+
+              <div className="mt-auto flex gap-2 pt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleAddToCart()
+                    if (!isSoldOut && !isMaxed) setShowQuickView(false)
+                  }}
+                  disabled={isSoldOut || isMaxed}
+                  className="flex-1 rounded-xl border-2 border-charcoal px-3 py-3 text-sm font-bold text-charcoal transition-colors hover:bg-charcoal hover:text-white disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-300"
+                >
+                  {isSoldOut ? 'Sold Out' : isMaxed ? 'Max Qty' : 'Add to Cart'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isSoldOut) {
+                      setShowQuickView(false)
+                      setShowCheckout(true)
+                    }
+                  }}
+                  disabled={isSoldOut}
+                  className="flex-1 rounded-xl bg-coral px-3 py-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-300"
+                >
+                  Buy Now
+                </button>
+              </div>
+              <a href={'/products/' + product.handle} className="mt-4 text-center text-sm font-semibold text-gray-500 hover:text-coral">
+                View full product details
+              </a>
+            </div>
+          </div>
+        </div>
       )}
     </>
   )
