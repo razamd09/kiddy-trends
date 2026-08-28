@@ -21,12 +21,12 @@ const categories = [
 
 const collectionTiles = [
   {
-    label: 'All Colors Available',
+    label: 'All Colors',
     image: '/Gemini_Generated_Image_bbwliebbwliebbwl.jpg',
     href: '/collections?product_type=Mock%20Necks',
   },
   {
-    label: 'Mock Necks Available',
+    label: 'Mock Neck Collection',
     image: '/Gemini_Generated_Image_rbdt3zrbdt3zrbdt.jpg',
     href: '/collections?product_type=Mock%20Necks',
   },
@@ -115,8 +115,10 @@ export default function Home() {
                   src={tile.image}
                   alt={tile.label + ' collection'}
                   fill
-                  sizes="(max-width: 768px) 100vw, 50vw"
+                  sizes="(max-width: 768px) 100vw, 960px"
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
+                  fetchPriority="low"
                   quality={95}
                 />
               </Link>

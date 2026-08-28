@@ -6,7 +6,6 @@ import CartDrawer from '../components/CartDrawer'
 import Script from 'next/script'
 import LiveNotifications from '../components/LiveNotifications'
 import BottomNav from '../components/BottomNav'
-import AmbientMusicPlayer from '../components/AmbientMusicPlayer'
 import DynamicSocialProofBar from '../components/DynamicSocialProofBar'
 import AnalyticsTracker from '../components/AnalyticsTracker'
 
@@ -83,7 +82,6 @@ export default function RootLayout({ children }) {
         <DynamicSocialProofBar />
 
         <CartDrawer />
-        <AmbientMusicPlayer />
         <main className="pb-16 md:pb-0">{children}</main>
         <Footer />
         <BottomNav />

@@ -1,6 +1,16 @@
 'use client'
 import { useState } from 'react'
 
+function RewardIcon({ name, className = 'w-5 h-5' }) {
+  const common = { className, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' }
+  const paths = {
+    reward: <path d="m12 3 1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5L12 3Z" />,
+    discount: <><path d="M4 7h16v10H4z" /><path d="M8 11h.01M16 13h.01M9 15l6-6" /></>,
+    points: <><circle cx="12" cy="12" r="8" /><path d="M12 8v8M9 10h4a2 2 0 1 1 0 4H9" /></>,
+  }
+  return <svg {...common}>{paths[name]}</svg>
+}
+
 export default function RewardsChecker() {
   const [userId, setUserId]   = useState('')
   const [result, setResult]   = useState(null)
@@ -27,7 +37,7 @@ export default function RewardsChecker() {
   return (
     <div className="bg-gradient-to-r from-sunny/40 to-coral/20 rounded-3xl p-8 md:p-10">
       <div className="max-w-2xl mx-auto text-center">
-        <div className="text-4xl mb-3">⭐</div>
+        <RewardIcon name="reward" className="w-9 h-9 text-coral mx-auto mb-3" />
         <h2 className="font-display text-3xl text-charcoal mb-2">Check Your Reward Points!</h2>
         <p className="text-gray-600 mb-6">
           Enter your Rewards ID to see your points balance and discounts available.
@@ -44,7 +54,7 @@ export default function RewardsChecker() {
               className="w-full px-5 py-3 rounded-2xl border-2 border-white focus:border-coral focus:outline-none bg-white text-sm font-semibold shadow-sm pr-40" />
             {!userId && (
               <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-coral text-white text-xs font-bold px-3 py-1 rounded-full animate-pulse whitespace-nowrap">
-                🎁 Discounts Available!
+                Discounts Available!
               </div>
             )}
           </div>
@@ -81,7 +91,7 @@ export default function RewardsChecker() {
             {!result.bonus_notified && result.points < 500 && (
               <div className="bg-cream rounded-xl p-3 text-left">
                 <p className="text-xs text-gray-500 mb-1.5">
-                  🎁 <strong>{500 - result.points} pts</strong> away from 100 bonus points!
+                  <RewardIcon name="reward" className="w-4 h-4 inline-block mr-1 text-coral" /> <strong>{500 - result.points} pts</strong> away from 100 bonus points!
                 </p>
                 <div className="bg-gray-200 rounded-full h-2">
                   <div className="bg-coral rounded-full h-2 transition-all"
@@ -101,9 +111,9 @@ export default function RewardsChecker() {
         {/* Info pills */}
         {!result && !error && (
           <div className="flex flex-wrap justify-center gap-3 mt-4">
-            <span className="bg-white text-charcoal text-xs px-4 py-2 rounded-full font-semibold shadow-sm">🛍️ 25 pts per PKR 1,000</span>
-            <span className="bg-white text-charcoal text-xs px-4 py-2 rounded-full font-semibold shadow-sm">💰 10 pts = PKR 10 OFF</span>
-            <span className="bg-white text-charcoal text-xs px-4 py-2 rounded-full font-semibold shadow-sm">🎁 500 pts = Bonus 100 pts</span>
+            <span className="bg-white text-charcoal text-xs px-4 py-2 rounded-full font-semibold shadow-sm inline-flex items-center gap-1"><RewardIcon name="points" className="w-4 h-4 text-coral" />25 pts per PKR 1,000</span>
+            <span className="bg-white text-charcoal text-xs px-4 py-2 rounded-full font-semibold shadow-sm inline-flex items-center gap-1"><RewardIcon name="discount" className="w-4 h-4 text-coral" />10 pts = PKR 10 OFF</span>
+            <span className="bg-white text-charcoal text-xs px-4 py-2 rounded-full font-semibold shadow-sm inline-flex items-center gap-1"><RewardIcon name="reward" className="w-4 h-4 text-coral" />500 pts = Bonus 100 pts</span>
           </div>
         )}
       </div>

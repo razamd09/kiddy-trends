@@ -1,6 +1,23 @@
 import Link from 'next/link'
 import Image from 'next/image'
 
+function FooterIcon({ name }) {
+  const common = { className: 'w-4 h-4 flex-shrink-0', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' }
+  const paths = {
+    feedback: <path d="M20 11.5a7.5 7.5 0 0 1-8 7.5 8.6 8.6 0 0 1-3.5-.8L4 20l1.2-3.7A7.3 7.3 0 0 1 4 11.5 7.5 7.5 0 0 1 12 4a7.5 7.5 0 0 1 8 7.5Z" />,
+    clothing: <path d="m8 4 4 2 4-2 4 4-3 3v9H7v-9L4 8l4-4Z" />,
+    bedding: <><path d="M3 18v-7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7M3 14h18M3 18v2M21 18v2" /><path d="M6 9V7h5v2" /></>,
+    bags: <><path d="M6 8h12l1 13H5L6 8Z" /><path d="M8 8V6a4 4 0 0 1 8 0v2" /></>,
+    accessories: <><circle cx="12" cy="12" r="8" /><path d="m12 8 1.2 2.5L16 12l-2.8 1.5L12 16l-1.2-2.5L8 12l2.8-1.5L12 8Z" /></>,
+    whatsapp: <path d="M20 11.5a8 8 0 0 1-11.8 7L4 20l1.5-4A8 8 0 1 1 20 11.5Z" />,
+    instagram: <><rect x="4" y="4" width="16" height="16" rx="4" /><circle cx="12" cy="12" r="3.5" /><circle cx="17.5" cy="6.5" r=".5" fill="currentColor" /></>,
+    facebook: <path d="M14 20v-7h2.5l.5-3H14V8.2c0-.9.3-1.5 1.6-1.5H17V4.1c-.6-.1-1.3-.1-2-.1-2.2 0-3.7 1.3-3.7 3.8V10H9v3h2.3v7" />,
+    tiktok: <path d="M15 4c.3 2 1.4 3.3 3.5 3.5v3a7 7 0 0 1-3.5-1v5.2a5.2 5.2 0 1 1-4-5.1v3.1a2.2 2.2 0 1 0 1 2V4h3Z" />,
+    youtube: <><rect x="3" y="6" width="18" height="12" rx="3" /><path d="m10 9 5 3-5 3V9Z" /></>,
+  }
+  return <svg {...common}>{paths[name]}</svg>
+}
+
 const socials = [
   {
     name: 'Instagram',
@@ -83,7 +100,7 @@ export default function Footer() {
                 ['/about', 'About Us'],
                 ['/refund-policy', 'Refund Policy'],
                 ['/size-chart',    'Size Chart'],
-                ['/feedback',      '💝 Share Feedback'],
+                ['/feedback',      'Share Feedback'],
                 ['/order-tracking','Track Order'],
               ].map(([href, label]) => (
                 <li key={href}>
@@ -100,14 +117,14 @@ export default function Footer() {
             <h4 className="font-display text-lg text-mint mb-4">Categories</h4>
             <ul className="space-y-2 text-gray-300 text-sm">
               {[
-                ['/collections?cat=clothing',    '👕 Kids Clothing'],
-                ['/collections?cat=bedding',     '🛏️ Kids Bedding'],
-                ['/collections?cat=bags',        '🎒 Bags'],
-                ['/collections?cat=accessories', '🎀 Little Accessories'],
-              ].map(([href, label]) => (
+                ['/collections?cat=clothing',    'Kids Clothing', 'clothing'],
+                ['/collections?cat=bedding',     'Kids Bedding', 'bedding'],
+                ['/collections?cat=bags',        'Bags', 'bags'],
+                ['/collections?cat=accessories', 'Little Accessories', 'accessories'],
+              ].map(([href, label, icon]) => (
                 <li key={href}>
                   <Link href={href} className="hover:text-coral transition-colors">
-                    {label}
+                    <span className="inline-flex items-center gap-2"><FooterIcon name={icon} />{label}</span>
                   </Link>
                 </li>
               ))}
@@ -121,35 +138,35 @@ export default function Footer() {
               <li>
                 <a href="https://wa.me/923360677340" target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-2 hover:text-coral transition-colors">
-                  <span className="text-lg">💬</span>
+                  <FooterIcon name="whatsapp" />
                   <span>WhatsApp: 0336 0677340</span>
                 </a>
               </li>
               <li>
                 <a href="https://instagram.com/trendykids.2020" target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-2 hover:text-coral transition-colors">
-                  <span className="text-lg">📸</span>
+                  <FooterIcon name="instagram" />
                   <span>@trendykids.2020</span>
                 </a>
               </li>
               <li>
                 <a href="https://facebook.com/thetrendykidsshop" target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-2 hover:text-coral transition-colors">
-                  <span className="text-lg">👍</span>
+                  <FooterIcon name="facebook" />
                   <span>thetrendykidsshop</span>
                 </a>
               </li>
               <li>
                 <a href="https://www.tiktok.com/@kiddy.trends?is_from_webapp=1&sender_device=pc" target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-2 hover:text-coral transition-colors">
-                  <span className="text-lg">🎵</span>
+                  <FooterIcon name="tiktok" />
                   <span>@kiddy.trends</span>
                 </a>
               </li>
               <li>
                 <a href="https://youtube.com/@kiddytrends5518" target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-2 hover:text-coral transition-colors">
-                  <span className="text-lg">▶️</span>
+                  <FooterIcon name="youtube" />
                   <span>@kiddytrends5518</span>
                 </a>
               </li>
@@ -159,7 +176,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-white/10 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-gray-400 text-sm">
-          <p>© {new Date().getFullYear()} Kiddy Trends. Made with ❤️ for little ones.</p>
+          <p>© {new Date().getFullYear()} Kiddy Trends. Made for little ones.</p>
           <div className="flex gap-4">
             <Link href="/refund-policy" className="hover:text-coral transition-colors">Refund Policy</Link>
             <Link href="/size-chart" className="hover:text-coral transition-colors">Size Chart</Link>

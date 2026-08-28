@@ -1,6 +1,15 @@
 'use client'
 import { useState } from 'react'
 
+function RewardNavIcon({ name }) {
+  const common = { className: 'w-4 h-4', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' }
+  const paths = {
+    reward: <path d="m12 3 1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5L12 3Z" />,
+    points: <><circle cx="12" cy="12" r="8" /><path d="M12 8v8M9 10h4a2 2 0 1 1 0 4H9" /></>,
+  }
+  return <svg {...common}>{paths[name]}</svg>
+}
+
 export default function RewardsNavChecker() {
   const [open, setOpen]       = useState(false)
   const [userId, setUserId]   = useState('')
@@ -42,7 +51,7 @@ export default function RewardsNavChecker() {
             {/* Header */}
             <div className="bg-coral px-4 py-3 flex items-center justify-between">
               <div>
-                <p className="font-display text-white text-base">⭐ Rewards Points</p>
+                <p className="font-display text-white text-base inline-flex items-center gap-1.5"><RewardNavIcon name="reward" />Rewards Points</p>
                 <p className="text-white/70 text-xs">Check your balance</p>
               </div>
               <button onClick={() => setOpen(false)}
@@ -63,7 +72,7 @@ export default function RewardsNavChecker() {
                       className="w-full px-4 py-2.5 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm font-semibold pr-24" />
                     {!userId && (
                       <span className="absolute right-2 top-1/2 -translate-y-1/2 bg-coral text-white text-xs px-2 py-0.5 rounded-full animate-pulse whitespace-nowrap">
-                        🎁 Check!
+                        Check!
                       </span>
                     )}
                   </div>
@@ -73,8 +82,8 @@ export default function RewardsNavChecker() {
                     {loading ? 'Checking...' : 'Check My Points'}
                   </button>
                   <div className="flex justify-between mt-3 text-xs text-gray-400">
-                    <span>🛍️ 25 pts/PKR 1000</span>
-                    <span>💰 10 pts = PKR 10</span>
+                    <span className="inline-flex items-center gap-1"><RewardNavIcon name="points" />25 pts/PKR 1000</span>
+                    <span>10 pts = PKR 10</span>
                   </div>
                 </>
               ) : (
@@ -91,7 +100,7 @@ export default function RewardsNavChecker() {
                   {!result.bonus_notified && result.points < 500 && (
                     <div className="bg-cream rounded-xl p-3 mb-3">
                       <p className="text-xs text-gray-500 mb-1">
-                        🎁 <strong>{500 - result.points} pts</strong> to bonus 100 pts!
+                        <RewardNavIcon name="reward" /> <strong>{500 - result.points} pts</strong> to bonus 100 pts!
                       </p>
                       <div className="bg-gray-200 rounded-full h-1.5">
                         <div className="bg-coral rounded-full h-1.5"

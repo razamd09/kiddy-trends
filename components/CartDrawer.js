@@ -47,7 +47,9 @@ function handleSaveEmail() {
         {/* Empty */}
         {cart.length === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-            <div className="text-7xl mb-4">🛒</div>
+            <svg className="w-16 h-16 text-coral mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M3 4h2l2 12h10l2-8H6" /><circle cx="9" cy="20" r="1" /><circle cx="17" cy="20" r="1" />
+            </svg>
             <h3 className="font-display text-2xl text-charcoal mb-2">Your cart is empty</h3>
             <p className="text-gray-400 mb-6">Add some cute items for your little one!</p>
             <button onClick={() => setCartOpen(false)} className="btn-primary">
@@ -66,7 +68,7 @@ function handleSaveEmail() {
                     {item.image ? (
                       <img src={item.image} alt={item.title} className="w-full h-full object-contain mix-blend-multiply p-1" />
                     ) : (
-                      <span className="text-3xl">👕</span>
+                      <svg className="w-8 h-8 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m8 4 4 2 4-2 4 4-3 3v9H7v-9L4 8l4-4Z" /></svg>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -124,7 +126,7 @@ function handleSaveEmail() {
     <p className="text-xs text-gray-400 mt-1 text-center">Get notified about your cart</p>
   </div>
 )}
-  Checkout 🛍️
+  Checkout
 </button>
               <button onClick={() => setCartOpen(false)}
                 className="w-full border-2 border-gray-200 text-charcoal font-display text-base py-3 rounded-2xl hover:border-coral hover:text-coral transition-colors">
