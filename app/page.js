@@ -23,7 +23,7 @@ const collectionTiles = [
   {
     label: 'All Colors',
     image: '/Gemini_Generated_Image_bbwliebbwliebbwl.jpg',
-    href: '/collections?product_type=Mock%20Necks',
+    href: '/collections',
   },
   {
     label: 'Mock Neck Collection',

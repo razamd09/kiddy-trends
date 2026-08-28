@@ -7,6 +7,7 @@ function RewardIcon({ name, className = 'w-5 h-5' }) {
     reward: <path d="m12 3 1.5 5.5L19 10l-5.5 1.5L12 17l-1.5-5.5L5 10l5.5-1.5L12 3Z" />,
     discount: <><path d="M4 7h16v10H4z" /><path d="M8 11h.01M16 13h.01M9 15l6-6" /></>,
     points: <><circle cx="12" cy="12" r="8" /><path d="M12 8v8M9 10h4a2 2 0 1 1 0 4H9" /></>,
+    trophy: <><path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z" /><path d="M7 5H4a1 1 0 0 0-1 1 4 4 0 0 0 4 4M17 5h3a1 1 0 0 1 1 1 4 4 0 0 1-4 4" /></>,
   }
   return <svg {...common}>{paths[name]}</svg>
 }
@@ -35,63 +36,59 @@ export default function RewardsChecker() {
   }
 
   return (
-    <div className="bg-gradient-to-r from-sunny/40 to-coral/20 rounded-3xl p-8 md:p-10">
+    <div className="border border-gray-200 rounded-2xl p-8 md:p-10 bg-white">
       <div className="max-w-2xl mx-auto text-center">
-        <RewardIcon name="reward" className="w-9 h-9 text-coral mx-auto mb-3" />
-        <h2 className="font-display text-3xl text-charcoal mb-2">Check Your Reward Points!</h2>
-        <p className="text-gray-600 mb-6">
+        <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-coral/10 flex items-center justify-center">
+          <RewardIcon name="reward" className="w-6 h-6 text-coral" />
+        </div>
+        <h2 className="font-display text-3xl text-charcoal mb-2">Check Your Reward Points</h2>
+        <p className="text-gray-500 mb-7">
           Enter your Rewards ID to see your points balance and discounts available.
-          Earn <strong>25 pts</strong> for every <strong>PKR 1,000</strong> spent!
+          Earn <strong className="text-charcoal">25 pts</strong> for every <strong className="text-charcoal">PKR 1,000</strong> spent.
         </p>
 
-        {/* Search field with flashing badge */}
-        <div className="flex gap-3 max-w-md mx-auto mb-4">
-          <div className="relative flex-1">
-            <input type="text" placeholder="Enter your Rewards ID..."
-              value={userId}
-              onChange={e => { setUserId(e.target.value); setResult(null); setError('') }}
-              onKeyDown={e => e.key === 'Enter' && handleCheck()}
-              className="w-full px-5 py-3 rounded-2xl border-2 border-white focus:border-coral focus:outline-none bg-white text-sm font-semibold shadow-sm pr-40" />
-            {!userId && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 bg-coral text-white text-xs font-bold px-3 py-1 rounded-full animate-pulse whitespace-nowrap">
-                Discounts Available!
-              </div>
-            )}
-          </div>
+        {/* Search field */}
+        <div className="flex gap-3 max-w-md mx-auto mb-6">
+          <input type="text" placeholder="Enter your Rewards ID..."
+            value={userId}
+            onChange={e => { setUserId(e.target.value); setResult(null); setError('') }}
+            onKeyDown={e => e.key === 'Enter' && handleCheck()}
+            className="flex-1 px-5 py-3 rounded-xl border border-gray-200 focus:border-coral focus:outline-none text-sm" />
           <button onClick={handleCheck} disabled={loading || !userId.trim()}
-            className="px-6 py-3 bg-coral text-white font-display rounded-2xl hover:bg-opacity-90 transition-all hover:scale-105 disabled:opacity-50 shadow-sm">
-            {loading ? '...' : 'Check'}
+            className="px-6 py-3 bg-coral text-white font-display text-sm rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 whitespace-nowrap">
+            {loading ? 'Checking...' : 'Check'}
           </button>
         </div>
 
         {/* Error */}
         {error && (
-          <div className="bg-white rounded-2xl px-5 py-3 inline-block">
+          <div className="border border-gray-200 rounded-xl px-5 py-3 inline-block mb-2">
             <p className="text-sm text-gray-500">{error}</p>
           </div>
         )}
 
         {/* Result */}
         {result && (
-          <div className="bg-white rounded-2xl p-5 max-w-sm mx-auto shadow-sm mt-2">
+          <div className="border border-gray-200 rounded-xl p-5 max-w-sm mx-auto mt-2 text-left">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-coral/20 rounded-full flex items-center justify-center font-display text-coral text-lg">
+              <div className="w-10 h-10 bg-coral/10 rounded-full flex items-center justify-center font-display text-coral text-lg">
                 {result.name?.[0]?.toUpperCase() || userId[0]?.toUpperCase()}
               </div>
-              <div className="text-left">
+              <div>
                 <p className="font-display text-base text-charcoal">{result.name || userId}</p>
                 <p className="text-xs text-gray-400">ID: {userId}</p>
               </div>
             </div>
-            <div className="bg-sunny/20 rounded-xl p-4 mb-3">
+            <div className="bg-gray-50 rounded-xl p-4 mb-3">
               <p className="text-xs text-gray-500 mb-1">Your Points Balance</p>
               <p className="font-display text-4xl text-charcoal">{result.points} <span className="text-lg text-gray-400">pts</span></p>
-              <p className="text-sm text-coral font-semibold mt-1">= PKR {result.points} discount available!</p>
+              <p className="text-sm text-coral font-semibold mt-1">= PKR {result.points} discount available</p>
             </div>
             {!result.bonus_notified && result.points < 500 && (
-              <div className="bg-cream rounded-xl p-3 text-left">
-                <p className="text-xs text-gray-500 mb-1.5">
-                  <RewardIcon name="reward" className="w-4 h-4 inline-block mr-1 text-coral" /> <strong>{500 - result.points} pts</strong> away from 100 bonus points!
+              <div className="rounded-xl p-3 border border-gray-100">
+                <p className="text-xs text-gray-500 mb-1.5 flex items-center gap-1.5">
+                  <RewardIcon name="reward" className="w-3.5 h-3.5 text-coral" />
+                  <strong className="text-charcoal">{500 - result.points} pts</strong> away from 100 bonus points
                 </p>
                 <div className="bg-gray-200 rounded-full h-2">
                   <div className="bg-coral rounded-full h-2 transition-all"
@@ -100,20 +97,27 @@ export default function RewardsChecker() {
               </div>
             )}
             {result.bonus_notified && (
-              <div className="bg-mint/20 rounded-xl p-3 text-left">
-                <p className="text-xs text-green-600 font-semibold">🏆 VIP Member! You've earned the 500pts bonus!</p>
+              <div className="bg-coral/5 rounded-xl p-3 flex items-center gap-2">
+                <RewardIcon name="trophy" className="w-4 h-4 text-coral" />
+                <p className="text-xs text-coral font-semibold">VIP Member — you've earned the 500pt bonus!</p>
               </div>
             )}
-            <p className="text-xs text-gray-400 mt-3">Redeem your points at checkout for instant discount!</p>
+            <p className="text-xs text-gray-400 mt-3">Redeem your points at checkout for an instant discount.</p>
           </div>
         )}
 
         {/* Info pills */}
         {!result && !error && (
-          <div className="flex flex-wrap justify-center gap-3 mt-4">
-            <span className="bg-white text-charcoal text-xs px-4 py-2 rounded-full font-semibold shadow-sm inline-flex items-center gap-1"><RewardIcon name="points" className="w-4 h-4 text-coral" />25 pts per PKR 1,000</span>
-            <span className="bg-white text-charcoal text-xs px-4 py-2 rounded-full font-semibold shadow-sm inline-flex items-center gap-1"><RewardIcon name="discount" className="w-4 h-4 text-coral" />10 pts = PKR 10 OFF</span>
-            <span className="bg-white text-charcoal text-xs px-4 py-2 rounded-full font-semibold shadow-sm inline-flex items-center gap-1"><RewardIcon name="reward" className="w-4 h-4 text-coral" />500 pts = Bonus 100 pts</span>
+          <div className="flex flex-wrap justify-center gap-3">
+            <span className="border border-gray-200 text-charcoal text-xs px-4 py-2 rounded-full font-medium inline-flex items-center gap-1.5">
+              <RewardIcon name="points" className="w-4 h-4 text-coral" />25 pts per PKR 1,000
+            </span>
+            <span className="border border-gray-200 text-charcoal text-xs px-4 py-2 rounded-full font-medium inline-flex items-center gap-1.5">
+              <RewardIcon name="discount" className="w-4 h-4 text-coral" />10 pts = PKR 10 off
+            </span>
+            <span className="border border-gray-200 text-charcoal text-xs px-4 py-2 rounded-full font-medium inline-flex items-center gap-1.5">
+              <RewardIcon name="reward" className="w-4 h-4 text-coral" />500 pts = bonus 100 pts
+            </span>
           </div>
         )}
       </div>
