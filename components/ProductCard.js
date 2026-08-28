@@ -4,6 +4,25 @@ import { useCart } from '../context/CartContext'
 import CheckoutModal from './CheckoutModal'
 import WishlistButton from './WishlistButton'
 
+function CardIcon({ type, className = 'w-5 h-5' }) {
+  const common = {
+    className,
+    fill: 'none',
+    stroke: 'currentColor',
+    viewBox: '0 0 24 24',
+    strokeWidth: 1.7,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    'aria-hidden': true,
+  }
+  if (type === 'shirt') {
+    return <svg {...common}><path d="M8 4l4 2 4-2 4 4-3 3v9H7v-9L4 8l4-4z" /></svg>
+  }
+  if (type === 'flame') {
+    return <svg {...common}><path d="M12 22c-3.2 0-5.8-2.2-5.8-5.4 0-2.3 1.4-4.1 3-5.6 1.2-1.2 2.5-2.7 2.6-5 .9.7 3.2 2.9 3.2 6.1.8-.6 1.4-1.5 1.7-2.4 1.1 1 2.1 2.7 2.1 5.1 0 4.1-3 7.2-6.8 7.2z" /></svg>
+  }
+  return null
+}
 
 function getCardRating(productId) {
   if (productId % 100 > 50) return null
@@ -87,11 +106,15 @@ export default function ProductCard({ product }) {
                 }} />
             </div>
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-5xl bg-white">👕</div>
+            <div className="absolute inset-0 flex items-center justify-center bg-white">
+              <CardIcon type="shirt" className="w-12 h-12 text-gray-300" />
+            </div>
           )}
 
           {imageFailed && (
-            <div className="absolute inset-0 flex items-center justify-center text-5xl bg-white">👕</div>
+            <div className="absolute inset-0 flex items-center justify-center bg-white">
+              <CardIcon type="shirt" className="w-12 h-12 text-gray-300" />
+            </div>
           )}
 
           {/* Discount badge */}
@@ -142,7 +165,9 @@ export default function ProductCard({ product }) {
 
           {/* Low stock warning text */}
           {lowStock && !isSoldOut && (
-            <p className="text-orange-500 text-xs font-bold mt-1">🔥 Only {lowStock} left in stock!</p>
+            <p className="text-orange-500 text-xs font-bold mt-1 flex items-center gap-1">
+              <CardIcon type="flame" className="w-3.5 h-3.5" /> Only {lowStock} left in stock!
+            </p>
           )}
 
           {/* Variant selector */}
@@ -170,7 +195,7 @@ export default function ProductCard({ product }) {
                 : added ? 'border-mint bg-mint text-white'
                 : 'border-charcoal text-charcoal hover:bg-charcoal hover:text-white'
               )}>
-              {isSoldOut ? 'Sold Out' : isMaxed ? 'Max Qty' : added ? '✓ Added!' : '+ Cart'}
+              {isSoldOut ? 'Sold Out' : isMaxed ? 'Max Qty' : added ? 'Added ✓' : '+ Cart'}
             </button>
             <button onClick={() => !isSoldOut && setShowCheckout(true)} disabled={isSoldOut}
               className={'flex-1 text-xs font-bold py-2.5 rounded-xl transition-all ' + (

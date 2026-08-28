@@ -103,6 +103,18 @@ function ProductInfoIcon({ type, className = 'w-4 h-4' }) {
   if (type === 'ruler') {
     return <svg {...common}><path d="M4 17.5L17.5 4 20 6.5 6.5 20 4 17.5z" /><path d="M14.5 7l2.5 2.5M12 9.5l1.5 1.5M9.5 12l2.5 2.5M7 14.5L8.5 16" /></svg>
   }
+  if (type === 'shirt') {
+    return <svg {...common}><path d="M8 4l4 2 4-2 4 4-3 3v9H7v-9L4 8l4-4z" /></svg>
+  }
+  if (type === 'heart') {
+    return <svg {...common}><path d="M12 20s-7-4.35-9.5-8.5C1 8 2.5 4.5 6 4.5c2 0 3.3 1.2 4 2.3.7-1.1 2-2.3 4-2.3 3.5 0 5 3.5 3.5 7C19 15.65 12 20 12 20z" /></svg>
+  }
+  if (type === 'search-off') {
+    return <svg {...common}><circle cx="10" cy="10" r="6.5" /><path d="M14.8 14.8L20 20M7 10h6" /></svg>
+  }
+  if (type === 'bulb') {
+    return <svg {...common}><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3 11.2c.6.4 1 1 1 1.8h4c0-.8.4-1.4 1-1.8A6 6 0 0 0 12 3z" /></svg>
+  }
   return null
 }
 
@@ -276,7 +288,7 @@ export default function ProductPage() {
 
   if (!product) return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-        <div className="text-6xl mb-4">😕</div>
+        <ProductInfoIcon type="search-off" className="w-14 h-14 text-gray-300 mx-auto mb-4" />
         <h2 className="font-display text-3xl text-charcoal mb-4">Product not found</h2>
         <Link href="/collections" className="btn-primary">Back to Collections</Link>
       </div>
@@ -315,7 +327,7 @@ export default function ProductPage() {
                       <img src={mainImage} alt={product.title}
                        className={'w-full h-full object-cover transition-transform duration-300 ' + (zoomed ? 'scale-125' : '')} />
                   ) : (
-                      <span className="text-8xl">👕</span>
+                      <ProductInfoIcon type="shirt" className="w-24 h-24 text-gray-300" />
                   )}
                 </div>
                 {/* Arrow navigation */}
@@ -455,7 +467,7 @@ export default function ProductPage() {
                                 : isMaxed ? 'border-orange-200 text-orange-300 cursor-not-allowed'
                                     : added ? 'border-mint bg-mint text-white'
                                         : 'border-charcoal text-charcoal hover:bg-charcoal hover:text-white')}>
-                  {isSoldOut ? 'Sold Out' : isMaxed ? 'Max Qty Reached' : added ? '✓ Added!' : '+ Add to Cart'}
+                  {isSoldOut ? 'Sold Out' : isMaxed ? 'Max Qty Reached' : added ? 'Added ✓' : '+ Add to Cart'}
                 </button>
                 <button onClick={() => !isSoldOut && setShowCheckout(true)} disabled={isSoldOut}
                         className={'flex-1 py-4 rounded-2xl font-semibold text-base transition-all ' +
@@ -523,7 +535,9 @@ export default function ProductPage() {
           {/* Related Products */}
           {related.length > 0 && (
               <section className="py-10">
-                <h2 className="section-title mb-6">You May Also Like 💕</h2>
+                <h2 className="section-title mb-6 flex items-center gap-2">
+                  <ProductInfoIcon type="heart" className="w-5 h-5 text-coral" /> You May Also Like
+                </h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
                   {related.slice(0, 4).map(p => <ProductCard key={p.id} product={p} />)}
                 </div>
@@ -537,7 +551,9 @@ export default function ProductPage() {
               <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowSizeChart(false)} />
               <div className="relative bg-white rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
                 <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
-                  <h2 className="font-display text-2xl text-charcoal">📏 Size Chart</h2>
+                  <h2 className="font-display text-2xl text-charcoal flex items-center gap-2">
+                    <ProductInfoIcon type="ruler" className="w-5 h-5 text-coral" /> Size Chart
+                  </h2>
                   <button onClick={() => setShowSizeChart(false)}
                           className="w-9 h-9 rounded-full bg-gray-100 hover:bg-coral hover:text-white transition-colors flex items-center justify-center">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -571,8 +587,9 @@ export default function ProductPage() {
                     ))}
                     </tbody>
                   </table>
-                  <div className="mt-4 bg-sunny/30 rounded-2xl p-4">
-                    <p className="text-xs text-gray-600">💡 <strong>Tip:</strong> Between sizes? Always size up for room to grow. Need help? <a href="https://wa.me/923360677340" target="_blank" rel="noopener noreferrer" className="text-coral font-semibold">WhatsApp us!</a></p>
+                  <div className="mt-4 bg-sunny/30 rounded-2xl p-4 flex items-start gap-2">
+                    <ProductInfoIcon type="bulb" className="w-4 h-4 text-charcoal mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-gray-600"><strong>Tip:</strong> Between sizes? Always size up for room to grow. Need help? <a href="https://wa.me/923360677340" target="_blank" rel="noopener noreferrer" className="text-coral font-semibold">WhatsApp us!</a></p>
                   </div>
                 </div>
               </div>
