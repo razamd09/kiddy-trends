@@ -32,38 +32,74 @@ function TruckIcon({ className = 'w-4 h-4' }) {
   )
 }
 
-// Illustrated visual for the loyalty slide: a gift-box-on-a-truck icon with a
-// gentle floating animation and a couple of sparkle accents.
+// Illustrated visual for the loyalty slide: a truck drives in from the left
+// (with spinning wheels), arrives at a little house, a parcel pops out at
+// the door, then the scene fades and loops.
 function FreeShippingIllustration() {
   return (
-    <div className="relative w-full h-full flex items-center justify-center">
+    <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
       <style jsx>{`
-        .kt-float { animation: kt-float 3.2s ease-in-out infinite; }
-        @keyframes kt-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        .kt-truck-group { animation: kt-truck-drive 6s ease-in-out infinite; }
+        @keyframes kt-truck-drive {
+          0%   { transform: translateX(-110px); opacity: 1; }
+          45%  { transform: translateX(0px); opacity: 1; }
+          65%  { transform: translateX(0px); opacity: 1; }
+          75%  { transform: translateX(0px); opacity: 0; }
+          76%  { transform: translateX(-110px); opacity: 0; }
+          100% { transform: translateX(-110px); opacity: 1; }
+        }
+        .kt-wheel { animation: kt-wheel-spin 0.7s linear infinite; transform-box: fill-box; transform-origin: center; }
+        @keyframes kt-wheel-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .kt-parcel { animation: kt-parcel-pop 6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+        @keyframes kt-parcel-pop {
+          0%, 48% { opacity: 0; transform: translateY(6px) scale(0.7); }
+          56%     { opacity: 1; transform: translateY(-4px) scale(1.05); }
+          64%     { opacity: 1; transform: translateY(0px) scale(1); }
+          75%     { opacity: 1; transform: translateY(0px) scale(1); }
+          80%, 100% { opacity: 0; transform: translateY(6px) scale(0.7); }
+        }
+
         .kt-sparkle { animation: kt-sparkle 2.4s ease-in-out infinite; }
         @keyframes kt-sparkle { 0%,100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } }
       `}</style>
 
-      <div className="kt-float">
-        <svg width="180" height="150" viewBox="0 0 180 150" fill="none">
-          <rect x="10" y="55" width="95" height="60" rx="10" fill="#f5e6c0" />
-          <rect x="105" y="72" width="45" height="43" rx="8" fill="#e8635a" />
-          <path d="M150 84 L168 84 L168 105 L150 105 Z" fill="#c9a961" />
-          <circle cx="45" cy="122" r="12" fill="#0f2438" />
-          <circle cx="45" cy="122" r="5" fill="#f5e6c0" />
-          <circle cx="128" cy="122" r="12" fill="#0f2438" />
-          <circle cx="128" cy="122" r="5" fill="#f5e6c0" />
-          <rect x="40" y="40" width="35" height="20" rx="4" fill="#e8635a" />
-          <rect x="53" y="30" width="9" height="40" fill="#f5e6c0" />
-          <rect x="30" y="47" width="55" height="9" fill="#f5e6c0" />
-        </svg>
-      </div>
+      <svg width="260" height="160" viewBox="0 0 260 160" fill="none">
+        {/* road line */}
+        <line x1="20" y1="140" x2="240" y2="140" stroke="#1f3a52" strokeOpacity="0.2" strokeWidth="2" strokeDasharray="6 6" />
 
-      <svg className="kt-sparkle" width="20" height="20" viewBox="0 0 20 20" style={{ position: 'absolute', top: '18%', right: '20%' }}>
-        <path d="M10 0 L12.5 7.5 L20 7.5 L14 12 L16 20 L10 15 L4 20 L6 12 L0 7.5 L7.5 7.5 Z" fill="#f5e6c0" />
+        {/* house */}
+        <g>
+          <rect x="185" y="90" width="55" height="50" rx="4" fill="#ffffff" />
+          <path d="M178 92 L212 62 L247 92 Z" fill="#e8635a" />
+          <rect x="203" y="112" width="18" height="28" rx="2" fill="#1f3a52" />
+          <rect x="222" y="100" width="10" height="10" rx="1" fill="#1f3a52" fillOpacity="0.35" />
+        </g>
+
+        {/* parcel that appears at the door */}
+        <g className="kt-parcel">
+          <rect x="196" y="118" width="16" height="16" rx="2" fill="#e8635a" />
+          <line x1="196" y1="126" x2="212" y2="126" stroke="#ffffff" strokeWidth="1.5" />
+          <line x1="204" y1="118" x2="204" y2="134" stroke="#ffffff" strokeWidth="1.5" />
+        </g>
+
+        {/* truck (drives in, wheels always spin) */}
+        <g className="kt-truck-group">
+          <rect x="10" y="65" width="90" height="55" rx="9" fill="#f5e6c0" />
+          <rect x="100" y="80" width="42" height="40" rx="7" fill="#e8635a" />
+          <path d="M142 92 L159 92 L159 112 L142 112 Z" fill="#c9a961" />
+          <circle className="kt-wheel" cx="40" cy="127" r="11" fill="#1f3a52" />
+          <circle cx="40" cy="127" r="4.5" fill="#f5e6c0" />
+          <circle className="kt-wheel" cx="120" cy="127" r="11" fill="#1f3a52" />
+          <circle cx="120" cy="127" r="4.5" fill="#f5e6c0" />
+        </g>
       </svg>
-      <svg className="kt-sparkle" width="12" height="12" viewBox="0 0 20 20" style={{ position: 'absolute', bottom: '22%', left: '15%', animationDelay: '1.1s' }}>
-        <path d="M10 0 L12.5 7.5 L20 7.5 L14 12 L16 20 L10 15 L4 20 L6 12 L0 7.5 L7.5 7.5 Z" fill="#f5e6c0" />
+
+      <svg className="kt-sparkle" width="18" height="18" viewBox="0 0 20 20" style={{ position: 'absolute', top: '14%', right: '12%' }}>
+        <path d="M10 0 L12.5 7.5 L20 7.5 L14 12 L16 20 L10 15 L4 20 L6 12 L0 7.5 L7.5 7.5 Z" fill="#c9a961" />
+      </svg>
+      <svg className="kt-sparkle" width="11" height="11" viewBox="0 0 20 20" style={{ position: 'absolute', top: '20%', left: '10%', animationDelay: '1.1s' }}>
+        <path d="M10 0 L12.5 7.5 L20 7.5 L14 12 L16 20 L10 15 L4 20 L6 12 L0 7.5 L7.5 7.5 Z" fill="#c9a961" />
       </svg>
     </div>
   )
@@ -173,9 +209,6 @@ export default function HomeHeroSlider() {
                   <h2 className="font-display text-4xl md:text-5xl leading-tight mb-4" style={{ color: '#1f3a52' }}>
                     3 orders. Free shipping<br className="hidden md:block" /> all month.
                   </h2>
-                  <p className="text-sm md:text-base mb-8" style={{ color: '#4f6c85' }}>
-                    Tracked automatically by your phone number — no code needed.
-                  </p>
                   <Link
                     href="/collections"
                     className="inline-block font-display text-sm px-6 py-3 rounded-full"
