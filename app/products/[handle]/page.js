@@ -275,6 +275,8 @@ export default function ProductPage() {
   const [views, setViews]                 = useState(0)
   const [detectedColor, setDetectedColor] = useState('Multi-color')
 
+  const mainImage = product?.images?.[activeImg]?.src || product?.images?.[0]?.src
+
   useEffect(() => {
     async function fetchProduct() {
       try {
@@ -375,8 +377,6 @@ export default function ProductPage() {
     const option2 = String(variant?.option2 || '').trim()
     return (title && title !== 'Default Title') || option1 || option2
   })
-
-  const mainImage = product?.images?.[activeImg]?.src || product?.images?.[0]?.src
 
   function handleAddToCart() {
     if (isSoldOut || isMaxed) return
