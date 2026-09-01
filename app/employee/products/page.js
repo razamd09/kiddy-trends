@@ -8,6 +8,7 @@ const STANDARD_BG_COLORS = ['#991b1b', '#7c7a00', '#166534', '#0f766e', '#1d4ed8
 const DEFAULT_CATEGORY_OPTIONS = ['Clothing', 'Bedding', 'Bags', 'Accessories', 'Footwear', 'Toys', 'Shoes', 'Other']
 const DEFAULT_PRODUCT_VERSION_OPTIONS = ['new arrivals', 'Old Packs']
 const DEFAULT_PRODUCT_TYPE_OPTIONS = ['T-Shirt', 'Full Sleeves Shirt', 'Shorts', 'Denim Jeans', 'Trouser', 'Girl-Top', 'Frock', 'Socks', 'Jacket', 'Button Shirts', 'Jeans Shorts', 'Cargo Pents', 'Cargo Trousers', 'School Bags', 'Ladies Bags', 'Bag-Pack', 'Rompers', 'Kurta Trouser', 'Girls Kurti with Gharara', 'Girls Kurti with Trouser', 'Mock Necks']
+const DEFAULT_FABRIC_OPTIONS = ['Cotton', 'Terry', 'Jersy', 'Fleece', 'Silk Cotton', 'Silk']
 
 function getEditorPreviewBackgroundStyle(color) {
     if (String(color || '').trim().toLowerCase() === 'transparent') {
@@ -44,6 +45,7 @@ export default function EmployeeProducts() {
     const [productVersionOptions, setProductVersionOptions] = useState(DEFAULT_PRODUCT_VERSION_OPTIONS)
     const [productTypeOptions, setProductTypeOptions] = useState(DEFAULT_PRODUCT_TYPE_OPTIONS)
     const [productSeasonOptions, setProductSeasonOptions] = useState([])
+    const [fabricOptions, setFabricOptions] = useState(DEFAULT_FABRIC_OPTIONS)
     const [employeeNameByCode, setEmployeeNameByCode] = useState({})
     const [bulkProcessing, setBulkProcessing] = useState(false)
     const [recentBgRemoving, setRecentBgRemoving] = useState(false)
@@ -52,6 +54,7 @@ export default function EmployeeProducts() {
         title: '',
         category: '',
         product_type: '',
+        fabric: '',
         product_season_id: '',
         product_version: '',
         status: '',
@@ -59,7 +62,7 @@ export default function EmployeeProducts() {
     const [loadError, setLoadError] = useState('')
     const [form, setForm] = useState({
         title: '', description: '', price: '', compare_price: '',
-        category: '', product_type: '', tags: '', stock: '',
+        category: '', product_type: '', fabric: '', tags: '', stock: '',
         product_version: '', product_season_id: '', status: ''
     })
     const [formImages, setFormImages] = useState([])   // [{url, rotating}]
@@ -383,6 +386,7 @@ export default function EmployeeProducts() {
                 compare_price: product.compare_price || null,
                 category: product.category || '',
                 product_type: product.product_type || '',
+                fabric: product.fabric || '',
                 tags: Array.isArray(product.tags) ? product.tags : [],
                 stock: product.stock || 0,
                 images: normalizeImages(product.images),
@@ -430,7 +434,7 @@ export default function EmployeeProducts() {
     }
 
     function resetForm() {
-        setForm({ title: '', description: '', price: '', compare_price: '', category: '', product_type: '', tags: '', stock: '', product_version: '', product_season_id: '', status: '' })
+        setForm({ title: '', description: '', price: '', compare_price: '', category: '', product_type: '', fabric: '', tags: '', stock: '', product_version: '', product_season_id: '', status: '' })
         setFormImages([])
         setFormVariants([])
         setEditingId(null)
@@ -467,6 +471,7 @@ export default function EmployeeProducts() {
             compare_price: product.compare_price || '',
             category:      product.category      || '',
             product_type:  product.product_type  || '',
+            fabric:        product.fabric        || '',
             tags:          (product.tags || []).join(', '),
             stock:         product.stock         || '',
             product_version: product.product_version || 'Old Packs',
@@ -482,10 +487,11 @@ export default function EmployeeProducts() {
         const productType = String(form.product_type || '').trim()
         const productVersion = String(form.product_version || '').trim()
         const productSeasonId = String(form.product_season_id || '').trim()
+        const fabric = String(form.fabric || '').trim()
         const status = String(form.status || '').trim()
 
-        if (!productType || !productVersion || !productSeasonId || !status) {
-            alert('Product Type, Product Version, Product Season, and Status are required.')
+        if (!productType || !productVersion || !productSeasonId || !fabric || !status) {
+            alert('Product Type, Product Version, Product Season, Fabric, and Status are required.')
             return
         }
 
@@ -516,6 +522,7 @@ export default function EmployeeProducts() {
             compare_price: parseFloat(form.compare_price) || 0,
             category:      form.category,
             product_type:  productType,
+            fabric:        fabric,
             tags:          form.tags.split(',').map(t => t.trim()).filter(Boolean),
             stock:         totalStock,
             images:        formImages
@@ -629,6 +636,7 @@ export default function EmployeeProducts() {
         if (bulkEditForm.title.trim()) updates.title = bulkEditForm.title.trim()
         if (bulkEditForm.category) updates.category = bulkEditForm.category
         if (bulkEditForm.product_type) updates.product_type = bulkEditForm.product_type
+        if (bulkEditForm.fabric) updates.fabric = bulkEditForm.fabric
         if (bulkEditForm.product_season_id) updates.product_season_id = Number(bulkEditForm.product_season_id)
         if (bulkEditForm.product_version) updates.product_version = bulkEditForm.product_version
         if (bulkEditForm.status) updates.is_active = bulkEditForm.status === 'active'
@@ -653,7 +661,7 @@ export default function EmployeeProducts() {
                 }
             }))
             setBulkEditOpen(false)
-            setBulkEditForm({ title: '', category: '', product_type: '', product_season_id: '', product_version: '', status: '' })
+            setBulkEditForm({ title: '', category: '', product_type: '', fabric: '', product_season_id: '', product_version: '', status: '' })
             clearSelection()
             fetchProducts()
         } catch (err) {
@@ -963,6 +971,15 @@ export default function EmployeeProducts() {
                                                 className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm">
                                             <option value="">Select product type</option>
                                             {productTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block font-semibold text-xs text-charcoal mb-1">Fabric *</label>
+                                        <select required value={form.fabric}
+                                                onChange={e => setForm({...form, fabric: e.target.value})}
+                                                className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm">
+                                            <option value="">Select fabric</option>
+                                            {fabricOptions.map((fabric) => <option key={fabric} value={fabric}>{fabric}</option>)}
                                         </select>
                                     </div>
                                     <div className="md:col-span-2">
@@ -1699,6 +1716,18 @@ export default function EmployeeProducts() {
                                 >
                                     <option value="">No change</option>
                                     {productTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-charcoal mb-1">Fabric</label>
+                                <select
+                                    value={bulkEditForm.fabric}
+                                    onChange={e => setBulkEditForm(prev => ({ ...prev, fabric: e.target.value }))}
+                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
+                                >
+                                    <option value="">No change</option>
+                                    {DEFAULT_FABRIC_OPTIONS.map((fabric) => <option key={fabric} value={fabric}>{fabric}</option>)}
                                 </select>
                             </div>
 

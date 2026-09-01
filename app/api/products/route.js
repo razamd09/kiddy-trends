@@ -219,6 +219,7 @@ function transformProduct(product) {
         description: product.description || '',
         body_html: product.description || '',
         product_type: product.product_type || '',
+        fabric: product.fabric || '',
         category: product.category || '',
         tags: normalizeTags(product.tags),
         created_at: product.created_at || new Date().toISOString(),

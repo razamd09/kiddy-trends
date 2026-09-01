@@ -173,12 +173,14 @@ function getActorIdentity(request) {
 function validateRequiredProductFields(payload) {
     const productType = String(payload?.product_type || '').trim()
     const productVersion = String(payload?.product_version || '').trim()
+    const fabric = String(payload?.fabric || '').trim()
     const status = payload?.status !== undefined
         ? String(payload.status || '').trim()
         : (payload?.is_active === true ? 'active' : payload?.is_active === false ? 'draft' : '')
 
     if (!productType) return 'Product Type is required'
     if (!productVersion) return 'Product Version is required'
+    if (!fabric) return 'Fabric is required'
     if (!status) return 'Status is required'
     return null
 }
@@ -189,6 +191,9 @@ function validatePartialProductFields(payload) {
     }
     if (payload?.product_version !== undefined && !String(payload.product_version || '').trim()) {
         return 'Product Version cannot be empty'
+    }
+    if (payload?.fabric !== undefined && !String(payload.fabric || '').trim()) {
+        return 'Fabric cannot be empty'
     }
     if (payload?.status !== undefined && !String(payload.status || '').trim()) {
         return 'Status cannot be empty'
@@ -378,6 +383,7 @@ export async function POST(request) {
                         : (body.images || []),
                     category:      body.category,
                     product_type:  body.product_type,
+                    fabric:        String(body.fabric || '').trim() || null,
                     tags:          Array.isArray(body.tags) ? body.tags : (body.tags || []),
                     variants:      normalizeVariants(body.variants || []),
                     stock:         parseInt(body.stock) || 0,
@@ -436,6 +442,10 @@ export async function PUT(request) {
 
         if (updates.product_type !== undefined) {
             cleanUpdates.product_type = String(updates.product_type || '').trim()
+        }
+
+        if (updates.fabric !== undefined) {
+            cleanUpdates.fabric = String(updates.fabric || '').trim() || null
         }
 
         if (updates.images) {

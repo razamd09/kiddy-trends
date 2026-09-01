@@ -385,6 +385,13 @@ export default function ProductPage() {
 
               <h1 className="font-display text-2xl md:text-3xl text-charcoal leading-tight mb-3">{titleParts.title}</h1>
 
+              {product.fabric && (
+                  <div className="flex items-center gap-2 mb-3 text-sm">
+                    <span className="font-semibold text-charcoal">Fabric:</span>
+                    <span className="text-gray-600">{product.fabric}</span>
+                  </div>
+              )}
+
               {/* Views + Sold */}
               <div className="flex items-center gap-4 mb-3">
                 {views > 0 && (
