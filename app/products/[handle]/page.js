@@ -46,32 +46,6 @@ const neutralReviewers = [
   { name: 'Saima H.',   city: 'Quetta',     review: 'Very satisfied with this order. Product exactly as described and delivery was quick!' },
 ]
 
-function getFabricPreviewImage(fabricName) {
-  const normalized = String(fabricName || 'Fabric').trim() || 'Fabric'
-  const materialColors = {
-    Cotton: '#F3E7D3',
-    Terry: '#D7B38A',
-    Jersy: '#CFE7C5',
-    Fleece: '#D8C2A7',
-    'Silk Cotton': '#F8E8E6',
-    Silk: '#EFD9EC',
-    Denim: '#2F4D6B',
-  }
-  const baseColor = materialColors[normalized] || '#F3E7D3'
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
-      <rect width="300" height="300" fill="${baseColor}"/>
-      <g opacity="0.55">
-        <circle cx="75" cy="90" r="38" fill="#ffffff" opacity="0.2"/>
-        <circle cx="180" cy="150" r="52" fill="#ffffff" opacity="0.18"/>
-        <circle cx="235" cy="90" r="30" fill="#ffffff" opacity="0.2"/>
-      </g>
-      <text x="150" y="170" text-anchor="middle" font-family="Arial" font-size="28" font-weight="700" fill="#2d2d2d">${normalized}</text>
-    </svg>
-  `
-  return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg)
-}
-
 function getProductReviews(productId, title) {
   const seed = productId % 100
   if (seed > 50) return null
@@ -412,31 +386,9 @@ export default function ProductPage() {
               <h1 className="font-display text-2xl md:text-3xl text-charcoal leading-tight mb-3">{titleParts.title}</h1>
 
               {product.fabric && (
-                  <div className="mb-3 text-sm">
-                    <div className="inline-flex items-center gap-2 group relative">
-                      <span className="font-semibold text-charcoal">Fabric:</span>
-                      <span className="text-gray-600 hover:text-coral transition-colors cursor-help">{product.fabric}</span>
-                      {(product.fabric_image || product.fabric) && (
-                          <span className="relative inline-flex items-center justify-center w-5 h-5 rounded-full bg-coral text-[10px] font-bold text-white cursor-help shadow-sm">
-                            i
-                            <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                              <span className="block w-[24rem] h-[24rem] overflow-hidden rounded-2xl border-2 border-gray-200 bg-white shadow-xl">
-                                <img
-                                  src={product.fabric_image || getFabricPreviewImage(product.fabric)}
-                                  alt={product.fabric + ' fabric sample'}
-                                  className="h-[18rem] w-full object-cover"
-                                  onError={(event) => {
-                                    event.currentTarget.src = getFabricPreviewImage(product.fabric)
-                                  }}
-                                />
-                                <div className="flex h-[6rem] items-center justify-center bg-cream px-3 text-center">
-                                  <span className="font-display text-xl text-charcoal">{product.fabric}</span>
-                                </div>
-                              </span>
-                            </span>
-                          </span>
-                      )}
-                    </div>
+                  <div className="flex items-center gap-2 mb-3 text-sm">
+                    <span className="font-semibold text-charcoal">Fabric:</span>
+                    <span className="text-gray-600">{product.fabric}</span>
                   </div>
               )}
 

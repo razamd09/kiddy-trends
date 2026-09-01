@@ -208,6 +208,22 @@ function normalizeProductSeasonId(value) {
     return Number.isFinite(parsed) ? Math.trunc(parsed) : null
 }
 
+function buildShortProductHandle(title, fallbackId = Date.now()) {
+    const rawTitle = String(title || '').trim()
+    const slug = rawTitle
+        .toLowerCase()
+        .replace(/&/g, ' and ')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .replace(/-+/g, '-')
+        .slice(0, 55)
+        .replace(/-+$/g, '')
+
+    const base = slug || 'product'
+    const uniqueSuffix = String(fallbackId || Date.now()).slice(-6)
+    return `${base}-${uniqueSuffix}`
+}
+
 async function resolveFabricReference(supabaseClient, fabricName) {
     const trimmed = String(fabricName || '').trim()
     if (!trimmed) return { fabric_id: null, fabric: null }
@@ -389,6 +405,9 @@ export async function POST(request) {
             }
             const actorIdentity = getActorIdentity(request)
             const isActive = typeof body.is_active !== 'undefined' ? !!body.is_active : (body.status ? String(body.status) === 'active' : true)
+            const generatedHandle = body.shopify_handle && String(body.shopify_handle).trim()
+                ? String(body.shopify_handle).trim()
+                : buildShortProductHandle(body.title, body.id || Date.now())
 
             const fabricRef = await resolveFabricReference(supabase, body.fabric)
             const { data, error } = await supabase
@@ -412,7 +431,7 @@ export async function POST(request) {
                     source:        'custom',
                     product_version: body.product_version || null,
                     product_season_id: normalizeProductSeasonId(body.product_season_id),
-                    shopify_handle: body.shopify_handle || null,
+                    shopify_handle: generatedHandle,
                     last_action_by: actorIdentity,
                     last_action_type: 'added',
                     last_action_at: new Date().toISOString(),

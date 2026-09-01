@@ -393,11 +393,25 @@ export default function AdminProducts() {
         }
     }
 
+    function buildShortProductHandle(title, fallbackId = Date.now()) {
+        const rawTitle = String(title || '').trim()
+        const slug = rawTitle
+            .toLowerCase()
+            .replace(/&/g, ' and ')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .replace(/-+/g, '-')
+            .slice(0, 55)
+            .replace(/-+$/g, '')
+        const base = slug || 'product'
+        const uniqueSuffix = String(fallbackId || Date.now()).slice(-6)
+        return `${base}-${uniqueSuffix}`
+    }
+
     async function handleDuplicate(product) {
         setDuplicatingId(product.id)
         const token = localStorage.getItem('admin_token')
         try {
-            const baseHandle = String(product.shopify_handle || '').trim()
             const duplicatePayload = {
                 title: (product.title || 'Untitled Product') + ' (Copy)',
                 description: product.description || '',
@@ -410,7 +424,7 @@ export default function AdminProducts() {
                 stock: product.stock || 0,
                 images: normalizeImages(product.images),
                 variants: Array.isArray(product.variants) ? product.variants : null,
-                shopify_handle: baseHandle ? (baseHandle + '-copy-' + Date.now()) : null,
+                shopify_handle: buildShortProductHandle((product.title || 'Untitled Product') + ' duplicate', product.id || Date.now()),
                 product_version: product.product_version || 'Old Packs',
                 product_season_id: product.product_season_id || null,
                 is_active: product.is_active !== false,
