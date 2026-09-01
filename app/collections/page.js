@@ -74,8 +74,8 @@ function productMatchesFilter(product, catId, subId, subFilters, gender) {
     return sub.keywords.some(k => text.includes(k.toLowerCase()))
   }
 
-  const newbornKw  = ['0-3','0 to 3','0/3','0-3m','3-6','3 to 6','3/6','3-6m','6-9','6 to 9','6/9','6-9m','9-12','9 to 12','9/12','9-12m','newborn','new born','infant','0 month','1 month','2 month','3 month','4 month','5 month','6 month','7 month','8 month','9 month','10 month','11 month','12 month']
-  const toddlerKw  = ['12-18','18-24','1 year','2 year','3 year','toddler','1yr','2yr','3yr']
+  const newbornKw  = ['0-3','0 to 3','0/3','0-3m','3-6','3 to 6','3/6','3-6m','6-9','6 to 9','6/9','6-9m','9-12','9 to 12','9/12','9-12m','newborn','new born','infant','0 month','1 month','2 month','3 month','4 month','5 month','6 month','7 month','8 month','9 month','10 month','11 month']
+  const toddlerKw  = ['12-18','12 to 18','12/18','18-24','18 to 24','18/24','1-2 year','1 to 2 year','1 year','2 year','3 year','toddler','1yr','2yr','3yr']
   const kidsKw     = ['4 year','5 year','6 year','7 year','8 year','4yr','5yr','6yr','7yr','8yr','4-5','5-6','6-7','7-8','3-4']
   const tweensKw   = ['9 year','10 year','11 year','12 year','9yr','10yr','11yr','12yr','tween','9-10','11-12']
 
