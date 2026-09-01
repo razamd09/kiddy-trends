@@ -4,24 +4,28 @@
 CREATE TABLE IF NOT EXISTS product_fabrics (
     id BIGSERIAL PRIMARY KEY,
     name TEXT NOT NULL,
+    image TEXT,
     sort_order INTEGER DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE product_fabrics
+ADD COLUMN IF NOT EXISTS image TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_product_fabrics_active_sort
     ON product_fabrics (is_active, sort_order, name);
 
-INSERT INTO product_fabrics (name, sort_order, is_active)
+INSERT INTO product_fabrics (name, image, sort_order, is_active)
 VALUES
-    ('Cotton', 1, TRUE),
-    ('Terry', 2, TRUE),
-    ('Jersy', 3, TRUE),
-    ('Fleece', 4, TRUE),
-    ('Silk Cotton', 5, TRUE),
-    ('Silk', 6, TRUE),
-    ('Denim', 7, TRUE)
+    ('Cotton', 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=300&q=80', 1, TRUE),
+    ('Terry', 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=300&q=80', 2, TRUE),
+    ('Jersy', 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=300&q=80', 3, TRUE),
+    ('Fleece', 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=300&q=80', 4, TRUE),
+    ('Silk Cotton', 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=300&q=80', 5, TRUE),
+    ('Silk', 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=300&q=80', 6, TRUE),
+    ('Denim', 'https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&w=300&q=80', 7, TRUE)
 ON CONFLICT DO NOTHING;
 
 ALTER TABLE products

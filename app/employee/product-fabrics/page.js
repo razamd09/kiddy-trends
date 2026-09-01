@@ -9,6 +9,7 @@ export default function EmployeeProductFabricsPage() {
             responseKey="fabrics"
             singularLabel="Fabric"
             authMode="employee"
+            showImageField={true}
         />
     )
 }

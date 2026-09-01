@@ -386,9 +386,21 @@ export default function ProductPage() {
               <h1 className="font-display text-2xl md:text-3xl text-charcoal leading-tight mb-3">{titleParts.title}</h1>
 
               {product.fabric && (
-                  <div className="flex items-center gap-2 mb-3 text-sm">
-                    <span className="font-semibold text-charcoal">Fabric:</span>
-                    <span className="text-gray-600">{product.fabric}</span>
+                  <div className="mb-3 text-sm">
+                    <div className="inline-flex items-center gap-2 group relative">
+                      <span className="font-semibold text-charcoal">Fabric:</span>
+                      <span className="text-gray-600 hover:text-coral transition-colors cursor-help">{product.fabric}</span>
+                      {product.fabric_image && (
+                          <span className="relative inline-flex items-center justify-center w-4 h-4 rounded-full bg-cream border border-gray-200 text-[10px] text-gray-500 cursor-help">
+                            i
+                            <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 -translate-x-1/2 hidden group-hover:block">
+                              <span className="block rounded-xl border border-gray-200 bg-white p-1 shadow-lg">
+                                <img src={product.fabric_image} alt={product.fabric + ' fabric sample'} className="h-20 w-20 object-cover rounded-lg" />
+                              </span>
+                            </span>
+                          </span>
+                      )}
+                    </div>
                   </div>
               )}
 

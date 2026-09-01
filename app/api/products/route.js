@@ -220,6 +220,7 @@ function transformProduct(product) {
         body_html: product.description || '',
         product_type: product.product_type || '',
         fabric: product.fabric || '',
+        fabric_image: product.fabric_image || '',
         category: product.category || '',
         tags: normalizeTags(product.tags),
         created_at: product.created_at || new Date().toISOString(),
@@ -363,10 +364,35 @@ export async function GET(request) {
             })
         }
 
+        const fabricNames = Array.from(new Set(
+            filtered
+                .map((product) => String(product.fabric || '').trim())
+                .filter(Boolean)
+        ))
+
+        let fabricSampleImages = {}
+        if (fabricNames.length > 0) {
+            const { data: fabricRows, error: fabricError } = await supabase
+                .from('product_fabrics')
+                .select('name, image')
+                .in('name', fabricNames)
+
+            if (!fabricError && Array.isArray(fabricRows)) {
+                fabricRows.forEach((fabric) => {
+                    if (fabric?.name) fabricSampleImages[fabric.name] = fabric.image || ''
+                })
+            }
+        }
+
         const productsWithStableImageUrls = filtered.map((product) => {
             const imageUrls = normalizeImages(product.images)
             const proxiedUrls = imageUrls.map(toImageProxyUrl).filter(Boolean)
-            return { ...product, images: proxiedUrls }
+            const productFabricName = String(product.fabric || '').trim()
+            return {
+                ...product,
+                images: proxiedUrls,
+                fabric_image: productFabricName ? (fabricSampleImages[productFabricName] || '') : '',
+            }
         })
 
         const transformedProducts = productsWithStableImageUrls

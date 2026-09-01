@@ -2,14 +2,14 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-export default function ProductMetadataManager({ title, subtitle, apiPath, responseKey, singularLabel, authMode = 'admin' }) {
+export default function ProductMetadataManager({ title, subtitle, apiPath, responseKey, singularLabel, authMode = 'admin', showImageField = false }) {
     const [verified, setVerified] = useState(false)
     const [loading, setLoading] = useState(true)
     const [items, setItems] = useState([])
     const [editing, setEditing] = useState(null)
     const [error, setError] = useState('')
     const [success, setSuccess] = useState('')
-    const [form, setForm] = useState({ name: '', sort_order: '', is_active: true })
+    const [form, setForm] = useState({ name: '', sort_order: '', image: '', is_active: true })
     const router = useRouter()
 
     useEffect(() => {
@@ -69,7 +69,7 @@ export default function ProductMetadataManager({ title, subtitle, apiPath, respo
 
     function resetForm() {
         setEditing(null)
-        setForm({ name: '', sort_order: '', is_active: true })
+        setForm({ name: '', sort_order: '', image: '', is_active: true })
     }
 
     function handleEdit(item) {
@@ -77,6 +77,7 @@ export default function ProductMetadataManager({ title, subtitle, apiPath, respo
         setForm({
             name: item.name || '',
             sort_order: String(item.sort_order ?? ''),
+            image: item.image || '',
             is_active: item.is_active !== false,
         })
     }
@@ -96,18 +97,24 @@ export default function ProductMetadataManager({ title, subtitle, apiPath, respo
         const method = editing ? 'PUT' : 'POST'
 
         try {
+            const payload = {
+                ...(editing ? { id: editing.id } : {}),
+                name,
+                sort_order: form.sort_order,
+                is_active: form.is_active,
+            }
+
+            if (showImageField) {
+                payload.image = form.image.trim()
+            }
+
             const res = await fetch(apiPath, {
                 method,
                 headers: {
                     'Content-Type': 'application/json',
                     'x-admin-token': token || '',
                 },
-                body: JSON.stringify({
-                    ...(editing ? { id: editing.id } : {}),
-                    name,
-                    sort_order: form.sort_order,
-                    is_active: form.is_active,
-                }),
+                body: JSON.stringify(payload),
             })
             const data = await res.json()
             if (!res.ok) {
@@ -212,6 +219,19 @@ export default function ProductMetadataManager({ title, subtitle, apiPath, respo
                                 />
                             </div>
 
+                            {showImageField && (
+                                <div>
+                                    <label className="block font-semibold text-xs text-charcoal mb-1">Sample Image URL</label>
+                                    <input
+                                        type="url"
+                                        value={form.image}
+                                        onChange={e => setForm({ ...form, image: e.target.value })}
+                                        className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm"
+                                        placeholder="https://example.com/fabric-sample.jpg"
+                                    />
+                                </div>
+                            )}
+
                             <label className="flex items-center gap-3 bg-cream p-3 rounded-2xl border-2 border-gray-100">
                                 <input
                                     type="checkbox"
@@ -265,9 +285,14 @@ export default function ProductMetadataManager({ title, subtitle, apiPath, respo
                             <div className="divide-y divide-gray-100">
                                 {items.map(item => (
                                     <div key={item.id} className="p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                        <div>
-                                            <p className="font-semibold text-charcoal">{item.name}</p>
-                                            <p className="text-xs text-gray-400">Sort order: {item.sort_order ?? 0}</p>
+                                        <div className="flex items-center gap-3">
+                                            {showImageField && item.image && (
+                                                <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded-xl border border-gray-200" />
+                                            )}
+                                            <div>
+                                                <p className="font-semibold text-charcoal">{item.name}</p>
+                                                <p className="text-xs text-gray-400">Sort order: {item.sort_order ?? 0}</p>
+                                            </div>
                                         </div>
                                         <div className="flex gap-2">
                                             <button

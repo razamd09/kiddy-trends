@@ -8,6 +8,7 @@ export default function AdminProductFabricsPage() {
             apiPath="/api/admin/product-fabrics"
             responseKey="fabrics"
             singularLabel="Fabric"
+            showImageField={true}
         />
     )
 }
