@@ -118,6 +118,110 @@ function ProductInfoIcon({ type, className = 'w-4 h-4' }) {
   return null
 }
 
+function normalizeDisplayTitle(rawTitle) {
+  return String(rawTitle || '')
+    .replace(/^\s*#?\s*Kids\s+Affordable\s+Collection\s*:\s*/i, '')
+    .replace(/^\s*#\s*/, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function getProductGender(title) {
+  const normalized = String(title || '').toLowerCase()
+  const hasGirl = /(girl|girls|frock|dress)/.test(normalized)
+  const hasBoy = /(boy|boys)/.test(normalized)
+
+  if (hasGirl && hasBoy) return 'Neutral'
+  if (hasGirl) return 'Girls'
+  if (hasBoy) return 'Boys'
+  return 'Neutral'
+}
+
+function getNearestColorName(r, g, b) {
+  const palette = [
+    { name: 'Black', rgb: [0, 0, 0] },
+    { name: 'White', rgb: [255, 255, 255] },
+    { name: 'Red', rgb: [255, 0, 0] },
+    { name: 'Blue', rgb: [0, 0, 255] },
+    { name: 'Green', rgb: [0, 128, 0] },
+    { name: 'Pink', rgb: [255, 105, 180] },
+    { name: 'Purple', rgb: [128, 0, 128] },
+    { name: 'Yellow', rgb: [255, 215, 0] },
+    { name: 'Orange', rgb: [255, 165, 0] },
+    { name: 'Grey', rgb: [128, 128, 128] },
+    { name: 'Beige', rgb: [218, 165, 105] },
+    { name: 'Brown', rgb: [150, 75, 0] },
+    { name: 'Navy', rgb: [25, 25, 112] },
+    { name: 'Teal', rgb: [0, 128, 128] },
+  ]
+
+  let bestMatch = 'Multi-color'
+  let bestDistance = Number.POSITIVE_INFINITY
+
+  palette.forEach((entry) => {
+    const [rr, gg, bb] = entry.rgb
+    const distance = Math.sqrt((r - rr) ** 2 + (g - gg) ** 2 + (b - bb) ** 2)
+    if (distance < bestDistance) {
+      bestDistance = distance
+      bestMatch = entry.name
+    }
+  })
+
+  return bestMatch
+}
+
+function getImageDominantColor(imageUrl) {
+  return new Promise((resolve) => {
+    if (!imageUrl || typeof window === 'undefined') {
+      resolve('Multi-color')
+      return
+    }
+
+    const img = new window.Image()
+    img.crossOrigin = 'Anonymous'
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        resolve('Multi-color')
+        return
+      }
+
+      const sampleSize = 64
+      canvas.width = sampleSize
+      canvas.height = sampleSize
+      ctx.drawImage(img, 0, 0, sampleSize, sampleSize)
+
+      const { data } = ctx.getImageData(0, 0, sampleSize, sampleSize)
+      let r = 0
+      let g = 0
+      let b = 0
+      let count = 0
+
+      for (let i = 0; i < data.length; i += 4) {
+        const alpha = data[i + 3]
+        if (alpha === 0) continue
+        r += data[i]
+        g += data[i + 1]
+        b += data[i + 2]
+        count += 1
+      }
+
+      if (!count) {
+        resolve('Multi-color')
+        return
+      }
+
+      const avgR = Math.round(r / count)
+      const avgG = Math.round(g / count)
+      const avgB = Math.round(b / count)
+      resolve(getNearestColorName(avgR, avgG, avgB))
+    }
+    img.onerror = () => resolve('Multi-color')
+    img.src = imageUrl
+  })
+}
+
 function formatRupees(value) {
   const rounded = Math.round(Number(value) || 0)
   return rounded.toLocaleString('en-PK')
@@ -169,6 +273,7 @@ export default function ProductPage() {
   const [showCheckout, setShowCheckout]   = useState(false)
   const [showSizeChart, setShowSizeChart] = useState(false)
   const [views, setViews]                 = useState(0)
+  const [detectedColor, setDetectedColor] = useState('Multi-color')
 
   useEffect(() => {
     async function fetchProduct() {
@@ -221,6 +326,22 @@ export default function ProductPage() {
       product_id: String(product._id || product.id || ''),
     })
   }, [product])
+
+  useEffect(() => {
+    if (!product?.images?.length) {
+      setDetectedColor('Multi-color')
+      return
+    }
+
+    let mounted = true
+    getImageDominantColor(mainImage).then((color) => {
+      if (mounted) setDetectedColor(color)
+    })
+
+    return () => {
+      mounted = false
+    }
+  }, [mainImage, product])
 
   const price        = parseFloat(selectedVariant?.price || 0)
   const displayPrice = Math.round(price)
@@ -299,6 +420,9 @@ export default function ProductPage() {
       : (product.tags || [])
   const reviewData = getProductReviews(product.id, product.title)
   const titleParts = getProductTitleParts(product)
+  const displayTitle = normalizeDisplayTitle(product.title)
+  const displayDescription = String(product.description || '').trim() || String(product.body_html || '').trim()
+  const displayGender = getProductGender(product.title)
 
   return (
       <>
@@ -310,7 +434,7 @@ export default function ProductPage() {
             <span>›</span>
             <Link href="/collections" className="hover:text-coral transition-colors">Collections</Link>
             <span>›</span>
-            <span className="text-charcoal font-semibold truncate max-w-xs">{product.title}</span>
+            <span className="text-charcoal font-semibold truncate max-w-xs">{displayTitle}</span>
           </nav>
 
           <div className="grid md:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)] gap-8 lg:gap-12 mb-16">
@@ -324,7 +448,7 @@ export default function ProductPage() {
                 <div className={'absolute inset-0 flex items-center justify-center overflow-hidden ' + (zoomed ? 'cursor-zoom-out' : 'cursor-zoom-in')}
                      onClick={() => setZoomed(!zoomed)}>
                   {product.images?.length > 0 ? (
-                      <img src={mainImage} alt={product.title}
+                      <img src={mainImage} alt={displayTitle}
                        className={'w-full h-full object-cover transition-transform duration-300 ' + (zoomed ? 'scale-125' : '')} />
                   ) : (
                       <ProductInfoIcon type="shirt" className="w-24 h-24 text-gray-300" />
@@ -361,7 +485,7 @@ export default function ProductPage() {
                     {product.images.map((img, i) => (
                         <button key={i} onClick={() => setActiveImg(i)}
                                 className={'w-16 h-16 rounded-2xl overflow-hidden border-2 transition-all ' + (activeImg === i ? 'border-coral scale-105' : 'border-gray-100 hover:border-coral/40')}>
-                          <img src={img.src} alt={product.title + ' ' + (i+1)}
+                          <img src={img.src} alt={displayTitle + ' ' + (i+1)}
                                className="w-full h-full object-cover" />
                         </button>
                     ))}
@@ -383,14 +507,30 @@ export default function ProductPage() {
                 )}
               </div>
 
-              <h1 className="font-display text-2xl md:text-3xl text-charcoal leading-tight mb-3">{titleParts.title}</h1>
+              <h1 className="font-display text-2xl md:text-3xl text-charcoal leading-tight mb-3">{displayTitle}</h1>
 
-              {product.fabric && (
-                  <div className="flex items-center gap-2 mb-3 text-sm">
+              <div className="space-y-2 mb-5 text-sm text-gray-700">
+                {product.fabric && (
+                  <div className="flex items-center gap-2">
                     <span className="font-semibold text-charcoal">Fabric:</span>
-                    <span className="text-gray-600">{product.fabric}</span>
+                    <span>{product.fabric}</span>
                   </div>
-              )}
+                )}
+                {displayDescription && (
+                  <div className="flex items-start gap-2">
+                    <span className="font-semibold text-charcoal">Details:</span>
+                    <span className="leading-relaxed">{displayDescription}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-charcoal">Color:</span>
+                  <span>{detectedColor}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-charcoal">Gender:</span>
+                  <span>{displayGender}</span>
+                </div>
+              </div>
 
               {/* Views + Sold */}
               <div className="flex items-center gap-4 mb-3">

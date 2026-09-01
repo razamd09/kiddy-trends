@@ -5,6 +5,14 @@ import { useRouter } from 'next/navigation'
 const searchCache = new Map()
 const SEARCH_CACHE_TTL = 60 * 1000
 
+function normalizeDisplayTitle(rawTitle) {
+  return String(rawTitle || '')
+    .replace(/^\s*#?\s*Kids\s+Affordable\s+Collection\s*:\s*/i, '')
+    .replace(/^\s*#\s*/, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 export default function SearchBar() {
   const [query, setQuery]           = useState('')
   const [results, setResults]       = useState([])
@@ -94,7 +102,7 @@ export default function SearchBar() {
                 const image = product.images?.[0]?.src
                 return (
                   <a key={product.id}
-                    href={'/products/' + product.handle}
+                    href={'/products/prd_id=' + (product._id || product.id)}
                     onClick={() => { setOpen(false); setShowSearch(false); setQuery('') }}
                     className="flex items-center gap-3 p-2 rounded-2xl hover:bg-cream transition-colors">
                     <div className="w-12 h-12 bg-cream rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden">
@@ -104,7 +112,7 @@ export default function SearchBar() {
                       }
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-charcoal leading-tight line-clamp-2">{product.title}</p>
+                      <p className="text-xs font-semibold text-charcoal leading-tight line-clamp-2">{normalizeDisplayTitle(product.title)}</p>
                       <p className="text-coral font-bold text-xs mt-0.5">PKR {price.toLocaleString()}</p>
                     </div>
                   </a>

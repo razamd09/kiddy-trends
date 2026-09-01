@@ -33,6 +33,14 @@ function getCardRating(productId) {
 }
 
 // Fake discount % based on category
+function normalizeDisplayTitle(rawTitle) {
+  return String(rawTitle || '')
+    .replace(/^\s*#?\s*Kids\s+Affordable\s+Collection\s*:\s*/i, '')
+    .replace(/^\s*#\s*/, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 function getFakeDiscount(product) {
   const type  = (product.product_type || '').toLowerCase()
   const title = (product.title || '').toLowerCase()
@@ -110,7 +118,7 @@ export default function ProductCard({ product }) {
       <div className="relative bg-white rounded-3xl overflow-hidden card-hover shadow-sm border border-gray-100 flex flex-col">
 
         {/* Image */}
-        <a href={'/products/' + product.handle} className="block relative bg-white" style={{paddingBottom:'100%'}}>
+        <a href={'/products/prd_id=' + (product._id || product.id)} className="block relative bg-white" style={{paddingBottom:'100%'}}>
   <WishlistButton product={product} />
           {image ? (
             <div className="absolute inset-0 bg-white flex items-center justify-center p-3">
@@ -168,9 +176,9 @@ export default function ProductCard({ product }) {
 
         {/* Info */}
         <div className="p-4 flex flex-col flex-1">
-          <a href={'/products/' + product.handle}>
+          <a href={'/products/prd_id=' + (product._id || product.id)}>
             <h4 className="font-display text-sm text-charcoal leading-tight line-clamp-2 hover:text-coral transition-colors">
-              {product.title}
+              {normalizeDisplayTitle(product.title)}
             </h4>
           </a>
 
@@ -339,7 +347,7 @@ export default function ProductCard({ product }) {
                   Buy Now
                 </button>
               </div>
-              <a href={'/products/' + product.handle} className="mt-4 text-center text-sm font-semibold text-gray-500 hover:text-coral">
+              <a href={'/products/prd_id=' + (product._id || product.id)} className="mt-4 text-center text-sm font-semibold text-gray-500 hover:text-coral">
                 View full product details
               </a>
             </div>

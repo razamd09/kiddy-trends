@@ -3,6 +3,14 @@ import { useState, useEffect } from 'react'
 import { useCart } from '../context/CartContext'
 import CheckoutModal from './CheckoutModal'
 
+function normalizeDisplayTitle(rawTitle) {
+  return String(rawTitle || '')
+    .replace(/^\s*#?\s*Kids\s+Affordable\s+Collection\s*:\s*/i, '')
+    .replace(/^\s*#\s*/, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 export default function RecentlyViewed({ currentProductId }) {
   const [viewed, setViewed] = useState([])
   const [showCheckout, setShowCheckout] = useState(false)
@@ -28,7 +36,7 @@ export default function RecentlyViewed({ currentProductId }) {
           const price = parseFloat(product.variants?.[0]?.price || 0)
           const image = product.images?.[0]?.src
           return (
-            <a key={product.id} href={'/products/' + product.handle}
+            <a key={product.id} href={'/products/prd_id=' + (product._id || product.id)}
               className="bg-white rounded-3xl overflow-hidden card-hover shadow-sm border border-gray-100 block">
               <div className="relative bg-white" style={{paddingBottom:'100%'}}>
                 {image ? (
@@ -41,7 +49,7 @@ export default function RecentlyViewed({ currentProductId }) {
                 )}
               </div>
               <div className="p-3">
-                <p className="font-display text-xs text-charcoal line-clamp-2">{product.title}</p>
+                <p className="font-display text-xs text-charcoal line-clamp-2">{normalizeDisplayTitle(product.title)}</p>
                 <p className="text-coral font-bold text-sm mt-1">PKR {price.toLocaleString()}</p>
               </div>
             </a>
