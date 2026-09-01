@@ -10,6 +10,7 @@ const moduleLinks = [
   { href: '/admin/products', label: 'Products' },
   { href: '/admin/product-categories', label: 'Categories' },
   { href: '/admin/product-versions', label: 'Versions' },
+  { href: '/admin/product-fabrics', label: 'Fabrics' },
   { href: '/admin/product-types', label: 'Types' },
   { href: '/admin/collections', label: 'Collections' },
   { href: '/admin/customers', label: 'Customers' },

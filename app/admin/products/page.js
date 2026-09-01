@@ -8,7 +8,7 @@ const STANDARD_BG_COLORS = ['#991b1b', '#7c7a00', '#166534', '#0f766e', '#1d4ed8
 const DEFAULT_CATEGORY_OPTIONS = ['Clothing', 'Bedding', 'Bags', 'Accessories', 'Footwear', 'Toys', 'Shoes', 'Other']
 const DEFAULT_PRODUCT_VERSION_OPTIONS = ['new arrivals', 'Old Packs']
 const DEFAULT_PRODUCT_TYPE_OPTIONS = ['T-Shirt', 'Full Sleeves Shirt', 'Shorts', 'Denim Jeans', 'Trouser', 'Girl-Top', 'Frock', 'Socks', 'Jacket', 'Button Shirts', 'Jeans Shorts', 'Cargo Pents', 'Cargo Trousers', 'School Bags', 'Ladies Bags', 'Bag-Pack', 'Rompers', 'Kurta Trouser', 'Girls Kurti with Gharara', 'Girls Kurti with Trouser', 'Mock Necks']
-const DEFAULT_FABRIC_OPTIONS = ['Cotton', 'Terry', 'Jersy', 'Fleece', 'Silk Cotton', 'Silk']
+const DEFAULT_FABRIC_OPTIONS = ['Cotton', 'Terry', 'Jersy', 'Fleece', 'Silk Cotton', 'Silk', 'Denim']
 
 function getEditorPreviewBackgroundStyle(color) {
     if (String(color || '').trim().toLowerCase() === 'transparent') {
@@ -219,15 +219,17 @@ export default function AdminProducts() {
     }
 
     async function fetchProductMetadata() {
-        const [categories, versions, types, seasons] = await Promise.all([
+        const [categories, versions, types, fabrics, seasons] = await Promise.all([
             fetchMetadataOptions('/api/admin/product-categories', 'categories', DEFAULT_CATEGORY_OPTIONS),
             fetchMetadataOptions('/api/admin/product-versions', 'versions', DEFAULT_PRODUCT_VERSION_OPTIONS),
             fetchMetadataOptions('/api/admin/product-types', 'types', DEFAULT_PRODUCT_TYPE_OPTIONS),
+            fetchMetadataOptions('/api/admin/product-fabrics', 'fabrics', DEFAULT_FABRIC_OPTIONS),
             fetchSeasonOptions(),
         ])
         setCategoryOptions(categories)
         setProductVersionOptions(versions)
         setProductTypeOptions(types)
+        setFabricOptions(fabrics)
         setProductSeasonOptions(seasons)
     }
 

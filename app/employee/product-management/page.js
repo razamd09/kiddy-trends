@@ -23,6 +23,12 @@ const modules = [
         accent: 'bg-mint text-charcoal',
     },
     {
+        title: 'Product Fabric',
+        description: 'Add, edit, and delete fabric values used by products.',
+        href: '/employee/product-fabrics',
+        accent: 'bg-skyblue text-charcoal',
+    },
+    {
         title: 'Product Type',
         description: 'Add, edit, and delete product type values used by products.',
         href: '/employee/product-types',

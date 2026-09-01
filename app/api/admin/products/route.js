@@ -208,6 +208,25 @@ function normalizeProductSeasonId(value) {
     return Number.isFinite(parsed) ? Math.trunc(parsed) : null
 }
 
+async function resolveFabricReference(supabaseClient, fabricName) {
+    const trimmed = String(fabricName || '').trim()
+    if (!trimmed) return { fabric_id: null, fabric: null }
+
+    const { data, error } = await supabaseClient
+        .from('product_fabrics')
+        .select('id, name')
+        .eq('is_active', true)
+        .ilike('name', trimmed)
+        .order('sort_order', { ascending: true })
+        .limit(1)
+
+    if (!error && data && data.length > 0) {
+        return { fabric_id: data[0].id, fabric: data[0].name }
+    }
+
+    return { fabric_id: null, fabric: trimmed }
+}
+
 export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const page   = Math.max(parseInt(searchParams.get('page') || '1', 10), 1)
@@ -371,6 +390,7 @@ export async function POST(request) {
             const actorIdentity = getActorIdentity(request)
             const isActive = typeof body.is_active !== 'undefined' ? !!body.is_active : (body.status ? String(body.status) === 'active' : true)
 
+            const fabricRef = await resolveFabricReference(supabase, body.fabric)
             const { data, error } = await supabase
                 .from('products')
                 .insert([{
@@ -383,7 +403,8 @@ export async function POST(request) {
                         : (body.images || []),
                     category:      body.category,
                     product_type:  body.product_type,
-                    fabric:        String(body.fabric || '').trim() || null,
+                    fabric:        fabricRef.fabric,
+                    fabric_id:     fabricRef.fabric_id,
                     tags:          Array.isArray(body.tags) ? body.tags : (body.tags || []),
                     variants:      normalizeVariants(body.variants || []),
                     stock:         parseInt(body.stock) || 0,
@@ -445,7 +466,9 @@ export async function PUT(request) {
         }
 
         if (updates.fabric !== undefined) {
-            cleanUpdates.fabric = String(updates.fabric || '').trim() || null
+            const fabricRef = await resolveFabricReference(supabase, updates.fabric)
+            cleanUpdates.fabric = fabricRef.fabric
+            cleanUpdates.fabric_id = fabricRef.fabric_id
         }
 
         if (updates.images) {
