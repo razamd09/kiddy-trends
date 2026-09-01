@@ -7,7 +7,7 @@ const SEARCH_CACHE_TTL = 60 * 1000
 
 function normalizeDisplayTitle(rawTitle) {
   return String(rawTitle || '')
-    .replace(/^\s*#?\s*Kids\s+Affordable\s+Collection\s*:\s*/i, '')
+    .replace(/^\s*#?\s*Kids\s+Affordable\s+Collection\s*(?:2026)?\s*[:\-]*\s*/i, '')
     .replace(/^\s*#\s*/, '')
     .replace(/\s+/g, ' ')
     .trim()

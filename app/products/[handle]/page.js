@@ -120,7 +120,7 @@ function ProductInfoIcon({ type, className = 'w-4 h-4' }) {
 
 function normalizeDisplayTitle(rawTitle) {
   return String(rawTitle || '')
-    .replace(/^\s*#?\s*Kids\s+Affordable\s+Collection\s*:\s*/i, '')
+    .replace(/^\s*#?\s*Kids\s+Affordable\s+Collection\s*(?:2026)?\s*[:\-]*\s*/i, '')
     .replace(/^\s*#\s*/, '')
     .replace(/\s+/g, ' ')
     .trim()
@@ -422,7 +422,8 @@ export default function ProductPage() {
   const titleParts = getProductTitleParts(product)
   const displayTitle = normalizeDisplayTitle(product.title)
   const displayDescription = String(product.description || '').trim() || String(product.body_html || '').trim()
-  const displayGender = getProductGender(product.title)
+  const displayGender = (product.gender && String(product.gender).trim()) || getProductGender(product.title)
+  const displayColor = (product.color && String(product.color).trim()) || detectedColor || 'Multi-color'
 
   return (
       <>
@@ -524,7 +525,7 @@ export default function ProductPage() {
                 )}
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-charcoal">Color:</span>
-                  <span>{detectedColor}</span>
+                  <span>{displayColor}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-charcoal">Gender:</span>

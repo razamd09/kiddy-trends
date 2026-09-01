@@ -174,6 +174,8 @@ function validateRequiredProductFields(payload) {
     const productType = String(payload?.product_type || '').trim()
     const productVersion = String(payload?.product_version || '').trim()
     const fabric = String(payload?.fabric || '').trim()
+    const color = String(payload?.color || '').trim()
+    const gender = String(payload?.gender || '').trim()
     const status = payload?.status !== undefined
         ? String(payload.status || '').trim()
         : (payload?.is_active === true ? 'active' : payload?.is_active === false ? 'draft' : '')
@@ -181,6 +183,8 @@ function validateRequiredProductFields(payload) {
     if (!productType) return 'Product Type is required'
     if (!productVersion) return 'Product Version is required'
     if (!fabric) return 'Fabric is required'
+    if (!color) return 'Color is required'
+    if (!gender) return 'Gender is required'
     if (!status) return 'Status is required'
     return null
 }
@@ -194,6 +198,12 @@ function validatePartialProductFields(payload) {
     }
     if (payload?.fabric !== undefined && !String(payload.fabric || '').trim()) {
         return 'Fabric cannot be empty'
+    }
+    if (payload?.color !== undefined && !String(payload.color || '').trim()) {
+        return 'Color cannot be empty'
+    }
+    if (payload?.gender !== undefined && !String(payload.gender || '').trim()) {
+        return 'Gender cannot be empty'
     }
     if (payload?.status !== undefined && !String(payload.status || '').trim()) {
         return 'Status cannot be empty'
@@ -424,6 +434,8 @@ export async function POST(request) {
                     product_type:  body.product_type,
                     fabric:        fabricRef.fabric,
                     fabric_id:     fabricRef.fabric_id,
+                    color:         String(body.color || '').trim(),
+                    gender:        String(body.gender || '').trim(),
                     tags:          Array.isArray(body.tags) ? body.tags : (body.tags || []),
                     variants:      normalizeVariants(body.variants || []),
                     stock:         parseInt(body.stock) || 0,
@@ -488,6 +500,14 @@ export async function PUT(request) {
             const fabricRef = await resolveFabricReference(supabase, updates.fabric)
             cleanUpdates.fabric = fabricRef.fabric
             cleanUpdates.fabric_id = fabricRef.fabric_id
+        }
+
+        if (updates.color !== undefined) {
+            cleanUpdates.color = String(updates.color || '').trim()
+        }
+
+        if (updates.gender !== undefined) {
+            cleanUpdates.gender = String(updates.gender || '').trim()
         }
 
         if (updates.images) {
