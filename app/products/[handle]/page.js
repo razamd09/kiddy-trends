@@ -417,18 +417,21 @@ export default function ProductPage() {
                       <span className="font-semibold text-charcoal">Fabric:</span>
                       <span className="text-gray-600 hover:text-coral transition-colors cursor-help">{product.fabric}</span>
                       {(product.fabric_image || product.fabric) && (
-                          <span className="relative inline-flex items-center justify-center w-4 h-4 rounded-full bg-cream border border-gray-200 text-[10px] text-gray-500 cursor-help">
+                          <span className="relative inline-flex items-center justify-center w-5 h-5 rounded-full bg-coral text-[10px] font-bold text-white cursor-help shadow-sm">
                             i
-                            <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 -translate-x-1/2 hidden group-hover:block">
-                              <span className="block rounded-xl border border-gray-200 bg-white p-1 shadow-lg">
+                            <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
+                              <span className="block w-[24rem] h-[24rem] overflow-hidden rounded-2xl border-2 border-gray-200 bg-white shadow-xl">
                                 <img
                                   src={product.fabric_image || getFabricPreviewImage(product.fabric)}
                                   alt={product.fabric + ' fabric sample'}
-                                  className="h-20 w-20 object-cover rounded-lg"
+                                  className="h-[18rem] w-full object-cover"
                                   onError={(event) => {
                                     event.currentTarget.src = getFabricPreviewImage(product.fabric)
                                   }}
                                 />
+                                <div className="flex h-[6rem] items-center justify-center bg-cream px-3 text-center">
+                                  <span className="font-display text-xl text-charcoal">{product.fabric}</span>
+                                </div>
                               </span>
                             </span>
                           </span>
