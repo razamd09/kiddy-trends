@@ -169,6 +169,32 @@ function getSeasonNameFromQuery(value) {
     return SEASON_NAME_BY_QUERY[normalized] || null
 }
 
+function getFallbackFabricPreview(fabricName) {
+    const normalized = String(fabricName || 'Fabric').trim() || 'Fabric'
+    const materialColors = {
+        Cotton: '#F3E7D3',
+        Terry: '#D7B38A',
+        Jersy: '#CFE7C5',
+        Fleece: '#D8C2A7',
+        'Silk Cotton': '#F8E8E6',
+        Silk: '#EFD9EC',
+        Denim: '#2F4D6B',
+    }
+    const baseColor = materialColors[normalized] || '#F3E7D3'
+    const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+            <rect width="300" height="300" fill="${baseColor}"/>
+            <g opacity="0.55">
+                <circle cx="75" cy="90" r="38" fill="#ffffff" opacity="0.2"/>
+                <circle cx="180" cy="150" r="52" fill="#ffffff" opacity="0.18"/>
+                <circle cx="235" cy="90" r="30" fill="#ffffff" opacity="0.2"/>
+            </g>
+            <text x="150" y="170" text-anchor="middle" font-family="Arial" font-size="28" font-weight="700" fill="#2d2d2d">${normalized}</text>
+        </svg>
+    `
+    return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg)
+}
+
 function transformProduct(product) {
     const rawVariants = normalizeVariants(Array.isArray(product.variants) ? product.variants : [])
     const hasRealVariants = rawVariants.some((v) => v && v.option1_value)
@@ -388,10 +414,13 @@ export async function GET(request) {
             const imageUrls = normalizeImages(product.images)
             const proxiedUrls = imageUrls.map(toImageProxyUrl).filter(Boolean)
             const productFabricName = String(product.fabric || '').trim()
+            const resolvedFabricImage = productFabricName
+                ? (fabricSampleImages[productFabricName] || getFallbackFabricPreview(productFabricName))
+                : ''
             return {
                 ...product,
                 images: proxiedUrls,
-                fabric_image: productFabricName ? (fabricSampleImages[productFabricName] || '') : '',
+                fabric_image: resolvedFabricImage,
             }
         })
 

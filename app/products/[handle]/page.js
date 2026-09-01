@@ -46,6 +46,32 @@ const neutralReviewers = [
   { name: 'Saima H.',   city: 'Quetta',     review: 'Very satisfied with this order. Product exactly as described and delivery was quick!' },
 ]
 
+function getFabricPreviewImage(fabricName) {
+  const normalized = String(fabricName || 'Fabric').trim() || 'Fabric'
+  const materialColors = {
+    Cotton: '#F3E7D3',
+    Terry: '#D7B38A',
+    Jersy: '#CFE7C5',
+    Fleece: '#D8C2A7',
+    'Silk Cotton': '#F8E8E6',
+    Silk: '#EFD9EC',
+    Denim: '#2F4D6B',
+  }
+  const baseColor = materialColors[normalized] || '#F3E7D3'
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+      <rect width="300" height="300" fill="${baseColor}"/>
+      <g opacity="0.55">
+        <circle cx="75" cy="90" r="38" fill="#ffffff" opacity="0.2"/>
+        <circle cx="180" cy="150" r="52" fill="#ffffff" opacity="0.18"/>
+        <circle cx="235" cy="90" r="30" fill="#ffffff" opacity="0.2"/>
+      </g>
+      <text x="150" y="170" text-anchor="middle" font-family="Arial" font-size="28" font-weight="700" fill="#2d2d2d">${normalized}</text>
+    </svg>
+  `
+  return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg)
+}
+
 function getProductReviews(productId, title) {
   const seed = productId % 100
   if (seed > 50) return null
@@ -390,12 +416,19 @@ export default function ProductPage() {
                     <div className="inline-flex items-center gap-2 group relative">
                       <span className="font-semibold text-charcoal">Fabric:</span>
                       <span className="text-gray-600 hover:text-coral transition-colors cursor-help">{product.fabric}</span>
-                      {product.fabric_image && (
+                      {(product.fabric_image || product.fabric) && (
                           <span className="relative inline-flex items-center justify-center w-4 h-4 rounded-full bg-cream border border-gray-200 text-[10px] text-gray-500 cursor-help">
                             i
                             <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 -translate-x-1/2 hidden group-hover:block">
                               <span className="block rounded-xl border border-gray-200 bg-white p-1 shadow-lg">
-                                <img src={product.fabric_image} alt={product.fabric + ' fabric sample'} className="h-20 w-20 object-cover rounded-lg" />
+                                <img
+                                  src={product.fabric_image || getFabricPreviewImage(product.fabric)}
+                                  alt={product.fabric + ' fabric sample'}
+                                  className="h-20 w-20 object-cover rounded-lg"
+                                  onError={(event) => {
+                                    event.currentTarget.src = getFabricPreviewImage(product.fabric)
+                                  }}
+                                />
                               </span>
                             </span>
                           </span>
