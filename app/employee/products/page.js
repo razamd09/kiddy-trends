@@ -9,6 +9,8 @@ const DEFAULT_CATEGORY_OPTIONS = ['Clothing', 'Bedding', 'Bags', 'Accessories', 
 const DEFAULT_PRODUCT_VERSION_OPTIONS = ['new arrivals', 'Old Packs']
 const DEFAULT_PRODUCT_TYPE_OPTIONS = ['T-Shirt', 'Full Sleeves Shirt', 'Shorts', 'Denim Jeans', 'Trouser', 'Girl-Top', 'Frock', 'Socks', 'Jacket', 'Button Shirts', 'Jeans Shorts', 'Cargo Pents', 'Cargo Trousers', 'School Bags', 'Ladies Bags', 'Bag-Pack', 'Rompers', 'Kurta Trouser', 'Girls Kurti with Gharara', 'Girls Kurti with Trouser', 'Mock Necks']
 const DEFAULT_FABRIC_OPTIONS = ['Cotton', 'Terry', 'Jersy', 'Fleece', 'Silk Cotton', 'Silk', 'Denim']
+const DEFAULT_COLOR_OPTIONS = ['Black', 'White', 'Red', 'Blue', 'Green', 'Pink', 'Purple', 'Yellow', 'Orange', 'Grey', 'Beige', 'Brown', 'Navy', 'Teal', 'Multi-color']
+const DEFAULT_GENDER_OPTIONS = ['Girls', 'Boys', 'Neutral']
 
 function getEditorPreviewBackgroundStyle(color) {
     if (String(color || '').trim().toLowerCase() === 'transparent') {
@@ -62,7 +64,7 @@ export default function EmployeeProducts() {
     const [loadError, setLoadError] = useState('')
     const [form, setForm] = useState({
         title: '', description: '', price: '', compare_price: '',
-        category: '', product_type: '', fabric: '', tags: '', stock: '',
+        category: '', product_type: '', fabric: '', color: '', gender: '', tags: '', stock: '',
         product_version: '', product_season_id: '', status: ''
     })
     const [formImages, setFormImages] = useState([])   // [{url, rotating}]
@@ -450,7 +452,7 @@ export default function EmployeeProducts() {
     }
 
     function resetForm() {
-        setForm({ title: '', description: '', price: '', compare_price: '', category: '', product_type: '', fabric: '', tags: '', stock: '', product_version: '', product_season_id: '', status: '' })
+        setForm({ title: '', description: '', price: '', compare_price: '', category: '', product_type: '', fabric: '', color: '', gender: '', tags: '', stock: '', product_version: '', product_season_id: '', status: '' })
         setFormImages([])
         setFormVariants([])
         setEditingId(null)
@@ -504,10 +506,12 @@ export default function EmployeeProducts() {
         const productVersion = String(form.product_version || '').trim()
         const productSeasonId = String(form.product_season_id || '').trim()
         const fabric = String(form.fabric || '').trim()
+        const color = String(form.color || '').trim()
+        const gender = String(form.gender || '').trim()
         const status = String(form.status || '').trim()
 
-        if (!productType || !productVersion || !productSeasonId || !fabric || !status) {
-            alert('Product Type, Product Version, Product Season, Fabric, and Status are required.')
+        if (!productType || !productVersion || !productSeasonId || !fabric || !color || !gender || !status) {
+            alert('Product Type, Product Version, Product Season, Fabric, Color, Gender, and Status are required.')
             return
         }
 
@@ -539,6 +543,8 @@ export default function EmployeeProducts() {
             category:      form.category,
             product_type:  productType,
             fabric:        fabric,
+            color:         color,
+            gender:        gender,
             tags:          form.tags.split(',').map(t => t.trim()).filter(Boolean),
             stock:         totalStock,
             images:        formImages

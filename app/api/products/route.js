@@ -122,6 +122,19 @@ function normalizeHandleValue(value) {
     return decoded.trim().toLowerCase().replace(/^\/+|\/+$/g, '')
 }
 
+function parseProductIdFromHandle(value) {
+    const text = String(value || '').trim()
+    if (!text) return null
+
+    const prdIdMatch = text.match(/^prd_id\s*=\s*(\d+)$/i)
+    if (prdIdMatch) return Number(prdIdMatch[1])
+
+    const directIdMatch = text.match(/^\d+$/)
+    if (directIdMatch) return Number(text)
+
+    return null
+}
+
 function safeDecode(value) {
     try {
         return decodeURIComponent(String(value || ''))
@@ -246,6 +259,8 @@ function transformProduct(product) {
         body_html: product.description || '',
         product_type: product.product_type || '',
         fabric: product.fabric || '',
+        color: product.color || '',
+        gender: product.gender || '',
         fabric_image: product.fabric_image || '',
         category: product.category || '',
         tags: normalizeTags(product.tags),
@@ -276,6 +291,7 @@ export async function GET(request) {
         const category = (searchParams.get('category') || '').trim()
         const seasonQuery = (searchParams.get('season') || '').trim()
         const seasonName = getSeasonNameFromQuery(seasonQuery)
+        const parsedProductId = parseProductIdFromHandle(handle)
         const offset = (page - 1) * limit
 
         let data = []
@@ -283,6 +299,20 @@ export async function GET(request) {
         let error = null
 
         if (handle) {
+            if (parsedProductId) {
+                const byId = await supabase
+                    .from('products')
+                    .select('*, product_seasons(name)', { count: 'exact' })
+                    .eq('is_active', true)
+                    .or('source.is.null,source.neq.' + DRAFT_SOURCE)
+                    .eq('id', parsedProductId)
+                    .limit(1)
+                if (!byId.error && (byId.data || []).length > 0) {
+                    data = byId.data
+                    count = byId.count || byId.data.length
+                }
+            }
+
             const candidates = Array.from(new Set([
                 handle.trim(),
                 normalizeHandleValue(handle),
@@ -304,7 +334,7 @@ export async function GET(request) {
                 }
             }
 
-            if (data.length === 0) {
+            if (data.length === 0 && parsedProductId === null) {
                 const byId = await supabase
                     .from('products')
                     .select('*, product_seasons(name)', { count: 'exact' })
