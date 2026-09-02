@@ -126,6 +126,24 @@ function normalizeDisplayTitle(rawTitle) {
     .trim()
 }
 
+function normalizeProductColor(value) {
+  const text = String(value || '').trim()
+  if (!text) return ''
+
+  const normalized = text.toLowerCase().replace(/[_/]+/g, ' ').replace(/\s+/g, ' ').trim()
+  const aliasMap = {
+    'multi color': 'Multi-color',
+    'multi-color': 'Multi-color',
+    'multicolor': 'Multi-color',
+    'multi coloured': 'Multi-color',
+    'multi coloured color': 'Multi-color',
+    'multi-coloured': 'Multi-color',
+    'multi colour': 'Multi-color',
+  }
+
+  return aliasMap[normalized] || text
+}
+
 function getProductGender(title) {
   const normalized = String(title || '').toLowerCase()
   const hasGirl = /(girl|girls|frock|dress)/.test(normalized)
@@ -423,7 +441,7 @@ export default function ProductPage() {
   const displayTitle = normalizeDisplayTitle(product.title)
   const displayDescription = String(product.description || '').trim() || String(product.body_html || '').trim()
   const displayGender = (product.gender && String(product.gender).trim()) || getProductGender(product.title)
-  const displayColor = (product.color && String(product.color).trim()) || detectedColor || 'Multi-color'
+  const displayColor = normalizeProductColor(product.color) || normalizeProductColor(detectedColor) || 'Multi-color'
 
   return (
       <>
