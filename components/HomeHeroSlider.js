@@ -136,7 +136,7 @@ function BigBearIllustration() {
         @keyframes kt-sun-twinkle { 0%,100% { opacity: 0.35; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1.1); } }
       `}</style>
 
-      <svg width="260" height="200" viewBox="0 0 260 200" fill="none">
+      <svg width="100%" height="100%" viewBox="0 0 260 200" fill="none" preserveAspectRatio="xMidYMid meet">
         <line x1="20" y1="180" x2="240" y2="180" stroke="#1f3a52" strokeOpacity="0.2" strokeWidth="2" strokeDasharray="6 6" />
 
         <g className="kt-bear-group">
@@ -357,8 +357,8 @@ export default function HomeHeroSlider() {
 
                 <div className="relative flex justify-center px-6">
                   <div
-                    className="relative w-full max-w-md h-64 md:h-80 rounded-3xl border overflow-hidden flex items-center justify-center p-10"
-                    style={{ background: 'linear-gradient(160deg, #f4f9fd 0%, #dbe9f5 100%)', borderColor: 'rgba(31,58,82,0.12)' }}
+                    className="relative w-full max-w-md h-72 md:h-96 rounded-3xl overflow-hidden flex items-center justify-center p-6"
+                    style={{ background: 'linear-gradient(160deg, #f4f9fd 0%, #dbe9f5 100%)' }}
                   >
                     <BigBearIllustration />
                   </div>
