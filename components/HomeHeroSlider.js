@@ -124,14 +124,17 @@ export default function HomeHeroSlider() {
             className="relative overflow-hidden"
             style={{ background: '#dfeff2' }}
           >
-            <Link href="/collections?season=Summer" className="block w-full h-full">
-              <img
-                src="/WhatsApp%20Image%202026-09-02%20at%2010.04.50.jpeg"
-                alt="Summer sale banner"
-                className="block w-full h-[260px] sm:h-[320px] md:h-[380px] lg:h-[430px] object-cover object-center"
-                style={{ display: 'block' }}
-              />
-            </Link>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 md:py-5">
+              <Link href="/collections?season=Summer" className="block w-full overflow-hidden rounded-[28px] border border-white/60 shadow-lg bg-white/10">
+                <div className="relative w-full aspect-[16/8] sm:aspect-[18/7] md:aspect-[20/7] lg:aspect-[22/7]">
+                  <img
+                    src="/WhatsApp%20Image%202026-09-02%20at%2010.04.50.jpeg"
+                    alt="Summer sale banner"
+                    className="absolute inset-0 h-full w-full object-cover object-center"
+                  />
+                </div>
+              </Link>
+            </div>
           </section>
         </div>
       </div>
