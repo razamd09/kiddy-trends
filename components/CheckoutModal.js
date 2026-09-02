@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import emailjs from '@emailjs/browser'
 import RewardsSection from './RewardsSection'
+import { useCart } from '../context/CartContext'
 import { getAnalyticsSessionId, trackEvent } from '../lib/analyticsClient'
 
 const EMAILJS_SERVICE_ID =
@@ -74,6 +75,7 @@ const cities = [
 ].sort()
 
 export default function CheckoutModal({ product, variant, onClose, isCart, cartItems, totalPrice: cartTotal }) {
+  const { removeFromCart, updateQuantity } = useCart()
   const [step, setStep]               = useState(1)
   const [loading, setLoading]         = useState(false)
   const [phoneLookupLoading, setPhoneLookupLoading] = useState(false)
@@ -291,6 +293,16 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
     setDiscountCodeError('')
   }
 
+  function handleCartQuantityChange(item, nextQuantity) {
+    if (!item?.variantId) return
+    const normalized = Number(nextQuantity)
+    if (!Number.isFinite(normalized) || normalized < 1) {
+      removeFromCart(item.variantId)
+      return
+    }
+    updateQuantity(item.variantId, normalized)
+  }
+
   function buildWhatsAppMessage() {
     const variantText = variant?.title !== 'Default Title' ? '\nVariant: ' + variant?.title : ''
     const productText = isCart
@@ -465,14 +477,14 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
+      <div className="relative bg-white rounded-[28px] w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-[0_16px_40px_rgba(0,0,0,0.12)]">
 
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
-          <h2 className="font-display text-2xl text-charcoal">
+        <div className="sticky top-0 bg-white border-b border-[#efefef] px-5 py-4 flex items-center justify-between rounded-t-[28px] z-10">
+          <h2 className="font-display text-[2rem] leading-none tracking-[-0.04em] text-charcoal">
             {step === 1 ? 'Complete Your Order' : 'Order Confirmed!'}
           </h2>
-          <button onClick={onClose} className="w-9 h-9 rounded-full bg-gray-100 hover:bg-coral hover:text-white transition-colors flex items-center justify-center">
+          <button onClick={onClose} className="w-10 h-10 rounded-full bg-[#f3f3f3] hover:bg-coral hover:text-white transition-colors flex items-center justify-center shadow-sm">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -507,20 +519,67 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
               </div>
             )}
             {/* Order Summary */}
-            <div className="bg-cream rounded-2xl p-4 mb-6">
+            <div className="bg-[#f3efe8] rounded-[24px] p-4 mb-5">
               {isCart ? (
-                <div className="space-y-2">
-                  <p className="font-display text-base text-charcoal mb-3">Order Summary ({cartItems?.length} items)</p>
+                <div className="space-y-3">
+                  <p className="font-display text-[1.05rem] text-charcoal mb-2">Order Summary ({cartItems?.length} items)</p>
                   {cartItems?.map(item => (
-                    <div key={item.variantId} className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center flex-shrink-0">
-                        {item.image ? <img src={item.image} alt={item.title} className="w-full h-full object-contain mix-blend-multiply p-0.5" /> : <span className="text-lg">👕</span>}
+                    <div key={item.variantId} className="group flex items-center gap-3 rounded-[14px] border border-[#e8e2d9] bg-[#f8f5f1] p-2.5 hover:border-coral/30 transition-colors">
+                      <div className="relative w-12 h-12 bg-white rounded-[10px] flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm">
+                        {item.image ? (
+                          <>
+                            <img src={item.image} alt={item.title} className="w-full h-full object-cover rounded-[10px]" />
+                            <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 hidden -translate-x-1/2 -translate-y-1/2 group-hover:block">
+                              <div className="w-40 rounded-xl border border-gray-200 bg-white p-2 shadow-2xl">
+                                <img src={item.image} alt={item.title} className="w-full h-40 object-cover rounded-lg bg-cream" />
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <span className="text-lg">👕</span>
+                        )}
                       </div>
+
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-charcoal truncate">{item.title}</p>
-                        {item.variantTitle && <p className="text-xs text-gray-400">{item.variantTitle}</p>}
+                        <p className="text-[11px] font-semibold text-charcoal leading-tight line-clamp-2">{item.title}</p>
+                        {item.variantTitle && <p className="text-[10px] text-gray-400 mt-0.5">{item.variantTitle}</p>}
+
+                        <div className="mt-2 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleCartQuantityChange(item, item.quantity - 1)}
+                            className="w-6 h-6 rounded-full bg-white border border-[#dfe3df] text-sm font-bold text-charcoal hover:border-coral hover:text-coral transition-colors"
+                          >
+                            −
+                          </button>
+                          <input
+                            type="number"
+                            min={1}
+                            max={item.stock || 99}
+                            value={item.quantity}
+                            onChange={(e) => handleCartQuantityChange(item, e.target.value)}
+                            className="w-11 border border-[#dfe3df] rounded-md bg-white px-1 py-1 text-center text-[11px] font-semibold text-charcoal focus:border-coral focus:outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleCartQuantityChange(item, item.quantity + 1)}
+                            className="w-6 h-6 rounded-full bg-white border border-[#dfe3df] text-sm font-bold text-charcoal hover:border-coral hover:text-coral transition-colors"
+                          >
+                            +
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-xs font-bold text-coral whitespace-nowrap">x{item.quantity} — PKR {(item.price * item.quantity).toLocaleString()}</p>
+
+                      <div className="flex flex-col items-end gap-2 min-w-[86px]">
+                        <p className="text-[11px] font-bold text-coral whitespace-nowrap">PKR {(item.price * item.quantity).toLocaleString()}</p>
+                        <button
+                          type="button"
+                          onClick={() => removeFromCart(item.variantId)}
+                          className="text-[10px] font-medium text-gray-500 hover:text-red-500 transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
