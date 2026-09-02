@@ -1707,114 +1707,174 @@ export default function AdminProducts() {
             {bulkEditOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/50" onClick={() => setBulkEditOpen(false)} />
-                    <div className="relative bg-white rounded-2xl w-full max-w-md p-5 shadow-xl">
-                        <h3 className="font-display text-xl text-charcoal mb-2">Bulk Edit Products</h3>
-                        <p className="text-sm text-gray-500 mb-4">Updating {selectedIds.length} selected product(s)</p>
+                    <div className="relative bg-white rounded-2xl w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-xl">
+                        <div className="p-5 border-b border-gray-200">
+                            <h3 className="font-display text-xl text-charcoal mb-1">Bulk Edit Products</h3>
+                            <p className="text-sm text-gray-500">Updating {selectedIds.length} selected product(s)</p>
+                        </div>
 
-                        <div className="space-y-3">
-                            <div>
-                                <label className="block text-xs font-semibold text-charcoal mb-1">Title</label>
-                                <input
-                                    type="text"
-                                    value={bulkEditForm.title}
-                                    onChange={e => setBulkEditForm(prev => ({ ...prev, title: e.target.value }))}
-                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
-                                    placeholder="No change"
-                                />
-                                <p className="mt-1 text-[11px] text-gray-500">If set, the same title is applied to all selected products.</p>
+                        <div className="overflow-auto max-h-[calc(90vh-220px)] p-5">
+                            <div className="mb-5 rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm">
+                                <div className="border-b border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-600">
+                                    Selected products table
+                                </div>
+                                <table className="min-w-full border-collapse text-left text-sm">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Title</th>
+                                            <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Image</th>
+                                            <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Version</th>
+                                            <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Type</th>
+                                            <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Fabric</th>
+                                            <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Season</th>
+                                            <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Color</th>
+                                            <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {products
+                                            .filter(product => selectedIds.includes(product.id))
+                                            .map((product) => {
+                                                const productSeason = product.product_season || product.product_seasons?.name || '—'
+                                                const productStatus = product.is_active === false ? 'Draft' : 'Active'
+                                                const firstImage = Array.isArray(product.images) && product.images.length > 0 ? product.images[0]?.src : null
+
+                                                return (
+                                                    <tr key={product.id} className="border-b border-gray-100 align-top hover:bg-cream/60">
+                                                        <td className="px-3 py-2 text-charcoal font-medium max-w-[220px]">
+                                                            <div className="line-clamp-2">{product.title || 'Untitled'}</div>
+                                                        </td>
+                                                        <td className="px-3 py-2">
+                                                            {firstImage ? (
+                                                                <img src={firstImage} alt={product.title || 'Product'} className="h-12 w-12 rounded-lg object-cover border border-gray-200 bg-gray-50" />
+                                                            ) : (
+                                                                <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-xs text-gray-400">No img</div>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-3 py-2 text-gray-700">{product.product_version || '—'}</td>
+                                                        <td className="px-3 py-2 text-gray-700">{product.product_type || '—'}</td>
+                                                        <td className="px-3 py-2 text-gray-700">{product.fabric || '—'}</td>
+                                                        <td className="px-3 py-2 text-gray-700">{productSeason}</td>
+                                                        <td className="px-3 py-2 text-gray-700">{product.color || '—'}</td>
+                                                        <td className="px-3 py-2">
+                                                            <span className={'inline-flex rounded-full px-2 py-1 text-xs font-semibold ' + (productStatus === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-700')}>
+                                                                {productStatus}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            })}
+                                    </tbody>
+                                </table>
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-semibold text-charcoal mb-1">Category</label>
-                                <select
-                                    value={bulkEditForm.category}
-                                    onChange={e => setBulkEditForm(prev => ({ ...prev, category: e.target.value }))}
-                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
-                                >
-                                    <option value="">No change</option>
-                                    {categoryOptions.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                                </select>
-                            </div>
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-xs font-semibold text-charcoal mb-1">Title</label>
+                                    <input
+                                        type="text"
+                                        value={bulkEditForm.title}
+                                        onChange={e => setBulkEditForm(prev => ({ ...prev, title: e.target.value }))}
+                                        className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
+                                        placeholder="No change"
+                                    />
+                                    <p className="mt-1 text-[11px] text-gray-500">If set, the same title is applied to all selected products.</p>
+                                </div>
 
-                            <div>
-                                <label className="block text-xs font-semibold text-charcoal mb-1">Product Version</label>
-                                <select
-                                    value={bulkEditForm.product_version}
-                                    onChange={e => setBulkEditForm(prev => ({ ...prev, product_version: e.target.value }))}
-                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
-                                >
-                                    <option value="">No change</option>
-                                    {productVersionOptions.map((version) => <option key={version} value={version}>{version}</option>)}
-                                </select>
-                            </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-charcoal mb-1">Category</label>
+                                    <select
+                                        value={bulkEditForm.category}
+                                        onChange={e => setBulkEditForm(prev => ({ ...prev, category: e.target.value }))}
+                                        className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
+                                    >
+                                        <option value="">No change</option>
+                                        {categoryOptions.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                                    </select>
+                                </div>
 
-                            <div>
-                                <label className="block text-xs font-semibold text-charcoal mb-1">Product Type</label>
-                                <select
-                                    value={bulkEditForm.product_type}
-                                    onChange={e => setBulkEditForm(prev => ({ ...prev, product_type: e.target.value }))}
-                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
-                                >
-                                    <option value="">No change</option>
-                                    {productTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
-                                </select>
-                            </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-charcoal mb-1">Product Version</label>
+                                    <select
+                                        value={bulkEditForm.product_version}
+                                        onChange={e => setBulkEditForm(prev => ({ ...prev, product_version: e.target.value }))}
+                                        className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
+                                    >
+                                        <option value="">No change</option>
+                                        {productVersionOptions.map((version) => <option key={version} value={version}>{version}</option>)}
+                                    </select>
+                                </div>
 
-                            <div>
-                                <label className="block text-xs font-semibold text-charcoal mb-1">Fabric</label>
-                                <select
-                                    value={bulkEditForm.fabric}
-                                    onChange={e => setBulkEditForm(prev => ({ ...prev, fabric: e.target.value }))}
-                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
-                                >
-                                    <option value="">No change</option>
-                                    {DEFAULT_FABRIC_OPTIONS.map((fabric) => <option key={fabric} value={fabric}>{fabric}</option>)}
-                                </select>
-                            </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-charcoal mb-1">Product Type</label>
+                                    <select
+                                        value={bulkEditForm.product_type}
+                                        onChange={e => setBulkEditForm(prev => ({ ...prev, product_type: e.target.value }))}
+                                        className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
+                                    >
+                                        <option value="">No change</option>
+                                        {productTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
+                                    </select>
+                                </div>
 
-                            <div>
-                                <label className="block text-xs font-semibold text-charcoal mb-1">Product Season</label>
-                                <select
-                                    value={bulkEditForm.product_season_id}
-                                    onChange={e => setBulkEditForm(prev => ({ ...prev, product_season_id: e.target.value }))}
-                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
-                                >
-                                    <option value="">No change</option>
-                                    {productSeasonOptions.map((season) => <option key={season.id} value={season.id}>{season.name}</option>)}
-                                </select>
-                            </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-charcoal mb-1">Fabric</label>
+                                    <select
+                                        value={bulkEditForm.fabric}
+                                        onChange={e => setBulkEditForm(prev => ({ ...prev, fabric: e.target.value }))}
+                                        className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
+                                    >
+                                        <option value="">No change</option>
+                                        {DEFAULT_FABRIC_OPTIONS.map((fabric) => <option key={fabric} value={fabric}>{fabric}</option>)}
+                                    </select>
+                                </div>
 
-                            <div>
-                                <label className="block text-xs font-semibold text-charcoal mb-1">Status</label>
-                                <select
-                                    value={bulkEditForm.status}
-                                    onChange={e => setBulkEditForm(prev => ({ ...prev, status: e.target.value }))}
-                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
-                                >
-                                    <option value="">No change</option>
-                                    <option value="active">Active</option>
-                                    <option value="draft">Draft</option>
-                                </select>
+                                <div>
+                                    <label className="block text-xs font-semibold text-charcoal mb-1">Product Season</label>
+                                    <select
+                                        value={bulkEditForm.product_season_id}
+                                        onChange={e => setBulkEditForm(prev => ({ ...prev, product_season_id: e.target.value }))}
+                                        className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
+                                    >
+                                        <option value="">No change</option>
+                                        {productSeasonOptions.map((season) => <option key={season.id} value={season.id}>{season.name}</option>)}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-charcoal mb-1">Status</label>
+                                    <select
+                                        value={bulkEditForm.status}
+                                        onChange={e => setBulkEditForm(prev => ({ ...prev, status: e.target.value }))}
+                                        className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
+                                    >
+                                        <option value="">No change</option>
+                                        <option value="active">Active</option>
+                                        <option value="draft">Draft</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="mt-5 grid grid-cols-2 gap-2">
-                            <button
-                                type="button"
-                                onClick={handleBulkEditSubmit}
-                                disabled={bulkProcessing}
-                                className="px-4 py-2 bg-coral text-white text-sm font-semibold rounded-lg hover:bg-opacity-90 disabled:opacity-50"
-                            >
-                                {bulkProcessing ? 'Applying...' : 'Apply Bulk Edit'}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setBulkEditOpen(false)}
-                                disabled={bulkProcessing}
-                                className="px-4 py-2 bg-gray-200 text-charcoal text-sm font-semibold rounded-lg hover:bg-gray-300 disabled:opacity-50"
-                            >
-                                Cancel
-                            </button>
+                        <div className="border-t border-gray-200 p-5">
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    onClick={handleBulkEditSubmit}
+                                    disabled={bulkProcessing}
+                                    className="px-4 py-2 bg-coral text-white text-sm font-semibold rounded-lg hover:bg-opacity-90 disabled:opacity-50"
+                                >
+                                    {bulkProcessing ? 'Applying...' : 'Apply Bulk Edit'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setBulkEditOpen(false)}
+                                    disabled={bulkProcessing}
+                                    className="px-4 py-2 bg-gray-200 text-charcoal text-sm font-semibold rounded-lg hover:bg-gray-300 disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
