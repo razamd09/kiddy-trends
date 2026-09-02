@@ -118,44 +118,20 @@ export default function HomeHeroSlider() {
           </section>
         </div>
 
-        {/* Slide 2 — Featured campaign image */}
+        {/* Slide 2 — Landscape summer banner */}
         <div className="w-full flex-shrink-0">
           <section
             className="relative overflow-hidden"
-            style={{ background: 'linear-gradient(180deg, #eef5fb 0%, #dbe9f5 100%)' }}
+            style={{ background: '#dfeff2' }}
           >
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-20">
-              <div className="grid md:grid-cols-2 gap-10 items-center">
-                <div className="text-center md:text-left">
-                  <span
-                    className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 mb-5 text-xs tracking-wide"
-                    style={{ background: '#ffffff', color: '#1f3a52' }}
-                  >
-                    <TruckIcon className="w-3.5 h-3.5" /> FEATURED DROP
-                  </span>
-                  <h2 className="font-display text-4xl md:text-5xl leading-tight mb-4" style={{ color: '#1f3a52' }}>
-                    New styles for<br className="hidden md:block" /> everyday adventures.
-                  </h2>
-                  <Link
-                    href="/collections?season=Summer"
-                    className="inline-block font-display text-sm px-6 py-3 rounded-full"
-                    style={{ background: '#1f3a52', color: '#ffffff' }}
-                  >
-                    Explore now
-                  </Link>
-                </div>
-
-                <div className="relative flex justify-center px-6">
-                  <Link href="/collections?season=Summer" className="relative block w-full max-w-md h-64 md:h-80 rounded-3xl border overflow-hidden shadow-lg" style={{ borderColor: 'rgba(31,58,82,0.12)' }}>
-                    <img
-                      src="/WhatsApp%20Image%202026-09-02%20at%2010.04.50.jpeg"
-                      alt="Featured children fashion collection"
-                      className="h-full w-full object-cover"
-                    />
-                  </Link>
-                </div>
-              </div>
-            </div>
+            <Link href="/collections?season=Summer" className="block w-full h-full">
+              <img
+                src="/WhatsApp%20Image%202026-09-02%20at%2010.04.50.jpeg"
+                alt="Summer sale banner"
+                className="block w-full h-[260px] sm:h-[320px] md:h-[380px] lg:h-[430px] object-cover object-center"
+                style={{ display: 'block' }}
+              />
+            </Link>
           </section>
         </div>
       </div>
