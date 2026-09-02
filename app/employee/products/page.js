@@ -9,7 +9,11 @@ const DEFAULT_CATEGORY_OPTIONS = ['Clothing', 'Bedding', 'Bags', 'Accessories', 
 const DEFAULT_PRODUCT_VERSION_OPTIONS = ['new arrivals', 'Old Packs']
 const DEFAULT_PRODUCT_TYPE_OPTIONS = ['T-Shirt', 'Full Sleeves Shirt', 'Shorts', 'Denim Jeans', 'Trouser', 'Girl-Top', 'Frock', 'Socks', 'Jacket', 'Button Shirts', 'Jeans Shorts', 'Cargo Pents', 'Cargo Trousers', 'School Bags', 'Ladies Bags', 'Bag-Pack', 'Rompers', 'Kurta Trouser', 'Girls Kurti with Gharara', 'Girls Kurti with Trouser', 'Mock Necks']
 const DEFAULT_FABRIC_OPTIONS = ['Cotton', 'Terry', 'Jersy', 'Fleece', 'Silk Cotton', 'Silk', 'Denim']
-const DEFAULT_COLOR_OPTIONS = ['Black', 'White', 'Red', 'Blue', 'Green', 'Pink', 'Purple', 'Yellow', 'Orange', 'Grey', 'Beige', 'Brown', 'Navy', 'Teal', 'Multi-color']
+const DEFAULT_COLOR_OPTIONS = [
+    'Black', 'White', 'Red', 'Blue', 'Navy Blue', 'Royal Blue', 'Light Blue', 'Green', 'Dark Green', 'Light Green',
+    'Pink', 'Light Pink', 'Purple', 'Lavender', 'Yellow', 'Mustard', 'Orange', 'Peach', 'Grey', 'Light Grey', 'Silver',
+    'Beige', 'Brown', 'Tan', 'Navy', 'Teal', 'Aqua', 'Maroon', 'Gold', 'Cream', 'Multi-color', 'Multi Color'
+]
 const DEFAULT_GENDER_OPTIONS = ['Girls', 'Boys', 'Neutral']
 
 function getEditorPreviewBackgroundStyle(color) {
@@ -52,6 +56,7 @@ export default function EmployeeProducts() {
     const [bulkProcessing, setBulkProcessing] = useState(false)
     const [recentBgRemoving, setRecentBgRemoving] = useState(false)
     const [bulkEditOpen, setBulkEditOpen] = useState(false)
+    const [bulkEditRows, setBulkEditRows] = useState([])
     const [bulkEditForm, setBulkEditForm] = useState({
         title: '',
         category: '',
@@ -324,6 +329,31 @@ export default function EmployeeProducts() {
 
     function clearSelection() {
         setSelectedIds([])
+    }
+
+    function getFirstProductImage(product) {
+        const candidates = [
+            product?.images,
+            product?.image,
+            product?.featured_image,
+            product?.image_url,
+            product?.src,
+            product?.thumbnail,
+            product?.featuredImage,
+            product?.primary_image,
+        ]
+
+        for (const candidate of candidates) {
+            const normalized = normalizeImages(candidate)
+            if (normalized.length > 0) return normalized[0]
+        }
+
+        if (Array.isArray(product?.media)) {
+            const mediaSource = normalizeImages(product.media)
+            if (mediaSource.length > 0) return mediaSource[0]
+        }
+
+        return null
     }
 
     function handleHeaderSort(nextSortBy) {
@@ -651,38 +681,68 @@ export default function EmployeeProducts() {
         setBulkProcessing(false)
     }
 
-    async function handleBulkEditSubmit() {
-        if (selectedIds.length === 0) return
-
-        const updates = {}
-        if (bulkEditForm.title.trim()) updates.title = bulkEditForm.title.trim()
-        if (bulkEditForm.category) updates.category = bulkEditForm.category
-        if (bulkEditForm.product_type) updates.product_type = bulkEditForm.product_type
-        if (bulkEditForm.fabric) updates.fabric = bulkEditForm.fabric
-        if (bulkEditForm.product_season_id) updates.product_season_id = Number(bulkEditForm.product_season_id)
-        if (bulkEditForm.product_version) updates.product_version = bulkEditForm.product_version
-        if (bulkEditForm.status) updates.is_active = bulkEditForm.status === 'active'
-
-        if (Object.keys(updates).length === 0) {
-            alert('Select at least one field to update in bulk edit.')
+    useEffect(() => {
+        if (!bulkEditOpen || selectedIds.length === 0) {
+            setBulkEditRows([])
             return
         }
+
+        const nextRows = products
+            .filter((product) => selectedIds.includes(product.id))
+            .map((product) => ({
+                id: product.id,
+                title: product.title || '',
+                image: getFirstProductImage(product),
+                product_version: product.product_version || '',
+                product_type: product.product_type || '',
+                fabric: product.fabric || '',
+                product_season_id: product.product_season_id ? String(product.product_season_id) : '',
+                color: product.color || '',
+                is_active: product.is_active !== false,
+            }))
+
+        setBulkEditRows(nextRows)
+    }, [bulkEditOpen, selectedIds, products])
+
+    function updateBulkEditRow(id, field, value) {
+        setBulkEditRows(prev => prev.map(row => row.id === id ? { ...row, [field]: value } : row))
+    }
+
+    async function handleBulkEditSubmit() {
+        if (bulkEditRows.length === 0) return
 
         const token = localStorage.getItem('admin_token') || ''
         setBulkProcessing(true)
         try {
-            await Promise.all(selectedIds.map(async (id) => {
+            await Promise.all(bulkEditRows.map(async (row) => {
+                const payload = {
+                    id: row.id,
+                    title: row.title.trim(),
+                    product_version: row.product_version,
+                    product_type: row.product_type,
+                    fabric: row.fabric,
+                    product_season_id: row.product_season_id ? Number(row.product_season_id) : null,
+                    color: row.color,
+                    is_active: row.is_active,
+                }
+
+                Object.keys(payload).forEach((key) => {
+                    if (key === 'id') return
+                    if (payload[key] === '' || payload[key] === null || payload[key] === undefined) delete payload[key]
+                })
+
                 const res = await fetch('/api/admin/products', {
                     method: 'PUT',
                     headers: getActorHeaders(true),
-                    body: JSON.stringify({ id, ...updates }),
+                    body: JSON.stringify(payload),
                 })
                 const data = await readApiJson(res)
                 if (!res.ok || !data.success) {
-                    throw new Error(data.error || ('Failed for product ' + id))
+                    throw new Error(data.error || ('Failed for product ' + row.id))
                 }
             }))
             setBulkEditOpen(false)
+            setBulkEditRows([])
             setBulkEditForm({ title: '', category: '', product_type: '', fabric: '', product_season_id: '', product_version: '', status: '' })
             clearSelection()
             fetchProducts()
@@ -1688,113 +1748,151 @@ export default function EmployeeProducts() {
             {bulkEditOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/50" onClick={() => setBulkEditOpen(false)} />
-                    <div className="relative bg-white rounded-2xl w-full max-w-md p-5 shadow-xl">
-                        <h3 className="font-display text-xl text-charcoal mb-2">Bulk Edit Products</h3>
-                        <p className="text-sm text-gray-500 mb-4">Updating {selectedIds.length} selected product(s)</p>
-
-                        <div className="space-y-3">
+                    <div className="relative bg-white rounded-2xl w-full max-w-6xl p-0 shadow-xl">
+                        <div className="border-b border-gray-200 px-5 py-4 flex items-center justify-between">
                             <div>
-                                <label className="block text-xs font-semibold text-charcoal mb-1">Title</label>
-                                <input
-                                    type="text"
-                                    value={bulkEditForm.title}
-                                    onChange={e => setBulkEditForm(prev => ({ ...prev, title: e.target.value }))}
-                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
-                                    placeholder="No change"
-                                />
-                                <p className="mt-1 text-[11px] text-gray-500">If set, the same title is applied to all selected products.</p>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-charcoal mb-1">Category</label>
-                                <select
-                                    value={bulkEditForm.category}
-                                    onChange={e => setBulkEditForm(prev => ({ ...prev, category: e.target.value }))}
-                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
-                                >
-                                    <option value="">No change</option>
-                                    {categoryOptions.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-charcoal mb-1">Product Version</label>
-                                <select
-                                    value={bulkEditForm.product_version}
-                                    onChange={e => setBulkEditForm(prev => ({ ...prev, product_version: e.target.value }))}
-                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
-                                >
-                                    <option value="">No change</option>
-                                    {productVersionOptions.map((version) => <option key={version} value={version}>{version}</option>)}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-charcoal mb-1">Product Type</label>
-                                <select
-                                    value={bulkEditForm.product_type}
-                                    onChange={e => setBulkEditForm(prev => ({ ...prev, product_type: e.target.value }))}
-                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
-                                >
-                                    <option value="">No change</option>
-                                    {productTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-charcoal mb-1">Fabric</label>
-                                <select
-                                    value={bulkEditForm.fabric}
-                                    onChange={e => setBulkEditForm(prev => ({ ...prev, fabric: e.target.value }))}
-                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
-                                >
-                                    <option value="">No change</option>
-                                    {DEFAULT_FABRIC_OPTIONS.map((fabric) => <option key={fabric} value={fabric}>{fabric}</option>)}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-charcoal mb-1">Product Season</label>
-                                <select
-                                    value={bulkEditForm.product_season_id}
-                                    onChange={e => setBulkEditForm(prev => ({ ...prev, product_season_id: e.target.value }))}
-                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
-                                >
-                                    <option value="">No change</option>
-                                    {productSeasonOptions.map((season) => <option key={season.id} value={season.id}>{season.name}</option>)}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-charcoal mb-1">Status</label>
-                                <select
-                                    value={bulkEditForm.status}
-                                    onChange={e => setBulkEditForm(prev => ({ ...prev, status: e.target.value }))}
-                                    className="w-full px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:border-coral text-sm"
-                                >
-                                    <option value="">No change</option>
-                                    <option value="active">Active</option>
-                                    <option value={DRAFT_MODE}>Draft</option>
-                                </select>
+                                <h3 className="font-display text-xl text-charcoal">Bulk Edit Products</h3>
+                                <p className="text-sm text-gray-500 mt-1">Updating {bulkEditRows.length} selected product(s)</p>
                             </div>
                         </div>
 
-                        <div className="mt-5 flex gap-2">
-                            <button
-                                type="button"
-                                onClick={handleBulkEditSubmit}
-                                disabled={bulkProcessing}
-                                className="flex-1 px-4 py-2 bg-coral text-white text-sm font-semibold rounded-xl hover:bg-opacity-90 disabled:opacity-50"
-                            >
-                                {bulkProcessing ? 'Updating...' : 'Apply Bulk Edit'}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setBulkEditOpen(false)}
-                                className="flex-1 px-4 py-2 bg-gray-200 text-charcoal text-sm font-semibold rounded-xl hover:bg-gray-300"
-                            >
-                                Cancel
-                            </button>
+                        <div className="overflow-auto max-h-[calc(90vh-180px)] p-5">
+                            <div className="mb-5 rounded-xl border border-gray-200 overflow-hidden bg-white shadow-sm">
+                                <div className="border-b border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-gray-600">
+                                    Selected products table
+                                </div>
+                                <table className="min-w-full border-collapse text-left text-sm">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Title</th>
+                                            <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Image</th>
+                                            <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Version</th>
+                                            <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Type</th>
+                                            <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Fabric</th>
+                                            <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Season</th>
+                                            <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Color</th>
+                                            <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {bulkEditRows.map((row) => {
+                                            const productSeason = productSeasonOptions.find((season) => String(season.id) === String(row.product_season_id))?.name || '—'
+                                            const productStatus = row.is_active === false ? 'Draft' : 'Active'
+
+                                            return (
+                                                <tr key={row.id} className="border-b border-gray-100 align-top hover:bg-cream/60">
+                                                    <td className="px-3 py-2 text-charcoal font-medium max-w-[220px]">
+                                                        <input
+                                                            type="text"
+                                                            value={row.title}
+                                                            onChange={(e) => updateBulkEditRow(row.id, 'title', e.target.value)}
+                                                            className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-charcoal focus:border-coral focus:outline-none"
+                                                        />
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        {row.image ? (
+                                                            <img src={row.image} alt="Product" className="h-12 w-12 rounded-lg object-cover border border-gray-200 bg-gray-50" />
+                                                        ) : (
+                                                            <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-[10px] text-gray-400">No img</div>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <select
+                                                            value={row.product_version}
+                                                            onChange={(e) => updateBulkEditRow(row.id, 'product_version', e.target.value)}
+                                                            className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-charcoal focus:border-coral focus:outline-none"
+                                                        >
+                                                            <option value="">Select version</option>
+                                                            {productVersionOptions.map((version) => (
+                                                                <option key={version} value={version}>{version}</option>
+                                                            ))}
+                                                        </select>
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <select
+                                                            value={row.product_type}
+                                                            onChange={(e) => updateBulkEditRow(row.id, 'product_type', e.target.value)}
+                                                            className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-charcoal focus:border-coral focus:outline-none"
+                                                        >
+                                                            <option value="">Select type</option>
+                                                            {productTypeOptions.map((type) => (
+                                                                <option key={type} value={type}>{type}</option>
+                                                            ))}
+                                                        </select>
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <select
+                                                            value={row.fabric}
+                                                            onChange={(e) => updateBulkEditRow(row.id, 'fabric', e.target.value)}
+                                                            className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-charcoal focus:border-coral focus:outline-none"
+                                                        >
+                                                            <option value="">Select fabric</option>
+                                                            {fabricOptions.map((fabric) => (
+                                                                <option key={fabric} value={fabric}>{fabric}</option>
+                                                            ))}
+                                                        </select>
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <select
+                                                            value={row.product_season_id}
+                                                            onChange={(e) => updateBulkEditRow(row.id, 'product_season_id', e.target.value)}
+                                                            className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-charcoal focus:border-coral focus:outline-none"
+                                                        >
+                                                            <option value="">Select season</option>
+                                                            {productSeasonOptions.map((season) => (
+                                                                <option key={season.id} value={String(season.id)}>{season.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <select
+                                                            value={row.color}
+                                                            onChange={(e) => updateBulkEditRow(row.id, 'color', e.target.value)}
+                                                            className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-charcoal focus:border-coral focus:outline-none"
+                                                        >
+                                                            <option value="">Select color</option>
+                                                            {DEFAULT_COLOR_OPTIONS.map((color) => (
+                                                                <option key={color} value={color}>{color}</option>
+                                                            ))}
+                                                        </select>
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <select
+                                                            value={row.is_active ? 'active' : 'draft'}
+                                                            onChange={(e) => updateBulkEditRow(row.id, 'is_active', e.target.value === 'active')}
+                                                            className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-charcoal focus:border-coral focus:outline-none"
+                                                        >
+                                                            <option value="active">Active</option>
+                                                            <option value="draft">Draft</option>
+                                                        </select>
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div className="border-t border-gray-200 p-5">
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    onClick={handleBulkEditSubmit}
+                                    disabled={bulkProcessing || bulkEditRows.length === 0}
+                                    className="px-4 py-2 bg-coral text-white text-sm font-semibold rounded-lg hover:bg-opacity-90 disabled:opacity-50"
+                                >
+                                    {bulkProcessing ? 'Applying...' : 'Apply Bulk Edit'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setBulkEditOpen(false)}
+                                    disabled={bulkProcessing}
+                                    className="px-4 py-2 bg-gray-200 text-charcoal text-sm font-semibold rounded-lg hover:bg-gray-300 disabled:opacity-50"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
