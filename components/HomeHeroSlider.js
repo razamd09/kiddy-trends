@@ -32,6 +32,72 @@ function TruckIcon({ className = 'w-4 h-4' }) {
   )
 }
 
+// Illustrated visual for the loyalty slide: a truck drives in from the left
+// (with spinning wheels), arrives at a little house, a parcel pops out at
+// the door, then the scene fades and loops.
+function FreeShippingIllustration() {
+  return (
+    <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+      <style jsx>{`
+        .kt-truck-group { animation: kt-truck-drive 6s ease-in-out infinite; }
+        @keyframes kt-truck-drive {
+          0%   { transform: translateX(-110px); opacity: 1; }
+          45%  { transform: translateX(0px); opacity: 1; }
+          65%  { transform: translateX(0px); opacity: 1; }
+          75%  { transform: translateX(0px); opacity: 0; }
+          76%  { transform: translateX(-110px); opacity: 0; }
+          100% { transform: translateX(-110px); opacity: 1; }
+        }
+        .kt-wheel { animation: kt-wheel-spin 0.7s linear infinite; transform-box: fill-box; transform-origin: center; }
+        @keyframes kt-wheel-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .kt-parcel { animation: kt-parcel-pop 6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+        @keyframes kt-parcel-pop {
+          0%, 48% { opacity: 0; transform: translateY(6px) scale(0.7); }
+          56%     { opacity: 1; transform: translateY(-4px) scale(1.05); }
+          64%     { opacity: 1; transform: translateY(0px) scale(1); }
+          75%     { opacity: 1; transform: translateY(0px) scale(1); }
+          80%, 100% { opacity: 0; transform: translateY(6px) scale(0.7); }
+        }
+
+        .kt-sparkle { animation: kt-sparkle 2.4s ease-in-out infinite; }
+        @keyframes kt-sparkle { 0%,100% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } }
+      `}</style>
+
+      <svg width="260" height="160" viewBox="0 0 260 160" fill="none">
+        <line x1="20" y1="140" x2="240" y2="140" stroke="#1f3a52" strokeOpacity="0.2" strokeWidth="2" strokeDasharray="6 6" />
+        <g>
+          <rect x="185" y="90" width="55" height="50" rx="4" fill="#ffffff" />
+          <path d="M178 92 L212 62 L247 92 Z" fill="#e8635a" />
+          <rect x="203" y="112" width="18" height="28" rx="2" fill="#1f3a52" />
+          <rect x="222" y="100" width="10" height="10" rx="1" fill="#1f3a52" fillOpacity="0.35" />
+        </g>
+        <g className="kt-parcel">
+          <rect x="196" y="118" width="16" height="16" rx="2" fill="#e8635a" />
+          <line x1="196" y1="126" x2="212" y2="126" stroke="#ffffff" strokeWidth="1.5" />
+          <line x1="204" y1="118" x2="204" y2="134" stroke="#ffffff" strokeWidth="1.5" />
+        </g>
+        <g className="kt-truck-group">
+          <rect x="10" y="65" width="90" height="55" rx="9" fill="#f5e6c0" />
+          <rect x="100" y="80" width="42" height="40" rx="7" fill="#e8635a" />
+          <path d="M142 92 L159 92 L159 112 L142 112 Z" fill="#c9a961" />
+          <circle className="kt-wheel" cx="40" cy="127" r="11" fill="#1f3a52" />
+          <circle cx="40" cy="127" r="4.5" fill="#f5e6c0" />
+          <circle className="kt-wheel" cx="120" cy="127" r="11" fill="#1f3a52" />
+          <circle cx="120" cy="127" r="4.5" fill="#f5e6c0" />
+        </g>
+      </svg>
+
+      <svg className="kt-sparkle" width="18" height="18" viewBox="0 0 20 20" style={{ position: 'absolute', top: '14%', right: '12%' }}>
+        <path d="M10 0 L12.5 7.5 L20 7.5 L14 12 L16 20 L10 15 L4 20 L6 12 L0 7.5 L7.5 7.5 Z" fill="#c9a961" />
+      </svg>
+      <svg className="kt-sparkle" width="11" height="11" viewBox="0 0 20 20" style={{ position: 'absolute', top: '20%', left: '10%', animationDelay: '1.1s' }}>
+        <path d="M10 0 L12.5 7.5 L20 7.5 L14 12 L16 20 L10 15 L4 20 L6 12 L0 7.5 L7.5 7.5 Z" fill="#c9a961" />
+      </svg>
+    </div>
+  )
+}
+
 export default function HomeHeroSlider() {
   const [index, setIndex] = useState(0)
   const paused = useRef(false)
@@ -118,20 +184,43 @@ export default function HomeHeroSlider() {
           </section>
         </div>
 
-        {/* Slide 2 — Landscape summer banner */}
+        {/* Slide 2 — Free shipping loyalty perk */}
         <div className="w-full flex-shrink-0">
           <section
             className="relative overflow-hidden"
-            style={{ background: '#dfeff2' }}
+            style={{ background: 'linear-gradient(180deg, #eef5fb 0%, #dbe9f5 100%)' }}
           >
-            <Link href="/collections?season=Summer" className="block w-full h-full">
-              <img
-                src="/WhatsApp%20Image%202026-09-02%20at%2010.04.50.jpeg"
-                alt="Summer sale banner"
-                className="block w-full h-[260px] sm:h-[320px] md:h-[380px] lg:h-[430px] object-cover object-center"
-                style={{ display: 'block' }}
-              />
-            </Link>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-20">
+              <div className="grid md:grid-cols-2 gap-10 items-center">
+                <div className="text-center md:text-left">
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 mb-5 text-xs tracking-wide"
+                    style={{ background: '#ffffff', color: '#1f3a52' }}
+                  >
+                    <TruckIcon className="w-3.5 h-3.5" /> LOYALTY PERK
+                  </span>
+                  <h2 className="font-display text-4xl md:text-5xl leading-tight mb-4" style={{ color: '#1f3a52' }}>
+                    3 orders. Free shipping<br className="hidden md:block" /> all month.
+                  </h2>
+                  <Link
+                    href="/collections"
+                    className="inline-block font-display text-sm px-6 py-3 rounded-full"
+                    style={{ background: '#1f3a52', color: '#ffffff' }}
+                  >
+                    Start shopping
+                  </Link>
+                </div>
+
+                <div className="relative flex justify-center px-6">
+                  <div
+                    className="relative w-full max-w-md h-64 md:h-80 rounded-3xl border overflow-hidden flex items-center justify-center p-10"
+                    style={{ background: 'linear-gradient(160deg, #f4f9fd 0%, #dbe9f5 100%)', borderColor: 'rgba(31,58,82,0.12)' }}
+                  >
+                    <FreeShippingIllustration />
+                  </div>
+                </div>
+              </div>
+            </div>
           </section>
         </div>
       </div>
