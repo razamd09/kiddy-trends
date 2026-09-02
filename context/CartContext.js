@@ -58,6 +58,7 @@ export function CartProvider({ children }) {
         handle:       product.handle,
         quantity:     1,
         stock:        variantStock,
+        productSeason: String(product?.product_season || product?.product_seasons?.name || '').trim(),
       }]
     })
     if (typeof window !== 'undefined') {

@@ -27,6 +27,27 @@ function computeShippingAmount(subtotal, rate) {
   return Math.max(0, Math.round(calculated))
 }
 
+function normalizeSeasonName(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
+function hasSummerFreeShipping(items = []) {
+  if (!Array.isArray(items) || items.length === 0) return false
+
+  return items.every((item) => {
+    const seasonName = normalizeSeasonName(
+      item?.productSeason ||
+      item?.product_season ||
+      item?.season ||
+      item?.product?.product_season ||
+      item?.productSeasonName ||
+      item?.product_seasons?.name
+    )
+
+    return seasonName === 'summer'
+  })
+}
+
 const cities = [
   'Karachi','Lahore','Islamabad','Rawalpindi','Faisalabad',
   'Multan','Peshawar','Quetta','Sialkot','Gujranwala',
@@ -80,7 +101,8 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   const image          = product?.images?.[0]?.src
   const baseShipping   = computeShippingAmount(price, shippingRate)
   const loyaltyFreeShipping = Boolean(freeShippingInfo?.unlocked)
-  const shipping       = (discount?.type === 'shipping' || loyaltyFreeShipping) ? 0 : baseShipping
+  const cartSummerFreeShipping = hasSummerFreeShipping(isCart ? cartItems : [{ productSeason: product?.product_season || product?.product_seasons?.name || '' }])
+  const shipping       = (discount?.type === 'shipping' || loyaltyFreeShipping || cartSummerFreeShipping) ? 0 : baseShipping
   const billAmountForDiscount = price + shipping
   const discountAmount = discount
     ? discount.type === 'percent' ? Math.round(billAmountForDiscount * discount.value / 100)

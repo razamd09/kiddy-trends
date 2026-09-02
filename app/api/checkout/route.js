@@ -79,6 +79,26 @@ function buildFreeShippingStatus(ordersThisMonth) {
     }
 }
 
+function normalizeSummerSeason(value) {
+    return String(value || '').trim().toLowerCase()
+}
+
+function hasSummerFreeShipping(cartItems = []) {
+    if (!Array.isArray(cartItems) || cartItems.length === 0) return false
+
+    return cartItems.every((item) => {
+        const seasonName = normalizeSummerSeason(
+            item?.productSeason ||
+            item?.product_season ||
+            item?.season ||
+            item?.product?.product_season ||
+            item?.product_seasons?.name
+        )
+
+        return seasonName === 'summer'
+    })
+}
+
 function normalizeWhatsApp(value) {
     const raw = String(value || '').trim()
     if (!raw) return ''
@@ -334,7 +354,8 @@ export async function POST(request) {
             : 0
         const freeShippingStatus = buildFreeShippingStatus(ordersThisMonthSoFar)
 
-        const shipping = freeShippingStatus.unlocked ? 0 : computeShipping(subtotal, shippingRate)
+        const summerFreeShipping = hasSummerFreeShipping(cartItems)
+        const shipping = freeShippingStatus.unlocked || summerFreeShipping ? 0 : computeShipping(subtotal, shippingRate)
         const promoDiscount = Math.max(0, Math.min(requestedPromoDiscount, subtotal + shipping))
 
         let rewardsSummary = null
@@ -403,7 +424,9 @@ export async function POST(request) {
                 : '',
             freeShippingStatus.unlocked
                 ? ('[Loyalty] Free shipping applied \u2014 order #' + (ordersThisMonthSoFar + 1) + ' this month for this phone number')
-                : '',
+                : summerFreeShipping
+                    ? '[Summer] Free delivery applied because every cart item is a Summer collection product.'
+                    : '',
         ].filter(Boolean).join(' | ')
 
         const { data: savedOrder, error } = await supabase
