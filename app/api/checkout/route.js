@@ -99,6 +99,34 @@ function hasSummerFreeShipping(cartItems = []) {
     })
 }
 
+async function enrichCartSeasons(supabase, cartItems) {
+    const items = Array.isArray(cartItems) ? cartItems : []
+    const productIds = Array.from(new Set(items.flatMap((item) => {
+        const directId = Number(item?.productId)
+        const variantProductId = Number(String(item?.variantId || '').split('_')[0])
+        return [directId, variantProductId].filter((id) => Number.isInteger(id) && id > 0)
+    })))
+
+    if (productIds.length === 0) return items.map((item) => ({ ...item, productSeason: '' }))
+
+    const { data } = await supabase
+        .from('products')
+        .select('id, product_seasons(name)')
+        .in('id', productIds)
+
+    const seasonById = new Map((data || []).map((product) => [
+        String(product.id),
+        String(product.product_seasons?.name || '').trim(),
+    ]))
+
+    return items.map((item) => {
+        const directId = Number(item?.productId)
+        const variantProductId = Number(String(item?.variantId || '').split('_')[0])
+        const productId = Number.isInteger(directId) && directId > 0 ? directId : variantProductId
+        return { ...item, productSeason: seasonById.get(String(productId)) || '' }
+    })
+}
+
 function normalizeWhatsApp(value) {
     const raw = String(value || '').trim()
     if (!raw) return ''
@@ -333,6 +361,8 @@ export async function POST(request) {
             process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
         )
 
+        const authoritativeCartItems = await enrichCartSeasons(supabase, cartItems)
+
         const { data: activeRates } = await supabase
             .from('shipping_rates')
             .select('flat_price, shipping_percentage')
@@ -354,8 +384,8 @@ export async function POST(request) {
             : 0
         const freeShippingStatus = buildFreeShippingStatus(ordersThisMonthSoFar)
 
-        const summerFreeShipping = hasSummerFreeShipping(cartItems)
-        const shipping = freeShippingStatus.unlocked || summerFreeShipping ? 0 : computeShipping(subtotal, shippingRate)
+        const summerFreeShipping = hasSummerFreeShipping(authoritativeCartItems)
+        const shipping = summerFreeShipping ? 0 : computeShipping(subtotal, shippingRate)
         const promoDiscount = Math.max(0, Math.min(requestedPromoDiscount, subtotal + shipping))
 
         let rewardsSummary = null
@@ -422,11 +452,9 @@ export async function POST(request) {
             rewardsSummary
                 ? ('[Rewards] ' + rewardsSummary.userId + ' redeemed ' + rewardsSummary.redeemedPoints + ' pts, earned ' + rewardsSummary.earnedPoints + ' pts, balance ' + rewardsSummary.availablePoints + ' pts')
                 : '',
-            freeShippingStatus.unlocked
-                ? ('[Loyalty] Free shipping applied \u2014 order #' + (ordersThisMonthSoFar + 1) + ' this month for this phone number')
-                : summerFreeShipping
-                    ? '[Summer] Free delivery applied because every cart item is a Summer collection product.'
-                    : '',
+            summerFreeShipping
+                ? '[Summer] Free delivery applied because every cart item is a Summer collection product.'
+                : '',
         ].filter(Boolean).join(' | ')
 
         const { data: savedOrder, error } = await supabase
@@ -438,7 +466,7 @@ export async function POST(request) {
                 customer_email:    customerEmail,
                 customer_city:     customer.city,
                 customer_address:  customer.address,
-                items:             cartItems,
+                items:             authoritativeCartItems,
                 subtotal,
                 shipping,
                 discount,
@@ -474,7 +502,7 @@ export async function POST(request) {
                     metadata: {
                         total,
                         items_count: Array.isArray(cartItems) ? cartItems.length : 0,
-                        free_shipping_applied: freeShippingStatus.unlocked,
+                        free_shipping_applied: summerFreeShipping,
                             ...requestMetadata,
                     },
                 }])
@@ -504,7 +532,7 @@ export async function POST(request) {
             total,
             rewards: rewardsSummary,
             freeShipping: {
-                applied: freeShippingStatus.unlocked,
+                applied: summerFreeShipping,
                 ordersThisMonth: ordersThisMonthSoFar + 1,
             },
         })

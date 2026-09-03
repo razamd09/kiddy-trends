@@ -104,7 +104,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   const baseShipping   = computeShippingAmount(price, shippingRate)
   const loyaltyFreeShipping = Boolean(freeShippingInfo?.unlocked)
   const cartSummerFreeShipping = hasSummerFreeShipping(isCart ? cartItems : [{ productSeason: product?.product_season || product?.product_seasons?.name || '' }])
-  const shipping       = (discount?.type === 'shipping' || loyaltyFreeShipping || cartSummerFreeShipping) ? 0 : baseShipping
+  const shipping       = (discount?.type === 'shipping' || cartSummerFreeShipping) ? 0 : baseShipping
   const billAmountForDiscount = price + shipping
   const discountAmount = discount
     ? discount.type === 'percent' ? Math.round(billAmountForDiscount * discount.value / 100)
@@ -383,19 +383,23 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
       const items    = isCart
         ? cartItems.map(i => ({
             variantId: i.variantId,
+          productId: i.productId,
             quantity: i.quantity,
             price: Number(i.price || 0),
             title: i.title || '',
             variantTitle: i.variantTitle || '',
             image: i.image || '',
+            productSeason: i.productSeason || '',
           }))
         : [{
             variantId: variant?.id,
+            productId: product?._id || product?.id,
             quantity: 1,
             price: Number(variant?.price || 0),
             title: product?.title || '',
             variantTitle: variant?.title !== 'Default Title' ? (variant?.title || '') : '',
             image: image || '',
+            productSeason: product?.product_season || product?.product_seasons?.name || '',
           }]
       const waNumber = form.sameAsPhone ? form.phone : form.whatsapp
       const res = await fetch('/api/checkout', {
@@ -789,7 +793,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                 )}
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Shipping</span>
-                  {(discount?.type === 'shipping' || loyaltyFreeShipping)
+                  {(discount?.type === 'shipping' || cartSummerFreeShipping)
                     ? <div className="flex gap-2"><span className="line-through text-gray-400">PKR {baseShipping.toLocaleString()}</span><span className="text-green-600 font-semibold">FREE</span></div>
                     : <span className="font-semibold">PKR {baseShipping.toLocaleString()}</span>
                   }

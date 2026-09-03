@@ -50,7 +50,7 @@ export function CartProvider({ children }) {
       }
       return [...prev, {
         variantId:    variant.id,
-        productId:    product.id,
+        productId:    product._id || product.id,
         title:        product.title,
         variantTitle: variant.title !== 'Default Title' ? variant.title : '',
         price:        parseFloat(variant.price),
