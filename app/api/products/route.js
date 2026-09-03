@@ -123,7 +123,7 @@ function normalizeHandleValue(value) {
 }
 
 function parseProductIdFromHandle(value) {
-    const text = String(value || '').trim()
+    const text = safeDecode(value).trim()
     if (!text) return null
 
     const prdIdMatch = text.match(/^prd_id\s*=\s*(\d+)$/i)
