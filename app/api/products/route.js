@@ -412,11 +412,15 @@ export async function GET(request) {
         let filtered = data || []
         if (handle) {
             const target = normalizeHandleValue(handle)
+            const targetProductId = parseProductIdFromHandle(handle)
             filtered = filtered.filter((p) => {
                 const productHandle = normalizeHandleValue(p.shopify_handle)
                 const productId = normalizeHandleValue(p.id)
                 const titleSlug = slugifyTitle(p.title)
-                return productHandle === target || productId === target || titleSlug === target
+                return (targetProductId !== null && Number(p.id) === targetProductId)
+                    || productHandle === target
+                    || productId === target
+                    || titleSlug === target
             })
         }
 
