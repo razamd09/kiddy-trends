@@ -298,7 +298,7 @@ export default function ProductPage() {
   useEffect(() => {
     async function fetchProduct() {
       try {
-        const res  = await fetch('/api/products?handle=' + encodeURIComponent(handle), { cache: 'force-cache' })
+        const res  = await fetch('/api/products?handle=' + encodeURIComponent(handle), { cache: 'no-store' })
         const data = await res.json()
         if (data.success && data.products?.length > 0) {
           const p = data.products[0]

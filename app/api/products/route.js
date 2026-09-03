@@ -485,7 +485,9 @@ export async function GET(request) {
             page,
             pages,
         })
-        response.headers.set('Cache-Control', 'public, max-age=60, s-maxage=120, stale-while-revalidate=300')
+        response.headers.set('Cache-Control', handle
+            ? 'private, no-store, max-age=0'
+            : 'public, max-age=60, s-maxage=120, stale-while-revalidate=300')
         return response
     } catch (error) {
         return Response.json({ success: false, error: error.message }, { status: 500 })
