@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server'
 
 export function middleware(request) {
+  const hostname = request.headers.get('host')?.split(':')[0].toLowerCase()
+  if (hostname === 'thekiddytrends.com') {
+    const canonicalUrl = request.nextUrl.clone()
+    canonicalUrl.hostname = 'www.thekiddytrends.com'
+    return NextResponse.redirect(canonicalUrl, 308)
+  }
+
   const { pathname } = request.nextUrl
 
   // Allow admin login page without token
@@ -21,5 +28,5 @@ export function middleware(request) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: ['/:path*'],
 }
