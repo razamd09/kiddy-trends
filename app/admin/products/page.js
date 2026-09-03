@@ -452,6 +452,8 @@ export default function AdminProducts() {
                 category: product.category || '',
                 product_type: product.product_type || '',
                 fabric: product.fabric || '',
+                color: product.color || '',
+                gender: product.gender || '',
                 tags: Array.isArray(product.tags) ? product.tags : [],
                 stock: product.stock || 0,
                 images: normalizeImages(product.images),
