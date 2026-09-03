@@ -7,10 +7,8 @@ function toNumber(value) {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
-function calculateShippingPreview(flatPrice, percentage, subtotal) {
-  const flat = Math.max(0, toNumber(flatPrice))
-  const pct = Math.max(0, toNumber(percentage))
-  return Math.round(flat + (subtotal * pct) / 100)
+function calculateShippingPreview(flatPrice) {
+  return Math.round(Math.max(0, toNumber(flatPrice)))
 }
 
 export default function AdminShippingRatesPage() {
@@ -25,7 +23,6 @@ export default function AdminShippingRatesPage() {
   const [form, setForm] = useState({
     name: '',
     flat_price: '',
-    shipping_percentage: '',
     is_active: true,
   })
 
@@ -74,7 +71,6 @@ export default function AdminShippingRatesPage() {
     setForm({
       name: '',
       flat_price: '',
-      shipping_percentage: '',
       is_active: true,
     })
     setEditing(null)
@@ -85,7 +81,6 @@ export default function AdminShippingRatesPage() {
     setForm({
       name: rate.name || '',
       flat_price: String(rate.flat_price ?? ''),
-      shipping_percentage: String(rate.shipping_percentage ?? ''),
       is_active: !!rate.is_active,
     })
   }
@@ -101,15 +96,9 @@ export default function AdminShippingRatesPage() {
     }
 
     const flatPrice = Number(form.flat_price)
-    const shippingPercentage = Number(form.shipping_percentage)
 
     if (!Number.isFinite(flatPrice) || flatPrice < 0) {
       setError('Flat price must be a non-negative number')
-      return
-    }
-
-    if (!Number.isFinite(shippingPercentage) || shippingPercentage < 0) {
-      setError('Shipping percentage must be a non-negative number')
       return
     }
 
@@ -127,7 +116,6 @@ export default function AdminShippingRatesPage() {
           ...(editing ? { id: editing.id } : {}),
           name: form.name.trim(),
           flat_price: flatPrice,
-          shipping_percentage: shippingPercentage,
           is_active: form.is_active,
         }),
       })
@@ -176,7 +164,7 @@ export default function AdminShippingRatesPage() {
     router.push('/admin')
   }
 
-  const previewAmount = calculateShippingPreview(form.flat_price || 0, form.shipping_percentage || 0, 1000)
+  const previewAmount = calculateShippingPreview(form.flat_price || 0)
 
   if (!verified) {
     return (
@@ -193,7 +181,7 @@ export default function AdminShippingRatesPage() {
           <div className="w-10 h-10 bg-coral rounded-2xl flex items-center justify-center text-white font-display text-lg">S</div>
           <div>
             <p className="font-display text-lg text-charcoal">Shipping Rates</p>
-            <p className="text-xs text-gray-400">Manage checkout shipping formula</p>
+            <p className="text-xs text-gray-400">Manage the flat checkout shipping amount</p>
           </div>
         </div>
         <button onClick={logout} className="text-sm text-gray-400 hover:text-coral transition-colors">
@@ -230,16 +218,6 @@ export default function AdminShippingRatesPage() {
                 className="px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm"
               />
 
-              <input
-                type="number"
-                placeholder="Shipping Percentage (%)"
-                value={form.shipping_percentage}
-                onChange={e => setForm({ ...form, shipping_percentage: e.target.value })}
-                min="0"
-                step="0.01"
-                className="px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm"
-              />
-
               <div className="flex items-center gap-3 bg-cream p-3 rounded-2xl border-2 border-gray-100">
                 <input
                   type="checkbox"
@@ -255,8 +233,8 @@ export default function AdminShippingRatesPage() {
             </div>
 
             <div className="bg-cream rounded-2xl p-4 text-sm text-charcoal">
-              Formula: <strong>Shipping = Flat Price + (Subtotal × Shipping % / 100)</strong>
-              <p className="mt-1 text-gray-500">Preview for subtotal PKR 1,000: <strong className="text-coral">PKR {previewAmount.toLocaleString()}</strong></p>
+              Shipping applied at checkout: <strong>Flat Price only</strong>
+              <p className="mt-1 text-gray-500">Current preview: <strong className="text-coral">PKR {previewAmount.toLocaleString()}</strong></p>
             </div>
 
             <div className="flex gap-3 pt-2">
@@ -296,8 +274,7 @@ export default function AdminShippingRatesPage() {
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-display text-charcoal">Name</th>
                     <th className="px-6 py-3 text-left text-xs font-display text-charcoal">Flat Price</th>
-                    <th className="px-6 py-3 text-left text-xs font-display text-charcoal">Shipping %</th>
-                    <th className="px-6 py-3 text-left text-xs font-display text-charcoal">Preview (1,000)</th>
+                    <th className="px-6 py-3 text-left text-xs font-display text-charcoal">Applied Amount</th>
                     <th className="px-6 py-3 text-left text-xs font-display text-charcoal">Status</th>
                     <th className="px-6 py-3 text-left text-xs font-display text-charcoal">Actions</th>
                   </tr>
@@ -307,9 +284,8 @@ export default function AdminShippingRatesPage() {
                     <tr key={rate.id} className="border-b border-gray-100 hover:bg-cream/50 transition-colors">
                       <td className="px-6 py-4 text-sm font-semibold text-charcoal">{rate.name}</td>
                       <td className="px-6 py-4 text-sm">PKR {Number(rate.flat_price || 0).toLocaleString()}</td>
-                      <td className="px-6 py-4 text-sm">{Number(rate.shipping_percentage || 0)}%</td>
                       <td className="px-6 py-4 text-sm font-semibold text-coral">
-                        PKR {calculateShippingPreview(rate.flat_price, rate.shipping_percentage, 1000).toLocaleString()}
+                        PKR {calculateShippingPreview(rate.flat_price).toLocaleString()}
                       </td>
                       <td className="px-6 py-4">
                         <span className={'inline-block px-3 py-1 rounded-full text-xs font-display ' + (

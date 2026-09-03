@@ -21,9 +21,7 @@ function toNumber(value) {
 
 function computeShipping(subtotal, rate) {
     const flatPrice = Math.max(0, toNumber(rate?.flat_price ?? 250))
-    const shippingPercentage = Math.max(0, toNumber(rate?.shipping_percentage ?? 0))
-    const calculated = flatPrice + (Math.max(0, toNumber(subtotal)) * shippingPercentage) / 100
-    return Math.max(0, Math.round(calculated))
+    return Math.max(0, Math.round(flatPrice))
 }
 
 function normalizePkPhoneDigits(value) {
@@ -365,12 +363,12 @@ export async function POST(request) {
 
         const { data: activeRates } = await supabase
             .from('shipping_rates')
-            .select('flat_price, shipping_percentage')
+            .select('flat_price')
             .eq('is_active', true)
             .order('updated_at', { ascending: false })
             .limit(1)
 
-        const shippingRate = activeRates?.[0] || { flat_price: 250, shipping_percentage: 0 }
+        const shippingRate = activeRates?.[0] || { flat_price: 250 }
 
         // --- Monthly free-shipping loyalty check (authoritative, server-side) ---
         // Count this phone's orders so far this calendar month BEFORE this new

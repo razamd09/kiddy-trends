@@ -37,7 +37,6 @@ export async function POST(request) {
         const body = await request.json()
         const name = String(body.name || '').trim()
         const flatPrice = toNumber(body.flat_price)
-        const shippingPercentage = toNumber(body.shipping_percentage)
         const isActive = body.is_active !== false
 
         if (!name) {
@@ -46,10 +45,6 @@ export async function POST(request) {
         if (!Number.isFinite(flatPrice) || flatPrice < 0) {
             return Response.json({ error: 'flat_price must be a non-negative number' }, { status: 400 })
         }
-        if (!Number.isFinite(shippingPercentage) || shippingPercentage < 0) {
-            return Response.json({ error: 'shipping_percentage must be a non-negative number' }, { status: 400 })
-        }
-
         if (isActive) {
             await deactivateOtherRates()
         }
@@ -59,7 +54,6 @@ export async function POST(request) {
             .insert([{
                 name,
                 flat_price: flatPrice,
-                shipping_percentage: shippingPercentage,
                 is_active: isActive,
             }])
             .select()
@@ -95,14 +89,6 @@ export async function PUT(request) {
                 return Response.json({ error: 'flat_price must be a non-negative number' }, { status: 400 })
             }
             updates.flat_price = flatPrice
-        }
-
-        if (body.shipping_percentage !== undefined) {
-            const shippingPercentage = toNumber(body.shipping_percentage)
-            if (!Number.isFinite(shippingPercentage) || shippingPercentage < 0) {
-                return Response.json({ error: 'shipping_percentage must be a non-negative number' }, { status: 400 })
-            }
-            updates.shipping_percentage = shippingPercentage
         }
 
         if (body.is_active !== undefined) {

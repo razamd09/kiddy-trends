@@ -23,9 +23,7 @@ function toNumber(value) {
 
 function computeShippingAmount(subtotal, rate) {
   const flatPrice = Math.max(0, toNumber(rate?.flat_price ?? 250))
-  const shippingPercentage = Math.max(0, toNumber(rate?.shipping_percentage ?? 0))
-  const calculated = flatPrice + (toNumber(subtotal) * shippingPercentage) / 100
-  return Math.max(0, Math.round(calculated))
+  return Math.max(0, Math.round(flatPrice))
 }
 
 function normalizeSeasonName(value) {
@@ -94,7 +92,6 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   const [showGiftFlash, setShowGiftFlash] = useState(false)
   const [shippingRate, setShippingRate] = useState({
     flat_price: 250,
-    shipping_percentage: 0,
   })
 
   const price          = isCart ? cartTotal : parseFloat(variant?.price || 0)
@@ -162,7 +159,6 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
         if (!mounted || !data?.rate) return
         setShippingRate({
           flat_price: toNumber(data.rate.flat_price),
-          shipping_percentage: toNumber(data.rate.shipping_percentage),
         })
       } catch {}
     }
