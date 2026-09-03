@@ -298,10 +298,20 @@ export default function ProductPage() {
   useEffect(() => {
     async function fetchProduct() {
       try {
-        const res  = await fetch('/api/products?handle=' + encodeURIComponent(handle), { cache: 'no-store' })
+        const res = await fetch('/api/products?handle=' + encodeURIComponent(handle), { cache: 'no-store' })
         const data = await res.json()
-        if (data.success && data.products?.length > 0) {
-          const p = data.products[0]
+        let p = data.success && data.products?.length > 0 ? data.products[0] : null
+
+        if (!p && /^prd_id\s*=\s*\d+$/i.test(String(handle || ''))) {
+          const productId = Number(String(handle).split('=').pop())
+          const fallbackRes = await fetch('/api/products?limit=400', { cache: 'no-store' })
+          const fallbackData = await fallbackRes.json()
+          p = (fallbackData.products || []).find((candidate) =>
+            Number(candidate?._id) === productId || Number(candidate?.id) === productId
+          ) || null
+        }
+
+        if (p) {
           setProduct(p)
           setSelectedVariant(p.variants?.[0])
           try {
