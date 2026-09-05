@@ -277,6 +277,7 @@ function transformProduct(product) {
         is_active: product.is_active !== false,
         product_version: product.product_version || null,
         product_season: seasonName,
+        characters: Array.isArray(product.characters) ? product.characters : [],
     }
 }
 
