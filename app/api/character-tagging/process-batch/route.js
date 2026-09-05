@@ -7,6 +7,15 @@ import { BATCH_SIZE, AUTO_APPLY_CONFIDENCE_THRESHOLD } from '../../../../lib/cha
 export const maxDuration = 60
 
 function firstImage(images) {
+  if (typeof images === 'string') {
+    const trimmed = images.trim()
+    if (!trimmed) return ''
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (parsed !== images) return firstImage(parsed)
+    } catch {}
+    return trimmed
+  }
   if (Array.isArray(images)) {
     const image = images.find((entry) => typeof entry === 'string' ? entry.trim() : entry?.src)
     return typeof image === 'string' ? image : image?.src || ''
@@ -48,6 +57,7 @@ export async function POST(request) {
   let autoTagged = 0
   let needsReview = 0
   let failed = 0
+  const errors = []
 
   await Promise.all(claimed.map(async (item) => {
     const product = productById[item.product_id]
@@ -55,6 +65,7 @@ export async function POST(request) {
     const imageUrl = absoluteImageUrl(firstImage(product?.images), origin)
     if (!imageUrl) {
       failed += 1
+      errors.push('Product ' + item.product_id + ': no usable image')
       await supabaseAdmin.from('character_tagging_job_items').update({ status: 'failed', error: 'Product has no image', processed_at: nowIso, attempts: (item.attempts || 0) + 1 }).eq('id', item.id)
       return
     }
@@ -64,16 +75,18 @@ export async function POST(request) {
       const isConfident = result.characters.length > 0 && result.confidence >= AUTO_APPLY_CONFIDENCE_THRESHOLD
       const productUpdate = { character_suggestions: result, character_review_status: isConfident ? 'auto_tagged' : 'needs_review', character_tagged_at: nowIso }
       if (isConfident) productUpdate.characters = result.characters
-      await supabaseAdmin.from('products').update(productUpdate).eq('id', product.id)
+      const { error: productUpdateError } = await supabaseAdmin.from('products').update(productUpdate).eq('id', product.id)
+      if (productUpdateError) throw productUpdateError
       await supabaseAdmin.from('character_tagging_job_items').update({ status: 'done', result, processed_at: nowIso, attempts: (item.attempts || 0) + 1 }).eq('id', item.id)
       if (isConfident) autoTagged += 1
       else needsReview += 1
     } catch (error) {
       failed += 1
+      errors.push('Product ' + item.product_id + ': ' + String(error?.message || error).slice(0, 240))
       await supabaseAdmin.from('character_tagging_job_items').update({ status: 'failed', error: String(error?.message || error), processed_at: nowIso, attempts: (item.attempts || 0) + 1 }).eq('id', item.id)
     }
   }))
 
   const { data: updatedJob } = await supabaseAdmin.rpc('increment_character_job_progress', { p_job_id: jobId, p_processed: claimed.length, p_auto_tagged: autoTagged, p_needs_review: needsReview, p_failed: failed })
-  return NextResponse.json({ done: false, job: updatedJob?.[0] || null })
+  return NextResponse.json({ done: false, job: updatedJob?.[0] || null, errors })
 }

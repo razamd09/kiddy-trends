@@ -48,9 +48,10 @@ export default function CharacterTaggingPage() {
         const data = await res.json()
         if (!res.ok) {
           stopFlag.current = true
-          setStartError(data.error || 'A batch failed')
+          setStartError(data.error || data.errors?.join(' | ') || 'A batch failed')
           return
         }
+        if (data.errors?.length) setStartError(data.errors.join(' | '))
         if (data.job) setJob(data.job)
         if (data.done) {
           stopFlag.current = true

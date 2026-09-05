@@ -3,6 +3,15 @@ import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { requireAdmin } from '../../../../lib/requireAdmin'
 
 function hasProductImage(images) {
+  if (typeof images === 'string') {
+    const trimmed = images.trim()
+    if (!trimmed) return false
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (parsed !== images) return hasProductImage(parsed)
+    } catch {}
+    return true
+  }
   if (Array.isArray(images)) return images.some((image) => typeof image === 'string' ? image.trim() : image?.src)
   return typeof images === 'string' && images.trim().length > 0
 }
