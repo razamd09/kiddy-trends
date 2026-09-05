@@ -113,6 +113,9 @@ export default function CharacterTaggingPage() {
         Confident matches are applied automatically; anything uncertain shows up
         below for a quick one-click confirmation.
       </p>
+      <p className="text-sm mb-6" style={{ color: '#4f6c85' }}>
+        AI key optional: without one, explicit character names in product metadata are tagged automatically and all other products are sent for review.
+      </p>
 
       <div className="rounded-2xl border p-6 mb-10" style={{ borderColor: 'rgba(31,58,82,0.12)' }}>
         <div className="flex flex-wrap gap-3 mb-5">

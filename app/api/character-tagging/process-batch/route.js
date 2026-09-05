@@ -49,7 +49,7 @@ export async function POST(request) {
   }
 
   const { data: products, error: productsError } = await supabaseAdmin
-    .from('products').select('id, images').in('id', claimed.map((item) => item.product_id))
+    .from('products').select('id, images, title, tags').in('id', claimed.map((item) => item.product_id))
   if (productsError) return NextResponse.json({ error: productsError.message }, { status: 500 })
 
   const productById = Object.fromEntries((products || []).map((product) => [product.id, product]))
@@ -71,7 +71,11 @@ export async function POST(request) {
     }
 
     try {
-      const result = await classifyProductImage(imageUrl)
+      const result = await classifyProductImage(imageUrl, {
+        title: product?.title,
+        tags: product?.tags,
+        imageUrl: firstImage(product?.images),
+      })
       const isConfident = result.characters.length > 0 && result.confidence >= AUTO_APPLY_CONFIDENCE_THRESHOLD
       const productUpdate = { character_suggestions: result, character_review_status: isConfident ? 'auto_tagged' : 'needs_review', character_tagged_at: nowIso }
       if (isConfident) productUpdate.characters = result.characters

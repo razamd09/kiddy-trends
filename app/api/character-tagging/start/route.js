@@ -18,10 +18,6 @@ function hasProductImage(images) {
 
 export async function POST(request) {
   if (!(await requireAdmin(request))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: 'ANTHROPIC_API_KEY is not configured on the server.' }, { status: 503 })
-  }
-
   const body = await request.json().catch(() => ({}))
   const force = body?.force === true
   let query = supabaseAdmin.from('products').select('id, images, character_review_status')
