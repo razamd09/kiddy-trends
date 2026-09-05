@@ -26,7 +26,7 @@ function firstImage(images) {
 function absoluteImageUrl(value, origin) {
   const image = String(value || '').trim()
   if (!image) return ''
-  if (/^https?:\/\//i.test(image)) return image
+  if (/^data:/i.test(image)) return image
   return origin + '/api/image?src=' + encodeURIComponent(image)
 }
 
