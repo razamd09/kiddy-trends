@@ -1,34 +1,10 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '../../../../lib/supabaseAdmin'
 import { requireAdmin } from '../../../../lib/requireAdmin'
-import { classifyProductImage } from '../../../../lib/anthropicVision'
+import { classifyCharacterMetadata } from '../../../../lib/characterMetadata'
 import { BATCH_SIZE, AUTO_APPLY_CONFIDENCE_THRESHOLD } from '../../../../lib/characters'
 
 export const maxDuration = 60
-
-function firstImage(images) {
-  if (typeof images === 'string') {
-    const trimmed = images.trim()
-    if (!trimmed) return ''
-    try {
-      const parsed = JSON.parse(trimmed)
-      if (parsed !== images) return firstImage(parsed)
-    } catch {}
-    return trimmed
-  }
-  if (Array.isArray(images)) {
-    const image = images.find((entry) => typeof entry === 'string' ? entry.trim() : entry?.src)
-    return typeof image === 'string' ? image : image?.src || ''
-  }
-  return typeof images === 'string' ? images.trim() : ''
-}
-
-function absoluteImageUrl(value, origin) {
-  const image = String(value || '').trim()
-  if (!image) return ''
-  if (/^data:/i.test(image)) return image
-  return origin + '/api/image?src=' + encodeURIComponent(image)
-}
 
 export async function POST(request) {
   if (!(await requireAdmin(request))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -49,11 +25,10 @@ export async function POST(request) {
   }
 
   const { data: products, error: productsError } = await supabaseAdmin
-    .from('products').select('id, images, title, tags').in('id', claimed.map((item) => item.product_id))
+    .from('products').select('id, title, tags').in('id', claimed.map((item) => item.product_id))
   if (productsError) return NextResponse.json({ error: productsError.message }, { status: 500 })
 
   const productById = Object.fromEntries((products || []).map((product) => [product.id, product]))
-  const origin = new URL(request.url).origin
   let autoTagged = 0
   let needsReview = 0
   let failed = 0
@@ -62,19 +37,10 @@ export async function POST(request) {
   await Promise.all(claimed.map(async (item) => {
     const product = productById[item.product_id]
     const nowIso = new Date().toISOString()
-    const imageUrl = absoluteImageUrl(firstImage(product?.images), origin)
-    if (!imageUrl) {
-      failed += 1
-      errors.push('Product ' + item.product_id + ': no usable image')
-      await supabaseAdmin.from('character_tagging_job_items').update({ status: 'failed', error: 'Product has no image', processed_at: nowIso, attempts: (item.attempts || 0) + 1 }).eq('id', item.id)
-      return
-    }
-
     try {
-      const result = await classifyProductImage(imageUrl, {
+      const result = classifyCharacterMetadata({
         title: product?.title,
         tags: product?.tags,
-        imageUrl: firstImage(product?.images),
       })
       const isConfident = result.characters.length > 0 && result.confidence >= AUTO_APPLY_CONFIDENCE_THRESHOLD
       const productUpdate = { character_suggestions: result, character_review_status: isConfident ? 'auto_tagged' : 'needs_review', character_tagged_at: nowIso }
