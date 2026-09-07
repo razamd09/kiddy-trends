@@ -716,6 +716,7 @@ export default function AdminProducts() {
                 product_type: product.product_type || '',
                 fabric: product.fabric || '',
                 product_season_id: product.product_season_id ? String(product.product_season_id) : '',
+                character_id: product.character_id ? String(product.character_id) : '',
                 color: product.color || '',
                 is_active: product.is_active !== false,
             }))
@@ -741,6 +742,7 @@ export default function AdminProducts() {
                     product_type: row.product_type,
                     fabric: row.fabric,
                     product_season_id: row.product_season_id ? Number(row.product_season_id) : null,
+                    character_id: row.character_id ? Number(row.character_id) : null,
                     color: row.color,
                     is_active: row.is_active,
                 }
@@ -1811,6 +1813,7 @@ export default function AdminProducts() {
                                             <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Type</th>
                                             <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Fabric</th>
                                             <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Season</th>
+                                            <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Character</th>
                                             <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Color</th>
                                             <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Status</th>
                                         </tr>
@@ -1882,6 +1885,18 @@ export default function AdminProducts() {
                                                             <option value="">Select season</option>
                                                             {productSeasonOptions.map((season) => (
                                                                 <option key={season.id} value={String(season.id)}>{season.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <select
+                                                            value={row.character_id}
+                                                            onChange={(e) => updateBulkEditRow(row.id, 'character_id', e.target.value)}
+                                                            className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-charcoal focus:border-coral focus:outline-none"
+                                                        >
+                                                            <option value="">No character</option>
+                                                            {productCharacterOptions.map((character) => (
+                                                                <option key={character.id} value={String(character.id)}>{character.name}</option>
                                                             ))}
                                                         </select>
                                                     </td>
