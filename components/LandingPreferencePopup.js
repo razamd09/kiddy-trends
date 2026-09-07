@@ -21,6 +21,13 @@ const AGE_OPTIONS = [
   { label: '11-12 Year', cat: 'tweens', sub: '11-12y' },
 ]
 
+const AGE_STAGES = [
+  { cat: 'newborn', icon: '👶', title: 'Baby', range: '0–12 Months', accent: 'border-coral/25 bg-coral/5' },
+  { cat: 'toddler', icon: '🧸', title: 'Toddler', range: '1–3 Years', accent: 'border-skyblue/30 bg-skyblue/10' },
+  { cat: 'kids', icon: '🎒', title: 'Kids', range: '3–8 Years', accent: 'border-mint/40 bg-mint/10' },
+  { cat: 'tweens', icon: '⭐', title: 'Tweens', range: '9–12 Years', accent: 'border-sunny/50 bg-sunny/10' },
+].map((stage) => ({ ...stage, options: AGE_OPTIONS.filter((opt) => opt.cat === stage.cat) }))
+
 function getPakistanGreeting() {
   try {
     const hourText = new Intl.DateTimeFormat('en-US', {
@@ -188,8 +195,14 @@ export default function LandingPreferencePopup() {
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[70] bg-gradient-to-br from-coral/35 via-skyblue/30 to-mint/35 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="relative w-full max-w-2xl rounded-[2rem] bg-gradient-to-br from-white via-cream to-sunny/30 shadow-2xl border border-white/70 p-6 md:p-8 overflow-hidden">
+    <div
+      className="fixed inset-0 z-[70] bg-gradient-to-br from-coral/35 via-skyblue/30 to-mint/35 backdrop-blur-md flex items-center justify-center p-4"
+      onClick={closePopup}
+    >
+      <div
+        className="relative w-full max-w-2xl rounded-[2rem] bg-gradient-to-br from-white via-cream to-sunny/30 shadow-2xl border border-white/70 p-6 md:p-8 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         <button
           type="button"
           onClick={closePopup}
@@ -251,51 +264,56 @@ export default function LandingPreferencePopup() {
 
           <div>
             <label className="block text-sm font-semibold text-charcoal mb-2">Age --&gt;</label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-auto rounded-2xl border-2 border-charcoal/10 bg-white/85 p-2.5">
-              {AGE_OPTIONS.map((opt) => (
-                <button
-                  key={opt.sub}
-                  type="button"
-                  onClick={() => toggleAge(opt.sub)}
-                  className={'rounded-xl px-3 py-2 text-sm font-semibold text-left transition-all border ' + (selectedAges.includes(opt.sub) ? 'bg-gradient-to-r from-charcoal to-[#3b4b58] text-white border-charcoal shadow-sm' : 'bg-white text-charcoal border-gray-200 hover:border-coral/40')}
-                >
-                  {opt.label}
-                </button>
-              ))}
+            <div className="grid sm:grid-cols-2 gap-2.5">
+              {AGE_STAGES.map((stage) => {
+                const stageSelectedCount = stage.options.filter((opt) => selectedAges.includes(opt.sub)).length
+                return (
+                  <div key={stage.cat} className={'rounded-2xl border-2 p-3 transition-colors ' + (stageSelectedCount > 0 ? 'border-coral/40 bg-white' : stage.accent)}>
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <span className="text-lg leading-none">{stage.icon}</span>
+                      <span className="font-display text-sm text-charcoal">{stage.title}</span>
+                      <span className="text-[11px] text-charcoal/45">{stage.range}</span>
+                      {stageSelectedCount > 0 && (
+                        <span className="ml-auto inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full bg-coral text-white text-[10px] font-bold">{stageSelectedCount}</span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {stage.options.map((opt) => (
+                        <button
+                          key={opt.sub}
+                          type="button"
+                          onClick={() => toggleAge(opt.sub)}
+                          className={'rounded-full px-2.5 py-1.5 text-xs font-semibold transition-all border ' + (selectedAges.includes(opt.sub) ? 'bg-gradient-to-r from-charcoal to-[#3b4b58] text-white border-charcoal shadow-sm' : 'bg-white/90 text-charcoal border-gray-200 hover:border-coral/40')}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
 
-        <div className="mt-6 grid sm:grid-cols-2 gap-3 relative">
+        <div className="mt-6 relative space-y-3">
           <button
             type="button"
             onClick={goToSelectedProducts}
             disabled={selectedGenders.length === 0 || selectedAges.length === 0}
-            className="rounded-2xl bg-gradient-to-r from-coral to-[#ff8a6f] text-white font-semibold px-4 py-3 hover:opacity-95 shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full rounded-2xl bg-gradient-to-r from-coral to-[#ff8a6f] text-white font-semibold px-4 py-3.5 text-base hover:opacity-95 shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            Explore Products 🎯
+            Show My Picks 🎯
           </button>
-          <button
-            type="button"
-            onClick={goToAllCollections}
-            className="rounded-2xl border-2 border-charcoal/20 bg-white/85 text-charcoal font-semibold px-4 py-3 hover:border-charcoal/40"
-          >
-            Explore All 🌈
-          </button>
-          <button
-            type="button"
-            onClick={goToSizeChartHelpGuide}
-            className="sm:col-span-2 rounded-2xl border-2 border-skyblue/40 bg-skyblue/15 text-charcoal font-semibold px-4 py-3 hover:border-skyblue/70"
-          >
-            Size Chart Help Guide 📏
-          </button>
-          <button
-            type="button"
-            onClick={closePopup}
-            className="sm:col-span-2 rounded-2xl border-2 border-gray-200 bg-white/85 text-gray-500 font-semibold px-4 py-3 hover:border-gray-300 hover:text-charcoal"
-          >
-            Cancel
-          </button>
+          <div className="flex items-center justify-center gap-3 text-xs font-semibold text-charcoal/55">
+            <button type="button" onClick={goToSizeChartHelpGuide} className="hover:text-coral transition-colors">
+              📏 Size Help Guide
+            </button>
+            <span className="text-charcoal/20">•</span>
+            <button type="button" onClick={goToAllCollections} className="hover:text-coral transition-colors">
+              Skip — show everything →
+            </button>
+          </div>
         </div>
 
         {isSizeHelpOpen && (
