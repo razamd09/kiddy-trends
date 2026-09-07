@@ -360,7 +360,7 @@ export default function Collections() {
     }
 
     if (queryCharacter) {
-      filtered = filtered.filter((p) => Array.isArray(p?.characters) && p.characters.includes(queryCharacter))
+      filtered = filtered.filter((p) => String(p?.character || '').toLowerCase() === queryCharacter)
     }
   }
 

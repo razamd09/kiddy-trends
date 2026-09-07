@@ -126,24 +126,6 @@ function normalizeDisplayTitle(rawTitle) {
     .trim()
 }
 
-function normalizeProductColor(value) {
-  const text = String(value || '').trim()
-  if (!text) return ''
-
-  const normalized = text.toLowerCase().replace(/[_/]+/g, ' ').replace(/\s+/g, ' ').trim()
-  const aliasMap = {
-    'multi color': 'Multi-color',
-    'multi-color': 'Multi-color',
-    'multicolor': 'Multi-color',
-    'multi coloured': 'Multi-color',
-    'multi coloured color': 'Multi-color',
-    'multi-coloured': 'Multi-color',
-    'multi colour': 'Multi-color',
-  }
-
-  return aliasMap[normalized] || text
-}
-
 function getProductGender(title) {
   const normalized = String(title || '').toLowerCase()
   const hasGirl = /(girl|girls|frock|dress)/.test(normalized)
@@ -153,91 +135,6 @@ function getProductGender(title) {
   if (hasGirl) return 'Girls'
   if (hasBoy) return 'Boys'
   return 'Neutral'
-}
-
-function getNearestColorName(r, g, b) {
-  const palette = [
-    { name: 'Black', rgb: [0, 0, 0] },
-    { name: 'White', rgb: [255, 255, 255] },
-    { name: 'Red', rgb: [255, 0, 0] },
-    { name: 'Blue', rgb: [0, 0, 255] },
-    { name: 'Green', rgb: [0, 128, 0] },
-    { name: 'Pink', rgb: [255, 105, 180] },
-    { name: 'Purple', rgb: [128, 0, 128] },
-    { name: 'Yellow', rgb: [255, 215, 0] },
-    { name: 'Orange', rgb: [255, 165, 0] },
-    { name: 'Grey', rgb: [128, 128, 128] },
-    { name: 'Beige', rgb: [218, 165, 105] },
-    { name: 'Brown', rgb: [150, 75, 0] },
-    { name: 'Navy', rgb: [25, 25, 112] },
-    { name: 'Teal', rgb: [0, 128, 128] },
-  ]
-
-  let bestMatch = 'Multi-color'
-  let bestDistance = Number.POSITIVE_INFINITY
-
-  palette.forEach((entry) => {
-    const [rr, gg, bb] = entry.rgb
-    const distance = Math.sqrt((r - rr) ** 2 + (g - gg) ** 2 + (b - bb) ** 2)
-    if (distance < bestDistance) {
-      bestDistance = distance
-      bestMatch = entry.name
-    }
-  })
-
-  return bestMatch
-}
-
-function getImageDominantColor(imageUrl) {
-  return new Promise((resolve) => {
-    if (!imageUrl || typeof window === 'undefined') {
-      resolve('Multi-color')
-      return
-    }
-
-    const img = new window.Image()
-    img.crossOrigin = 'Anonymous'
-    img.onload = () => {
-      const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        resolve('Multi-color')
-        return
-      }
-
-      const sampleSize = 64
-      canvas.width = sampleSize
-      canvas.height = sampleSize
-      ctx.drawImage(img, 0, 0, sampleSize, sampleSize)
-
-      const { data } = ctx.getImageData(0, 0, sampleSize, sampleSize)
-      let r = 0
-      let g = 0
-      let b = 0
-      let count = 0
-
-      for (let i = 0; i < data.length; i += 4) {
-        const alpha = data[i + 3]
-        if (alpha === 0) continue
-        r += data[i]
-        g += data[i + 1]
-        b += data[i + 2]
-        count += 1
-      }
-
-      if (!count) {
-        resolve('Multi-color')
-        return
-      }
-
-      const avgR = Math.round(r / count)
-      const avgG = Math.round(g / count)
-      const avgB = Math.round(b / count)
-      resolve(getNearestColorName(avgR, avgG, avgB))
-    }
-    img.onerror = () => resolve('Multi-color')
-    img.src = imageUrl
-  })
 }
 
 function formatRupees(value) {
@@ -291,7 +188,6 @@ export default function ProductPage() {
   const [showCheckout, setShowCheckout]   = useState(false)
   const [showSizeChart, setShowSizeChart] = useState(false)
   const [views, setViews]                 = useState(0)
-  const [detectedColor, setDetectedColor] = useState('Multi-color')
 
   const mainImage = product?.images?.[activeImg]?.src || product?.images?.[0]?.src
 
@@ -356,22 +252,6 @@ export default function ProductPage() {
       product_id: String(product._id || product.id || ''),
     })
   }, [product])
-
-  useEffect(() => {
-    if (!product?.images?.length) {
-      setDetectedColor('Multi-color')
-      return
-    }
-
-    let mounted = true
-    getImageDominantColor(mainImage).then((color) => {
-      if (mounted) setDetectedColor(color)
-    })
-
-    return () => {
-      mounted = false
-    }
-  }, [mainImage, product])
 
   const price        = parseFloat(selectedVariant?.price || 0)
   const displayPrice = Math.round(price)
@@ -451,7 +331,6 @@ export default function ProductPage() {
   const displayTitle = normalizeDisplayTitle(product.title)
   const displayDescription = String(product.description || '').trim() || String(product.body_html || '').trim()
   const displayGender = (product.gender && String(product.gender).trim()) || getProductGender(product.title)
-  const displayColor = normalizeProductColor(product.color) || normalizeProductColor(detectedColor) || 'Multi-color'
 
   return (
       <>
@@ -551,10 +430,6 @@ export default function ProductPage() {
                     <span className="leading-relaxed">{displayDescription}</span>
                   </div>
                 )}
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold text-charcoal">Color:</span>
-                  <span>{displayColor}</span>
-                </div>
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-charcoal">Gender:</span>
                   <span>{displayGender}</span>

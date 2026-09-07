@@ -51,6 +51,7 @@ export default function AdminProducts() {
     const [productVersionOptions, setProductVersionOptions] = useState(DEFAULT_PRODUCT_VERSION_OPTIONS)
     const [productTypeOptions, setProductTypeOptions] = useState(DEFAULT_PRODUCT_TYPE_OPTIONS)
     const [productSeasonOptions, setProductSeasonOptions] = useState([])
+    const [productCharacterOptions, setProductCharacterOptions] = useState([])
     const [fabricOptions, setFabricOptions] = useState(DEFAULT_FABRIC_OPTIONS)
     const [employeeNameByCode, setEmployeeNameByCode] = useState({})
     const [bulkProcessing, setBulkProcessing] = useState(false)
@@ -70,7 +71,7 @@ export default function AdminProducts() {
     const [form, setForm] = useState({
         title: '', description: '', price: '', compare_price: '',
         category: '', product_type: '', fabric: '', color: '', gender: '', tags: '', stock: '',
-        product_version: '', product_season_id: '', status: ''
+        product_version: '', product_season_id: '', character_id: '', status: ''
     })
     const [formImages, setFormImages] = useState([])   // [{url, rotating}]
     const [formVariants, setFormVariants] = useState([]) // [{option1_name,option1_value,option2_name,option2_value,price,stock,sku}]
@@ -225,19 +226,32 @@ export default function AdminProducts() {
         }
     }
 
+    async function fetchCharacterOptions() {
+        const token = localStorage.getItem('admin_token') || ''
+        try {
+            const res = await fetch('/api/admin/product-characters', { headers: { 'x-admin-token': token } })
+            const data = await readApiJson(res)
+            return res.ok && Array.isArray(data?.characters) ? data.characters : []
+        } catch {
+            return []
+        }
+    }
+
     async function fetchProductMetadata() {
-        const [categories, versions, types, fabrics, seasons] = await Promise.all([
+        const [categories, versions, types, fabrics, seasons, characters] = await Promise.all([
             fetchMetadataOptions('/api/admin/product-categories', 'categories', DEFAULT_CATEGORY_OPTIONS),
             fetchMetadataOptions('/api/admin/product-versions', 'versions', DEFAULT_PRODUCT_VERSION_OPTIONS),
             fetchMetadataOptions('/api/admin/product-types', 'types', DEFAULT_PRODUCT_TYPE_OPTIONS),
             fetchMetadataOptions('/api/admin/product-fabrics', 'fabrics', DEFAULT_FABRIC_OPTIONS),
             fetchSeasonOptions(),
+            fetchCharacterOptions(),
         ])
         setCategoryOptions(categories)
         setProductVersionOptions(versions)
         setProductTypeOptions(types)
         setFabricOptions(fabrics)
         setProductSeasonOptions(seasons)
+        setProductCharacterOptions(characters)
     }
 
     async function fetchEmployeeNames() {
@@ -461,6 +475,7 @@ export default function AdminProducts() {
                 shopify_handle: buildShortProductHandle((product.title || 'Untitled Product') + ' duplicate', product.id || Date.now()),
                 product_version: product.product_version || 'Old Packs',
                 product_season_id: product.product_season_id || null,
+                character_id: product.character_id || null,
                 is_active: product.is_active !== false,
             }
 
@@ -482,7 +497,7 @@ export default function AdminProducts() {
     }
 
     function resetForm() {
-        setForm({ title: '', description: '', price: '', compare_price: '', category: '', product_type: '', fabric: '', color: '', gender: '', tags: '', stock: '', product_version: '', product_season_id: '', status: '' })
+        setForm({ title: '', description: '', price: '', compare_price: '', category: '', product_type: '', fabric: '', color: '', gender: '', tags: '', stock: '', product_version: '', product_season_id: '', character_id: '', status: '' })
         setFormImages([])
         setFormVariants([])
         setEditingId(null)
@@ -526,6 +541,7 @@ export default function AdminProducts() {
             stock:         product.stock         || '',
             product_version: product.product_version || '',
             product_season_id: product.product_season_id ? String(product.product_season_id) : '',
+            character_id: product.character_id ? String(product.character_id) : '',
             status: product.is_active === false ? 'draft' : 'active',
         })
         setEditingId(product.id)
@@ -585,6 +601,7 @@ export default function AdminProducts() {
             variants:      variants.length > 0 ? variants : null,
             product_version: productVersion,
             product_season_id: Number(productSeasonId),
+            character_id: form.character_id ? Number(form.character_id) : null,
             status,
             is_active: status === 'active',
         }
@@ -1079,6 +1096,15 @@ export default function AdminProducts() {
                                                                                     className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm">
                                                                                 <option value="">Select gender</option>
                                                                                 {DEFAULT_GENDER_OPTIONS.map((gender) => <option key={gender} value={gender}>{gender}</option>)}
+                                                                            </select>
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block font-semibold text-xs text-charcoal mb-1">Associated Character</label>
+                                                                            <select value={form.character_id}
+                                                                                    onChange={e => setForm({...form, character_id: e.target.value})}
+                                                                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm">
+                                                                                <option value="">No character</option>
+                                                                                {productCharacterOptions.map((character) => <option key={character.id} value={character.id}>{character.name}</option>)}
                                                                             </select>
                                                                         </div>
                                     <div className="md:col-span-2">
