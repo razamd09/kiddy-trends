@@ -368,7 +368,7 @@ export default function LandingPreferencePopup() {
                     <p className="font-display text-lg text-charcoal text-center">
                       Recommended for <span className="text-coral">{recommendation.age_label}</span>
                     </p>
-                    <div className="grid grid-cols-3 gap-3 text-center">
+                    <div className="grid grid-cols-2 gap-3 text-center">
                       <div className="bg-white rounded-xl p-3">
                         <p className="text-xs text-gray-400 mb-1">Shirt</p>
                         <p className="font-display text-coral text-lg">{recommendation.shirt_size}</p>
@@ -376,10 +376,6 @@ export default function LandingPreferencePopup() {
                       <div className="bg-white rounded-xl p-3">
                         <p className="text-xs text-gray-400 mb-1">Bottom</p>
                         <p className="font-display text-coral text-lg">{recommendation.bottom_size}</p>
-                      </div>
-                      <div className="bg-white rounded-xl p-3">
-                        <p className="text-xs text-gray-400 mb-1">Weight</p>
-                        <p className="font-display text-coral text-sm">{recommendation.weight_range || 'N/A'}</p>
                       </div>
                     </div>
                     <p className="text-xs text-gray-500 text-center">Between sizes? We recommend sizing up.</p>
