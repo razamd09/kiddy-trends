@@ -87,7 +87,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   const [discountCode, setDiscountCode] = useState('')
   const [discountCodeLoading, setDiscountCodeLoading] = useState(false)
   const [discountCodeError, setDiscountCodeError] = useState('')
-  const [rewards, setRewards]         = useState({ userId: '', points: 0, redeemed: 0 })
+  const [rewards, setRewards]         = useState({ phone: '', points: 0, redeemed: 0 })
   const [freeShippingInfo, setFreeShippingInfo] = useState(null)
   const [showGiftFlash, setShowGiftFlash] = useState(false)
   const [shippingRate, setShippingRate] = useState({
@@ -227,12 +227,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
           sameAsPhone,
           whatsapp: sameAsPhone ? '' : customerWhatsapp,
         }))
-        if (data?.rewards?.user_id) {
-          setRewards(prev => ({ ...prev, userId: data.rewards.user_id, points: Number(data.rewards.points || 0), redeemed: 0 }))
-          setAutoFilledMessage('Existing customer found. Details and rewards linked.')
-        } else {
-          setAutoFilledMessage('Existing customer found. Details auto-filled.')
-        }
+        setAutoFilledMessage('Existing customer found. Details auto-filled.')
       }
       setLastLookupPhone(phoneDigits)
     } catch {}
@@ -324,7 +319,6 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
       'WhatsApp: +92' + waNumber + '\n' +
       'Address: ' + form.address + ', ' + form.city + '\n' +
       'Payment: Cash on Delivery' +
-      (rewards.userId ? '\nRewards ID: ' + rewards.userId : '') +
       (form.notes ? '\nNotes: ' + form.notes : '') + '\n\n' +
       'Order placed via kiddytrends.com'
     )
@@ -420,7 +414,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
             order_subtotal: Number(price || 0),
             order_shipping: Number(shipping || 0),
             order_total: Number(total || 0),
-            rewards: rewards.userId ? { userId: rewards.userId, redeem: rewards.redeemed || 0 } : null,
+            rewards: { redeem: rewards.redeemed || 0 },
             payment:  'cod',
           }
         })
@@ -761,7 +755,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
               )}
 
               {/* Rewards */}
-              <RewardsSection onRewardsChange={setRewards} />
+              <RewardsSection phone={form.phone} onRewardsChange={setRewards} />
 
               {/* Notes */}
               <div>
@@ -824,7 +818,6 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
               <div className="flex justify-between text-sm"><span className="text-gray-500">Phone</span><span className="font-semibold">+92{form.phone}</span></div>
               <div className="flex justify-between text-sm"><span className="text-gray-500">City</span><span className="font-semibold">{form.city}</span></div>
               <div className="flex justify-between text-sm"><span className="text-gray-500">Payment</span><span className="font-semibold">Cash on Delivery</span></div>
-              {rewards.userId && <div className="flex justify-between text-sm"><span className="text-gray-500">Rewards ID</span><span className="font-semibold text-coral">{rewards.userId}</span></div>}
               <div className="flex justify-between border-t border-gray-200 pt-3">
                 <span className="font-display text-base text-charcoal">Total</span>
                 <span className="font-display text-lg text-coral">PKR {total.toLocaleString()}</span>

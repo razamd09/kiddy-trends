@@ -4,7 +4,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useCart } from '../context/CartContext'
 import SearchBar from './SearchBar'
-import RewardsNavChecker from './RewardsNavChecker'
 
 const links = [
   { href: '/',                label: 'Home' },
@@ -122,7 +121,6 @@ export default function Navbar() {
 
           {/* Right icons */}
           <div className="flex items-center gap-1 sm:gap-2">
-            <RewardsNavChecker />
             <SearchBar />
 
             {/* Wishlist */}

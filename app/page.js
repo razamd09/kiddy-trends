@@ -3,7 +3,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useMemo, useState, useEffect } from 'react'
 import ProductCard from '../components/ProductCard'
-import RewardsChecker from '../components/RewardsChecker'
 import DiscountBanner from '../components/DiscountBanner'
 import LandingPreferencePopup from '../components/LandingPreferencePopup'
 import HomeHeroSlider from '../components/HomeHeroSlider'
@@ -266,11 +265,6 @@ export default function Home() {
                 </div>
             ))}
           </div>
-        </section>
-
-        {/* REWARDS CHECKER */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10 pt-16">
-          <RewardsChecker />
         </section>
 
         {/* INSTAGRAM */}

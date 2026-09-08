@@ -342,12 +342,6 @@ export async function POST(request) {
         const { cartItems, customer } = await request.json()
         const customerEmail = String(customer?.email || '').trim().toLowerCase()
 
-        const explicitRewardsUserId = (customer?.rewards?.userId || '').toLowerCase().trim()
-        const inferredRewardsUserId = customerEmail.includes('@')
-            ? customerEmail.split('@')[0].toLowerCase().trim()
-            : ''
-        let rewardsUserId = explicitRewardsUserId || inferredRewardsUserId
-
         const subtotalFromItems = (cartItems || []).reduce((s, i) => s + (parseFloat(i.price || 0) * (i.quantity || 1)), 0)
         const subtotalFromCustomer = Math.max(0, toNumber(customer?.order_subtotal || 0))
         const subtotal = subtotalFromCustomer > 0 ? subtotalFromCustomer : subtotalFromItems
@@ -389,57 +383,67 @@ export async function POST(request) {
         let rewardsSummary = null
         let redeemedPoints = 0
 
-        if (rewardsUserId) {
-            const { data: rewardsUser, error: rewardsFetchError } = await supabase
+        // Rewards are identified purely by phone number now — every phone is
+        // implicitly a rewards account, auto-created here on first order
+        // rather than requiring a separate signup step.
+        const rewardsPhone = normalizeWhatsApp(customer?.phone || customer?.whatsapp || '')
+
+        if (rewardsPhone) {
+            const { data: existingRewardsUser } = await supabase
                 .from('rewards')
                 .select('*')
-                .eq('user_id', rewardsUserId)
+                .eq('phone', rewardsPhone)
                 .single()
 
-            if (rewardsFetchError || !rewardsUser) {
-                if (explicitRewardsUserId) {
-                    return Response.json({ success: false, error: 'Rewards account not found' }, { status: 400 })
-                }
-                rewardsUserId = ''
-            } else {
-
-                const currentPoints = Math.max(0, toNumber(rewardsUser.points))
-                redeemedPoints = redeemRequested > 0 ? currentPoints : 0
-
-                const payableAfterDiscount = Math.max(0, subtotal + shipping - promoDiscount - redeemedPoints)
-                const earnedPoints = Math.floor(payableAfterDiscount / 1000) * POINTS_PER_1000
-                const pointsAfterRedeem = redeemRequested > 0 ? 0 : currentPoints
-                const pointsBeforeBonus = pointsAfterRedeem + earnedPoints
-                const bonusAwarded = pointsBeforeBonus >= BONUS_THRESHOLD && !rewardsUser.bonus_notified
-                const finalPoints = pointsBeforeBonus + (bonusAwarded ? BONUS_POINTS : 0)
-                const totalSpent = Math.max(0, toNumber(rewardsUser.total_spent) + payableAfterDiscount)
-                const latestPhone = normalizeWhatsApp(customer?.phone || customer?.whatsapp || '')
-                const latestWhatsApp = normalizeWhatsApp(customer?.whatsapp || customer?.phone || '')
-
-                const { error: rewardsUpdateError } = await supabase
+            let rewardsUser = existingRewardsUser
+            if (!rewardsUser) {
+                const { data: createdRewardsUser, error: rewardsCreateError } = await supabase
                     .from('rewards')
-                    .update({
-                        points: finalPoints,
-                        total_spent: totalSpent,
-                        phone: latestPhone || rewardsUser.phone || '',
-                        whatsapp: latestWhatsApp || rewardsUser.whatsapp || '',
-                        bonus_notified: bonusAwarded ? true : !!rewardsUser.bonus_notified,
-                        updated_at: new Date().toISOString(),
-                    })
-                    .eq('user_id', rewardsUserId)
+                    .insert([{ user_id: rewardsPhone, phone: rewardsPhone, name: customer?.name || '', whatsapp: normalizeWhatsApp(customer?.whatsapp || customer?.phone || '') || rewardsPhone, points: 0, total_spent: 0 }])
+                    .select()
+                    .single()
 
-                if (rewardsUpdateError) {
-                    return Response.json({ success: false, error: rewardsUpdateError.message }, { status: 500 })
+                if (rewardsCreateError) {
+                    return Response.json({ success: false, error: rewardsCreateError.message }, { status: 500 })
                 }
+                rewardsUser = createdRewardsUser
+            }
 
-                rewardsSummary = {
-                    userId: rewardsUserId,
-                    redeemedPoints,
-                    earnedPoints,
-                    availablePoints: finalPoints,
-                    bonusAwarded,
-                    calculatedAt: new Date().toISOString(),
-                }
+            const currentPoints = Math.max(0, toNumber(rewardsUser.points))
+            redeemedPoints = redeemRequested > 0 ? currentPoints : 0
+
+            const payableAfterDiscount = Math.max(0, subtotal + shipping - promoDiscount - redeemedPoints)
+            const earnedPoints = Math.floor(payableAfterDiscount / 1000) * POINTS_PER_1000
+            const pointsAfterRedeem = redeemRequested > 0 ? 0 : currentPoints
+            const pointsBeforeBonus = pointsAfterRedeem + earnedPoints
+            const bonusAwarded = pointsBeforeBonus >= BONUS_THRESHOLD && !rewardsUser.bonus_notified
+            const finalPoints = pointsBeforeBonus + (bonusAwarded ? BONUS_POINTS : 0)
+            const totalSpent = Math.max(0, toNumber(rewardsUser.total_spent) + payableAfterDiscount)
+            const latestWhatsApp = normalizeWhatsApp(customer?.whatsapp || customer?.phone || '')
+
+            const { error: rewardsUpdateError } = await supabase
+                .from('rewards')
+                .update({
+                    points: finalPoints,
+                    total_spent: totalSpent,
+                    name: customer?.name || rewardsUser.name || '',
+                    whatsapp: latestWhatsApp || rewardsUser.whatsapp || '',
+                    bonus_notified: bonusAwarded ? true : !!rewardsUser.bonus_notified,
+                    updated_at: new Date().toISOString(),
+                })
+                .eq('phone', rewardsPhone)
+
+            if (rewardsUpdateError) {
+                return Response.json({ success: false, error: rewardsUpdateError.message }, { status: 500 })
+            }
+
+            rewardsSummary = {
+                phone: rewardsPhone,
+                redeemedPoints,
+                earnedPoints,
+                availablePoints: finalPoints,
+                bonusAwarded,
+                calculatedAt: new Date().toISOString(),
             }
         }
 
@@ -448,7 +452,7 @@ export async function POST(request) {
         const notesText = [
             customer?.notes || '',
             rewardsSummary
-                ? ('[Rewards] ' + rewardsSummary.userId + ' redeemed ' + rewardsSummary.redeemedPoints + ' pts, earned ' + rewardsSummary.earnedPoints + ' pts, balance ' + rewardsSummary.availablePoints + ' pts')
+                ? ('[Rewards] ' + rewardsSummary.phone + ' redeemed ' + rewardsSummary.redeemedPoints + ' pts, earned ' + rewardsSummary.earnedPoints + ' pts, balance ' + rewardsSummary.availablePoints + ' pts')
                 : '',
             summerFreeShipping
                 ? '[Summer] Free delivery applied because every cart item is a Summer collection product.'

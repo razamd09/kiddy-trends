@@ -11,16 +11,24 @@ const POINTS_PER_1000 = 25
 const BONUS_THRESHOLD = 500
 const BONUS_POINTS    = 100
 
-// GET — fetch user by ID
+function normalizePhone(value) {
+  let digits = String(value || '').replace(/\D/g, '')
+  if (digits.startsWith('92') && digits.length > 10) digits = digits.slice(2)
+  if (digits.startsWith('0') && digits.length > 10) digits = digits.slice(1)
+  if (digits.length !== 10) return ''
+  return '+92' + digits
+}
+
+// GET — fetch rewards account by phone
 export async function GET(request) {
   const { searchParams } = new URL(request.url)
-  const userId = searchParams.get('userId')?.toLowerCase().trim()
-  if (!userId) return Response.json({ error: 'User ID required' }, { status: 400 })
+  const phone = normalizePhone(searchParams.get('phone'))
+  if (!phone) return Response.json({ error: 'Valid 10-digit phone required' }, { status: 400 })
 
   const { data, error } = await supabase
     .from('rewards')
     .select('*')
-    .eq('user_id', userId)
+    .eq('phone', phone)
     .single()
 
   if (error || !data) {
@@ -29,24 +37,23 @@ export async function GET(request) {
   return Response.json({ exists: true, ...data }, { headers: { 'Cache-Control': 'no-store' } })
 }
 
-// POST — create user
+// POST — auto-enroll a phone number into rewards (0 points, no separate signup step)
 export async function POST(request) {
-  const { userId, name, phone, whatsapp } = await request.json()
-  const id = userId?.toLowerCase().trim()
-  if (!id) return Response.json({ error: 'User ID required' }, { status: 400 })
+  const { phone: rawPhone, name, whatsapp } = await request.json()
+  const phone = normalizePhone(rawPhone)
+  if (!phone) return Response.json({ error: 'Valid 10-digit phone required' }, { status: 400 })
 
-  // Check if exists
   const { data: existing } = await supabase
     .from('rewards')
-    .select('user_id')
-    .eq('user_id', id)
+    .select('phone')
+    .eq('phone', phone)
     .single()
 
-  if (existing) return Response.json({ error: 'User ID already taken' }, { status: 409 })
+  if (existing) return Response.json({ error: 'Rewards account already exists for this phone' }, { status: 409 })
 
   const { data, error } = await supabase
     .from('rewards')
-    .insert([{ user_id: id, name, phone, whatsapp: whatsapp || phone || '', points: 0, total_spent: 0 }])
+    .insert([{ user_id: phone, phone, name: name || '', whatsapp: whatsapp || phone, points: 0, total_spent: 0 }])
     .select()
     .single()
 
@@ -56,23 +63,23 @@ export async function POST(request) {
 
 // PUT — add points after purchase
 export async function PUT(request) {
-  const { userId, orderTotal } = await request.json()
-  const id = userId?.toLowerCase().trim()
+  const { phone: rawPhone, orderTotal } = await request.json()
+  const phone = normalizePhone(rawPhone)
+  if (!phone) return Response.json({ error: 'Valid 10-digit phone required' }, { status: 400 })
 
   const { data: user } = await supabase
     .from('rewards')
     .select('*')
-    .eq('user_id', id)
+    .eq('phone', phone)
     .single()
 
-  if (!user) return Response.json({ error: 'User not found' }, { status: 404 })
+  if (!user) return Response.json({ error: 'Rewards account not found' }, { status: 404 })
 
   const earnedPoints  = Math.floor(orderTotal / 1000) * POINTS_PER_1000
   const newPoints     = user.points + earnedPoints
   const newSpent      = user.total_spent + orderTotal
   let bonusAwarded    = false
 
-  // Check bonus threshold
   let finalPoints = newPoints
   if (newPoints >= BONUS_THRESHOLD && !user.bonus_notified) {
     finalPoints     = newPoints + BONUS_POINTS
@@ -87,7 +94,7 @@ export async function PUT(request) {
       bonus_notified:  bonusAwarded ? true : user.bonus_notified,
       updated_at:      new Date().toISOString(),
     })
-    .eq('user_id', id)
+    .eq('phone', phone)
     .select()
     .single()
 
@@ -97,16 +104,17 @@ export async function PUT(request) {
 
 // PATCH — redeem points
 export async function PATCH(request) {
-  const { userId, redeemPoints } = await request.json()
-  const id = userId?.toLowerCase().trim()
+  const { phone: rawPhone, redeemPoints } = await request.json()
+  const phone = normalizePhone(rawPhone)
+  if (!phone) return Response.json({ error: 'Valid 10-digit phone required' }, { status: 400 })
 
   const { data: user } = await supabase
     .from('rewards')
     .select('*')
-    .eq('user_id', id)
+    .eq('phone', phone)
     .single()
 
-  if (!user) return Response.json({ error: 'User not found' }, { status: 404 })
+  if (!user) return Response.json({ error: 'Rewards account not found' }, { status: 404 })
   if (user.points <= 0 || redeemPoints <= 0) return Response.json({ error: 'No points to redeem' }, { status: 400 })
 
   const { data, error } = await supabase
@@ -115,7 +123,7 @@ export async function PATCH(request) {
       points:     0,
       updated_at: new Date().toISOString(),
     })
-    .eq('user_id', id)
+    .eq('phone', phone)
     .select()
     .single()
 
