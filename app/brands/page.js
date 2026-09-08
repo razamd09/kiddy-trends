@@ -29,8 +29,8 @@ export default function BrandsPage() {
       {loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {[...Array(10)].map((_, i) => (
-            <div key={i} className="rounded-2xl border border-gray-100 bg-white p-5 flex flex-col items-center gap-3 animate-pulse">
-              <div className="w-16 h-16 rounded-full bg-gray-100" />
+            <div key={i} className="rounded-2xl border border-gray-100 bg-white p-4 flex flex-col items-center gap-3 animate-pulse">
+              <div className="w-full aspect-square rounded-xl bg-gray-100" />
               <div className="h-4 w-20 bg-gray-100 rounded" />
             </div>
           ))}
@@ -46,14 +46,14 @@ export default function BrandsPage() {
             <Link
               key={brand.id}
               href={'/collections?brand=' + encodeURIComponent(brand.name)}
-              className="group flex flex-col items-center gap-3 rounded-2xl border border-gray-100 bg-white p-5 text-center card-hover hover:border-coral/40 transition-colors"
+              className="group flex flex-col items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4 text-center card-hover hover:border-coral/40 transition-colors"
             >
               {brand.image ? (
-                <span className="w-16 h-16 rounded-full overflow-hidden border border-gray-100 bg-cream flex items-center justify-center">
-                  <img src={brand.image} alt={brand.name} className="w-full h-full object-contain p-2" loading="lazy" />
+                <span className="w-full aspect-square rounded-xl overflow-hidden border border-gray-100 bg-white flex items-center justify-center">
+                  <img src={brand.image} alt={brand.name} className="w-full h-full object-contain p-3" loading="lazy" />
                 </span>
               ) : (
-                <span className={'w-16 h-16 rounded-full flex items-center justify-center font-display text-xl ' + BRAND_TILE_COLORS[i % BRAND_TILE_COLORS.length]}>
+                <span className={'w-full aspect-square rounded-xl flex items-center justify-center font-display text-2xl ' + BRAND_TILE_COLORS[i % BRAND_TILE_COLORS.length]}>
                   {brand.name.slice(0, 1)}
                 </span>
               )}
