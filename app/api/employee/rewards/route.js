@@ -17,20 +17,22 @@ export async function GET() {
 
         if (error) return Response.json({ error: error.message }, { status: 500 })
 
-        const phones = Array.from(new Set((data || []).flatMap((user) => [user.phone, user.whatsapp].filter(Boolean))))
+        const phones = new Set((data || []).flatMap((user) => [user.phone, user.whatsapp].filter(Boolean)))
         const emailByPhone = {}
-        if (phones.length > 0) {
+        if (phones.size > 0) {
+            // Fetched unfiltered and matched in JS rather than via a Supabase
+            // .or() filter string — phone numbers contain '+', which gets mangled
+            // when built into a raw PostgREST OR filter (silently matches nothing).
             const { data: orderRows } = await supabase
                 .from('orders')
                 .select('customer_phone, customer_whatsapp, customer_email, created_at')
-                .or(phones.map((p) => `customer_phone.eq.${p}`).concat(phones.map((p) => `customer_whatsapp.eq.${p}`)).join(','))
-                .not('customer_email', 'is', null)
-                .neq('customer_email', '')
                 .order('created_at', { ascending: false })
 
             for (const order of orderRows || []) {
-                if (order.customer_phone && !emailByPhone[order.customer_phone]) emailByPhone[order.customer_phone] = order.customer_email
-                if (order.customer_whatsapp && !emailByPhone[order.customer_whatsapp]) emailByPhone[order.customer_whatsapp] = order.customer_email
+                const email = String(order.customer_email || '').trim()
+                if (!email) continue
+                if (phones.has(order.customer_phone) && !emailByPhone[order.customer_phone]) emailByPhone[order.customer_phone] = email
+                if (phones.has(order.customer_whatsapp) && !emailByPhone[order.customer_whatsapp]) emailByPhone[order.customer_whatsapp] = email
             }
         }
 
