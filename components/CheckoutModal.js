@@ -78,7 +78,6 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   const [loading, setLoading]         = useState(false)
   const [phoneLookupLoading, setPhoneLookupLoading] = useState(false)
   const [lastLookupPhone, setLastLookupPhone] = useState('')
-  const [autoFilledMessage, setAutoFilledMessage] = useState('')
   const [form, setForm]               = useState({
     name:'', phone:'', whatsapp:'', sameAsPhone: true, email:'', address:'', city:'', notes:''
   })
@@ -203,7 +202,6 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   async function lookupCustomerByPhone(phoneDigits) {
     if (phoneDigits.length !== 10 || phoneDigits === lastLookupPhone) return
     setPhoneLookupLoading(true)
-    setAutoFilledMessage('')
     try {
       const res = await fetch('/api/checkout?phone=' + phoneDigits, { cache: 'no-store' })
       const data = await res.json()
@@ -227,7 +225,6 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
           sameAsPhone,
           whatsapp: sameAsPhone ? '' : customerWhatsapp,
         }))
-        setAutoFilledMessage('Existing customer found. Details auto-filled.')
       }
       setLastLookupPhone(phoneDigits)
     } catch {}
@@ -237,7 +234,6 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   function handlePhoneInputChange(val) {
     const digits = formatPhone(val)
     if (digits !== form.phone) {
-      setAutoFilledMessage('')
       setFreeShippingInfo(null)
     }
     setForm(prev => ({ ...prev, phone: digits }))
@@ -611,7 +607,6 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                 </div>
                 <p className="text-xs text-gray-400 mt-1">Enter 10 digits without 0 (e.g. 3360677340)</p>
                 {phoneLookupLoading && <p className="text-xs text-gray-400 mt-1">Checking existing customer...</p>}
-                {autoFilledMessage && <p className="text-xs text-green-600 mt-1">{autoFilledMessage}</p>}
                 {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone}</p>}
 
                 {freeShippingInfo && (
