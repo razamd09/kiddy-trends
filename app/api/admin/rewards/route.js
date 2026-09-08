@@ -28,6 +28,23 @@ export async function GET(request) {
 
     if (error) return Response.json({ error: error.message }, { status: 500 })
 
+    const phones = Array.from(new Set((data || []).flatMap((user) => [user.phone, user.whatsapp].filter(Boolean))))
+    const emailByPhone = {}
+    if (phones.length > 0) {
+        const { data: orderRows } = await supabase
+            .from('orders')
+            .select('customer_phone, customer_whatsapp, customer_email, created_at')
+            .or(phones.map((p) => `customer_phone.eq.${p}`).concat(phones.map((p) => `customer_whatsapp.eq.${p}`)).join(','))
+            .not('customer_email', 'is', null)
+            .neq('customer_email', '')
+            .order('created_at', { ascending: false })
+
+        for (const order of orderRows || []) {
+            if (order.customer_phone && !emailByPhone[order.customer_phone]) emailByPhone[order.customer_phone] = order.customer_email
+            if (order.customer_whatsapp && !emailByPhone[order.customer_whatsapp]) emailByPhone[order.customer_whatsapp] = order.customer_email
+        }
+    }
+
     const users = (data || []).map((user) => {
         const totalSpent = Number(user.total_spent || 0)
         const availablePoints = Math.max(0, Number(user.points || 0))
@@ -38,6 +55,7 @@ export async function GET(request) {
 
         return {
             ...user,
+            email: emailByPhone[user.phone] || emailByPhone[user.whatsapp] || '',
             total_earned_points: totalEarned,
             redeemed_points: redeemedPoints,
             available_points: availablePoints,
