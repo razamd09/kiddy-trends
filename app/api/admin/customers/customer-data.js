@@ -8,6 +8,7 @@ const supabase = createClient(
 const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_9p08wct'
 const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID || 'template_gyanmsp'
 const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY || process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || 'G3OmrUP2PwOat-o1W'
+const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY || ''
 
 export function normalizePhone(value) {
     const raw = String(value || '').trim()
@@ -316,6 +317,7 @@ export async function sendEmailWithEmailJs(toEmail, subject, message, customerNa
         service_id: EMAILJS_SERVICE_ID,
         template_id: EMAILJS_TEMPLATE_ID,
         user_id: EMAILJS_PUBLIC_KEY,
+        accessToken: EMAILJS_PRIVATE_KEY || undefined,
         template_params: {
             to_email: toEmail,
             recipient_email: toEmail,

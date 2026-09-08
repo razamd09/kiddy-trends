@@ -5,6 +5,7 @@ const ORDER_NOTIFICATION_EMAIL = process.env.ORDER_NOTIFICATION_EMAIL || 'thekid
 const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_9p08wct'
 const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID || 'template_gyanmsp'
 const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY || process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || 'G3OmrUP2PwOat-o1W'
+const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY || ''
 const POINTS_PER_1000 = 25
 const BONUS_THRESHOLD = 500
 const BONUS_POINTS = 100
@@ -210,6 +211,7 @@ async function sendOrderNotification({ orderNumber, customer, cartItems, subtota
         service_id: EMAILJS_SERVICE_ID,
         template_id: EMAILJS_TEMPLATE_ID,
         user_id: EMAILJS_PUBLIC_KEY,
+        accessToken: EMAILJS_PRIVATE_KEY || undefined,
         template_params: {
             to_email: toEmail,
             recipient_email: toEmail,
