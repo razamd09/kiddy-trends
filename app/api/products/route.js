@@ -279,6 +279,7 @@ function transformProduct(product) {
         product_season: seasonName,
         character_id: product.character_id || null,
         character: product?.product_characters?.name || null,
+        brand: product?.product_brands?.name || null,
     }
 }
 
@@ -304,7 +305,7 @@ export async function GET(request) {
             if (parsedProductId) {
                 const byId = await supabase
                     .from('products')
-                    .select('*, product_seasons(name), product_characters(name)', { count: 'exact' })
+                    .select('*, product_seasons(name), product_characters(name), product_brands(name)', { count: 'exact' })
                     .eq('is_active', true)
                     .or('source.is.null,source.neq.' + DRAFT_SOURCE)
                     .eq('id', parsedProductId)
@@ -324,7 +325,7 @@ export async function GET(request) {
             for (const candidate of candidates) {
                 const byHandle = await supabase
                     .from('products')
-                    .select('*, product_seasons(name), product_characters(name)', { count: 'exact' })
+                    .select('*, product_seasons(name), product_characters(name), product_brands(name)', { count: 'exact' })
                     .eq('is_active', true)
                     .or('source.is.null,source.neq.' + DRAFT_SOURCE)
                     .eq('shopify_handle', candidate)
@@ -339,7 +340,7 @@ export async function GET(request) {
             if (data.length === 0 && parsedProductId === null) {
                 const byId = await supabase
                     .from('products')
-                    .select('*, product_seasons(name), product_characters(name)', { count: 'exact' })
+                    .select('*, product_seasons(name), product_characters(name), product_brands(name)', { count: 'exact' })
                     .eq('is_active', true)
                     .or('source.is.null,source.neq.' + DRAFT_SOURCE)
                     .eq('id', handle)
@@ -354,7 +355,7 @@ export async function GET(request) {
                 const slugQuery = slugifyTitle(handle).replace(/-/g, ' ').trim()
                 const byTitle = await supabase
                     .from('products')
-                    .select('*, product_seasons(name), product_characters(name)', { count: 'exact' })
+                    .select('*, product_seasons(name), product_characters(name), product_brands(name)', { count: 'exact' })
                     .eq('is_active', true)
                     .or('source.is.null,source.neq.' + DRAFT_SOURCE)
                     .ilike('title', '%' + slugQuery + '%')
@@ -369,7 +370,7 @@ export async function GET(request) {
         } else {
             let query = supabase
                 .from('products')
-                .select('*, product_seasons(name), product_characters(name)', { count: 'exact' })
+                .select('*, product_seasons(name), product_characters(name), product_brands(name)', { count: 'exact' })
                 .eq('is_active', true)
                 .or('source.is.null,source.neq.' + DRAFT_SOURCE)
                 .order('created_at', { ascending: false })
@@ -389,7 +390,7 @@ export async function GET(request) {
             if (error && /created_at/i.test(error.message || '')) {
                 let fallback = supabase
                     .from('products')
-                    .select('*, product_seasons(name), product_characters(name)', { count: 'exact' })
+                    .select('*, product_seasons(name), product_characters(name), product_brands(name)', { count: 'exact' })
                     .eq('is_active', true)
                     .or('source.is.null,source.neq.' + DRAFT_SOURCE)
                     .order('id', { ascending: false })

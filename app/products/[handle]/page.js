@@ -329,7 +329,6 @@ export default function ProductPage() {
   const reviewData = getProductReviews(product.id, product.title)
   const titleParts = getProductTitleParts(product)
   const displayTitle = normalizeDisplayTitle(product.title)
-  const displayDescription = String(product.description || '').trim() || String(product.body_html || '').trim()
   const displayGender = (product.gender && String(product.gender).trim()) || getProductGender(product.title)
 
   return (
@@ -418,16 +417,16 @@ export default function ProductPage() {
               <h1 className="font-display text-2xl md:text-3xl text-charcoal leading-tight mb-3">{displayTitle}</h1>
 
               <div className="space-y-2 mb-5 text-sm text-gray-700">
+                {product.brand && (
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-charcoal">Brand:</span>
+                    <span>{product.brand}</span>
+                  </div>
+                )}
                 {product.fabric && (
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-charcoal">Fabric:</span>
                     <span>{product.fabric}</span>
-                  </div>
-                )}
-                {displayDescription && (
-                  <div className="flex items-start gap-2">
-                    <span className="font-semibold text-charcoal">Details:</span>
-                    <span className="leading-relaxed">{displayDescription}</span>
                   </div>
                 )}
                 {product.color && (
