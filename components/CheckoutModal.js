@@ -385,6 +385,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
             title: i.title || '',
             variantTitle: i.variantTitle || '',
             image: i.image || '',
+            handle: i.handle || '',
             productSeason: i.productSeason || '',
           }))
         : [{
@@ -395,6 +396,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
             title: product?.title || '',
             variantTitle: variant?.title !== 'Default Title' ? (variant?.title || '') : '',
             image: image || '',
+            handle: product?.handle || '',
             productSeason: product?.product_season || product?.product_seasons?.name || '',
           }]
       const waNumber = form.sameAsPhone ? form.phone : form.whatsapp
