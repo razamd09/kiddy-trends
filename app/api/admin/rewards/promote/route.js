@@ -1,119 +1,44 @@
 import { createClient } from '@supabase/supabase-js'
+import { sendEmailWithEmailJs } from '../../customers/customer-data'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_KEY
 )
 
-function normalizePkPhone(phone) {
-    let digits = String(phone || '').replace(/\D/g, '')
-    if (!digits) return null
-    if (digits.startsWith('92') && digits.length > 10) digits = digits.slice(2)
-    if (digits.startsWith('0') && digits.length > 10) digits = digits.slice(1)
-    if (digits.length !== 10) return null
-    return {
-        e164: '+92' + digits,
-        waTo: '92' + digits,
-    }
+const PROMOTION_SUBJECT = 'Redeem Your Rewards in Cash'
+
+function buildPromotionMessage(name) {
+    return [
+        'Hi ' + name,
+        '',
+        'Your Reward points are in Cash form. Just click and redeem in your next order.',
+        '',
+        'Order us now at thekiddytrends.com - Shop Now!',
+    ].join('\n')
 }
 
-async function resolveUserPhone(userId, rewardsWhatsApp, rewardsPhone) {
-    const direct = normalizePkPhone(rewardsWhatsApp) || normalizePkPhone(rewardsPhone)
-    if (direct) return direct
+async function resolveCustomerEmail(phone) {
+    if (!phone) return ''
 
-    const [notesOrderRes, emailOrderRes] = await Promise.all([
+    const [byPhone, byWhatsapp] = await Promise.all([
         supabase
             .from('orders')
-            .select('customer_whatsapp, customer_phone')
-            .ilike('notes', '%[Rewards] ' + userId + '%')
-            .order('created_at', { ascending: false })
-            .limit(1),
-        userId.includes('@')
-            ? supabase
-                .from('orders')
-                .select('customer_whatsapp, customer_phone')
-                .ilike('customer_email', userId)
-                .order('created_at', { ascending: false })
-                .limit(1)
-            : Promise.resolve({ data: [] }),
+            .select('customer_email, created_at')
+            .eq('customer_phone', phone)
+            .order('created_at', { ascending: false }),
+        supabase
+            .from('orders')
+            .select('customer_email, created_at')
+            .eq('customer_whatsapp', phone)
+            .order('created_at', { ascending: false }),
     ])
 
-    const fromNotes = notesOrderRes?.data?.[0]
-    const fromEmail = emailOrderRes?.data?.[0]
-    const candidates = [
-        fromNotes?.customer_whatsapp,
-        fromNotes?.customer_phone,
-        fromEmail?.customer_whatsapp,
-        fromEmail?.customer_phone,
-    ]
+    const rows = [...(byPhone.data || []), ...(byWhatsapp.data || [])]
+        .filter((row) => String(row.customer_email || '').trim())
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
-    for (const candidate of candidates) {
-        const normalized = normalizePkPhone(candidate)
-        if (normalized) return normalized
-    }
-    return null
-}
-
-async function sendWhatsAppPromotion({ to, name, points }) {
-    const accessToken = [
-        process.env.WHATSAPP_CLOUD_API_TOKEN,
-        process.env.WHATSAPP_ACCESS_TOKEN,
-        process.env.META_WHATSAPP_ACCESS_TOKEN,
-    ].find((value) => typeof value === 'string' && value.trim())
-
-    const phoneNumberId = [
-        process.env.WHATSAPP_CLOUD_PHONE_NUMBER_ID,
-        process.env.WHATSAPP_PHONE_NUMBER_ID,
-        process.env.META_WHATSAPP_PHONE_NUMBER_ID,
-    ].find((value) => typeof value === 'string' && value.trim())
-
-    const shopUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || 'https://kiddy-trends.vercel.app/collections'
-
-    const missingVars = []
-    if (!accessToken) missingVars.push('WHATSAPP_CLOUD_API_TOKEN')
-    if (!phoneNumberId) missingVars.push('WHATSAPP_CLOUD_PHONE_NUMBER_ID')
-    if (missingVars.length > 0) {
-        throw new Error('WhatsApp API is not configured. Missing: ' + missingVars.join(', '))
-    }
-
-    const safePoints = Math.max(0, Number(points || 0))
-    const customerName = (name || '').trim() || 'Valued Customer'
-    const messageText = [
-        'Assalam o Alaikum ' + customerName + '!',
-        'You have ' + safePoints + ' reward points available.',
-        'You can use these as PKR ' + safePoints.toLocaleString() + ' discount on your next order.',
-        'Shop now - our new arrivals are live: ' + shopUrl,
-    ].join('\n')
-
-    const response = await fetch('https://graph.facebook.com/v20.0/' + phoneNumberId + '/messages', {
-        method: 'POST',
-        headers: {
-            Authorization: 'Bearer ' + accessToken,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            messaging_product: 'whatsapp',
-            recipient_type: 'individual',
-            to,
-            type: 'text',
-            text: {
-                preview_url: true,
-                body: messageText,
-            },
-        }),
-    })
-
-    const payload = await response.json().catch(() => null)
-    if (!response.ok) {
-        const errorCode = payload?.error?.code
-        const errorMsg = payload?.error?.message || 'Failed to send WhatsApp promotion.'
-        if (errorCode === 131030) {
-            throw new Error('Recipient phone is not in Meta allowed test list. Add and verify this number in WhatsApp API Setup > Step 1 Try it out.')
-        }
-        throw new Error(errorMsg)
-    }
-
-    return payload
+    return rows[0]?.customer_email || ''
 }
 
 export async function POST(request) {
@@ -131,7 +56,7 @@ export async function POST(request) {
         if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
         const body = await request.json().catch(() => ({}))
-        const userId = String(body?.userId || '').toLowerCase().trim()
+        const userId = String(body?.userId || '').trim()
         if (!userId) {
             return Response.json({ error: 'userId is required' }, { status: 400 })
         }
@@ -151,23 +76,19 @@ export async function POST(request) {
             return Response.json({ error: 'No available points to promote' }, { status: 400 })
         }
 
-        const targetPhone = await resolveUserPhone(userId, rewardUser.whatsapp, rewardUser.phone)
-        if (!targetPhone) {
-            return Response.json({ error: 'No valid customer phone/WhatsApp number found' }, { status: 400 })
+        const email = await resolveCustomerEmail(rewardUser.phone) || await resolveCustomerEmail(rewardUser.whatsapp)
+        if (!email) {
+            return Response.json({ error: 'No email found for this customer' }, { status: 400 })
         }
 
-        const waResult = await sendWhatsAppPromotion({
-            to: targetPhone.waTo,
-            name: rewardUser.name,
-            points: availablePoints,
-        })
+        const name = String(rewardUser.name || '').trim() || 'there'
+        await sendEmailWithEmailJs(email, PROMOTION_SUBJECT, buildPromotionMessage(name), name)
 
         return Response.json({
             success: true,
             userId,
             points: availablePoints,
-            sentTo: targetPhone.e164,
-            messageId: waResult?.messages?.[0]?.id || null,
+            sentTo: email,
         })
     } catch (error) {
         return Response.json({ error: error.message || 'Failed to send promotion' }, { status: 500 })

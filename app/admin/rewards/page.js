@@ -15,27 +15,6 @@ export default function AdminRewardsPage() {
     const [promotionStatus, setPromotionStatus] = useState({})
     const router = useRouter()
 
-    function normalizeWhatsAppToWaMe(value) {
-        const digits = String(value || '').replace(/\D/g, '')
-        if (!digits) return ''
-        if (digits.startsWith('92')) return digits
-        if (digits.startsWith('0')) return '92' + digits.slice(1)
-        if (digits.length === 10) return '92' + digits
-        return digits
-    }
-
-    function buildRewardMessage(user) {
-        const points = Math.max(0, Number(user?.available_points || 0))
-        const name = (user?.name || user?.user_id || 'Customer').trim()
-        const shopUrl = 'https://kiddy-trends.vercel.app/collections'
-        return [
-            'Assalam o Alaikum ' + name + '!',
-            'You have ' + points + ' reward points available.',
-            'You can use these as PKR ' + points.toLocaleString() + ' discount on your next order.',
-            'Shop now - our new arrivals are live: ' + shopUrl,
-        ].join('\n')
-    }
-
     useEffect(() => {
         async function verifyAndLoad() {
             const token = localStorage.getItem('admin_token')
@@ -90,22 +69,24 @@ export default function AdminRewardsPage() {
         const userId = String(user.user_id || '').toLowerCase().trim()
         if (!userId) return
 
+        const token = localStorage.getItem('admin_token')
         try {
             setPromotingUserId(userId)
             setPromotionStatus((prev) => ({ ...prev, [userId]: '' }))
 
-            const waNumber = normalizeWhatsAppToWaMe(user.whatsapp || user.phone || '')
-            if (!waNumber) {
-                throw new Error('No valid WhatsApp number found for this user')
+            const res = await fetch('/api/admin/rewards/promote', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-admin-token': token || '' },
+                body: JSON.stringify({ userId: user.user_id }),
+            })
+            const data = await res.json()
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Failed to send promotion')
             }
-
-            const message = buildRewardMessage(user)
-            const waUrl = 'https://wa.me/' + waNumber + '?text=' + encodeURIComponent(message)
-            window.open(waUrl, '_blank', 'noopener,noreferrer')
 
             setPromotionStatus((prev) => ({
                 ...prev,
-                [userId]: 'WhatsApp chat opened for ' + waNumber,
+                [userId]: 'Sent to ' + data.sentTo,
             }))
         } catch (error) {
             setPromotionStatus((prev) => ({
@@ -246,22 +227,29 @@ export default function AdminRewardsPage() {
                             ) : historyRows.length === 0 ? (
                                 <p className="text-gray-400 text-sm">No rewards activity found for this user.</p>
                             ) : (
-                                <div className="space-y-3">
-                                    {historyRows.map((r) => (
-                                        <div key={r.id} className="bg-cream rounded-xl p-3 text-sm">
-                                            <div className="flex items-center justify-between">
-                                                <p className="font-semibold text-charcoal">{r.order_number}</p>
-                                                <p className="text-xs text-gray-400">{new Date(r.created_at).toLocaleString('en-PK')}</p>
-                                            </div>
-                                            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-2 text-xs">
-                                                <div><span className="text-gray-400">Total</span><br/><span className="font-semibold">PKR {r.total.toLocaleString()}</span></div>
-                                                <div><span className="text-gray-400">Discount</span><br/><span className="font-semibold">PKR {r.discount.toLocaleString()}</span></div>
-                                                <div><span className="text-gray-400">Redeemed</span><br/><span className="font-semibold text-coral">{r.redeemed_points} pts</span></div>
-                                                <div><span className="text-gray-400">Earned</span><br/><span className="font-semibold text-green-600">{r.earned_points} pts</span></div>
-                                                <div><span className="text-gray-400">Balance</span><br/><span className="font-semibold">{r.balance_points ?? '-'} pts</span></div>
-                                            </div>
-                                        </div>
-                                    ))}
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full text-sm">
+                                        <thead className="bg-cream text-gray-500">
+                                            <tr>
+                                                <th className="text-left px-3 py-2 font-semibold">Date/Time</th>
+                                                <th className="text-left px-3 py-2 font-semibold">Order Id</th>
+                                                <th className="text-left px-3 py-2 font-semibold">Reward Points Availed</th>
+                                                <th className="text-left px-3 py-2 font-semibold">Redeemed</th>
+                                                <th className="text-left px-3 py-2 font-semibold">Total Points</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {historyRows.map((r) => (
+                                                <tr key={r.id} className="border-t border-gray-100">
+                                                    <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{new Date(r.created_at).toLocaleString('en-PK')}</td>
+                                                    <td className="px-3 py-2 font-semibold text-charcoal">{r.order_number}</td>
+                                                    <td className="px-3 py-2 font-semibold text-green-600">{r.earned_points} pts</td>
+                                                    <td className="px-3 py-2 font-semibold text-coral">{r.redeemed_points} pts</td>
+                                                    <td className="px-3 py-2 font-semibold text-charcoal">{r.balance_points ?? '-'} pts</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
                             )}
                         </div>

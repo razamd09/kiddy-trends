@@ -306,7 +306,12 @@ async function getCustomerEmailsFromOrders() {
     return [...unique]
 }
 
-async function sendEmailWithEmailJs(toEmail, subject, message) {
+export async function sendEmailWithEmailJs(toEmail, subject, message, customerName) {
+    if (!EMAILJS_SERVICE_ID || !EMAILJS_TEMPLATE_ID || !EMAILJS_PUBLIC_KEY) {
+        throw new Error('Email service is not configured')
+    }
+
+    const name = String(customerName || '').trim() || 'Valued Customer'
     const payload = {
         service_id: EMAILJS_SERVICE_ID,
         template_id: EMAILJS_TEMPLATE_ID,
@@ -317,11 +322,11 @@ async function sendEmailWithEmailJs(toEmail, subject, message) {
             email: toEmail,
             customer_email: toEmail,
             buyer_email: '',
-            to_name: 'Valued Customer',
+            to_name: name,
             from_name: 'Kiddy Trends',
             reply_to: process.env.ORDER_NOTIFICATION_EMAIL || 'thekiddytrends@gmail.com',
             subject,
-            customer_name: 'Valued Customer',
+            customer_name: name,
             phone: '',
             address: '',
             city: '',
