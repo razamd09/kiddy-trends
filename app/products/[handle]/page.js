@@ -430,6 +430,12 @@ export default function ProductPage() {
                     <span className="leading-relaxed">{displayDescription}</span>
                   </div>
                 )}
+                {product.color && (
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-charcoal">Color:</span>
+                    <span>{product.color}</span>
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-charcoal">Gender:</span>
                   <span>{displayGender}</span>
