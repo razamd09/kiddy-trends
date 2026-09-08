@@ -1,22 +1,14 @@
 import { createClient } from '@supabase/supabase-js'
-import { sendEmailWithEmailJs } from '../../customers/customer-data'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_KEY
 )
 
-const PROMOTION_SUBJECT = 'Redeem Your Rewards in Cash'
-
-function buildPromotionMessage(name) {
-    return [
-        'Hi ' + name,
-        '',
-        'Your Reward points are in Cash form. Just click and redeem in your next order.',
-        '',
-        'Order us now at thekiddytrends.com - Shop Now!',
-    ].join('\n')
-}
+const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_9p08wct'
+const EMAILJS_REWARDS_TEMPLATE_ID = process.env.EMAILJS_REWARDS_TEMPLATE_ID || ''
+const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY || process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || 'G3OmrUP2PwOat-o1W'
+const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY || ''
 
 async function resolveCustomerEmail(phone) {
     if (!phone) return ''
@@ -39,6 +31,45 @@ async function resolveCustomerEmail(phone) {
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
     return rows[0]?.customer_email || ''
+}
+
+// Sends via the dedicated "Rewards Redeem" EmailJS template (customer_name,
+// points), not the Order Confirmation template — that one has no generic
+// message field, so a rewards email through it would render with blank
+// order fields instead of the rewards content.
+async function sendRewardsEmail(toEmail, customerName, points) {
+    if (!EMAILJS_REWARDS_TEMPLATE_ID) {
+        throw new Error('Rewards email template is not configured. Set EMAILJS_REWARDS_TEMPLATE_ID.')
+    }
+
+    const payload = {
+        service_id: EMAILJS_SERVICE_ID,
+        template_id: EMAILJS_REWARDS_TEMPLATE_ID,
+        user_id: EMAILJS_PUBLIC_KEY,
+        accessToken: EMAILJS_PRIVATE_KEY || undefined,
+        template_params: {
+            to_email: toEmail,
+            recipient_email: toEmail,
+            email: toEmail,
+            customer_email: toEmail,
+            to_name: customerName,
+            from_name: 'Kiddy Trends',
+            reply_to: process.env.ORDER_NOTIFICATION_EMAIL || 'thekiddytrends@gmail.com',
+            customer_name: customerName,
+            points,
+        },
+    }
+
+    const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(errorText || 'Email send failed')
+    }
 }
 
 export async function POST(request) {
@@ -82,7 +113,7 @@ export async function POST(request) {
         }
 
         const name = String(rewardUser.name || '').trim() || 'there'
-        await sendEmailWithEmailJs(email, PROMOTION_SUBJECT, buildPromotionMessage(name), name)
+        await sendRewardsEmail(email, name, availablePoints)
 
         return Response.json({
             success: true,
