@@ -34,6 +34,12 @@ const modules = [
         href: '/admin/product-types',
         accent: 'bg-sunny text-charcoal',
     },
+    {
+        title: 'Product Brand',
+        description: 'Add, edit, and delete brand values used by products.',
+        href: '/admin/product-brands',
+        accent: 'bg-purple-500 text-white',
+    },
 ]
 
 export default function ProductManagementDashboard() {

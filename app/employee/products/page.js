@@ -52,6 +52,7 @@ export default function EmployeeProducts() {
     const [productTypeOptions, setProductTypeOptions] = useState(DEFAULT_PRODUCT_TYPE_OPTIONS)
     const [productSeasonOptions, setProductSeasonOptions] = useState([])
     const [productCharacterOptions, setProductCharacterOptions] = useState([])
+    const [productBrandOptions, setProductBrandOptions] = useState([])
     const [fabricOptions, setFabricOptions] = useState(DEFAULT_FABRIC_OPTIONS)
     const [employeeNameByCode, setEmployeeNameByCode] = useState({})
     const [bulkProcessing, setBulkProcessing] = useState(false)
@@ -71,7 +72,7 @@ export default function EmployeeProducts() {
     const [form, setForm] = useState({
         title: '', description: '', price: '', compare_price: '',
         category: '', product_type: '', fabric: '', color: '', gender: '', tags: '', stock: '',
-        product_version: '', product_season_id: '', character_id: '', status: ''
+        product_version: '', product_season_id: '', character_id: '', brand_id: '', status: ''
     })
     const [formImages, setFormImages] = useState([])   // [{url, rotating}]
     const [formVariants, setFormVariants] = useState([]) // [{option1_name,option1_value,option2_name,option2_value,price,stock,sku}]
@@ -279,14 +280,26 @@ export default function EmployeeProducts() {
         }
     }
 
+    async function fetchBrandOptions() {
+        const token = localStorage.getItem('admin_token') || ''
+        try {
+            const res = await fetch('/api/admin/product-brands', { headers: { 'x-admin-token': token } })
+            const data = await readApiJson(res)
+            return res.ok && Array.isArray(data?.brands) ? data.brands : []
+        } catch {
+            return []
+        }
+    }
+
     async function fetchProductMetadata() {
-        const [categories, versions, types, fabrics, seasons, characters] = await Promise.all([
+        const [categories, versions, types, fabrics, seasons, characters, brands] = await Promise.all([
             fetchMetadataOptions('/api/admin/product-categories', 'categories', DEFAULT_CATEGORY_OPTIONS),
             fetchMetadataOptions('/api/admin/product-versions', 'versions', DEFAULT_PRODUCT_VERSION_OPTIONS),
             fetchMetadataOptions('/api/admin/product-types', 'types', DEFAULT_PRODUCT_TYPE_OPTIONS),
             fetchMetadataOptions('/api/admin/product-fabrics', 'fabrics', DEFAULT_FABRIC_OPTIONS),
             fetchSeasonOptions(),
             fetchCharacterOptions(),
+            fetchBrandOptions(),
         ])
         setCategoryOptions(categories)
         setProductVersionOptions(versions)
@@ -294,6 +307,7 @@ export default function EmployeeProducts() {
         setFabricOptions(fabrics)
         setProductSeasonOptions(seasons)
         setProductCharacterOptions(characters)
+        setProductBrandOptions(brands)
     }
 
     async function fetchEmployeeNames() {
@@ -459,6 +473,7 @@ export default function EmployeeProducts() {
                 product_version: product.product_version || 'Old Packs',
                 product_season_id: product.product_season_id || null,
                 character_id: product.character_id || null,
+                brand_id: product.brand_id || null,
                 is_active: product.is_active !== false,
             }
 
@@ -499,7 +514,7 @@ export default function EmployeeProducts() {
     }
 
     function resetForm() {
-        setForm({ title: '', description: '', price: '', compare_price: '', category: '', product_type: '', fabric: '', color: '', gender: '', tags: '', stock: '', product_version: '', product_season_id: '', character_id: '', status: '' })
+        setForm({ title: '', description: '', price: '', compare_price: '', category: '', product_type: '', fabric: '', color: '', gender: '', tags: '', stock: '', product_version: '', product_season_id: '', character_id: '', brand_id: '', status: '' })
         setFormImages([])
         setFormVariants([])
         setEditingId(null)
@@ -544,6 +559,7 @@ export default function EmployeeProducts() {
             product_version: product.product_version || 'Old Packs',
             product_season_id: product.product_season_id ? String(product.product_season_id) : '',
             character_id: product.character_id ? String(product.character_id) : '',
+            brand_id: product.brand_id ? String(product.brand_id) : '',
             status: product.is_active === false ? DRAFT_MODE : 'active',
         })
         setEditingId(product.id)
@@ -558,10 +574,11 @@ export default function EmployeeProducts() {
         const fabric = String(form.fabric || '').trim()
         const color = String(form.color || '').trim()
         const gender = String(form.gender || '').trim()
+        const brandId = String(form.brand_id || '').trim()
         const status = String(form.status || '').trim()
 
-        if (!productType || !productVersion || !productSeasonId || !fabric || !color || !gender || !status) {
-            alert('Product Type, Product Version, Product Season, Fabric, Color, Gender, and Status are required.')
+        if (!productType || !productVersion || !productSeasonId || !fabric || !color || !gender || !brandId || !status) {
+            alert('Product Type, Product Version, Product Season, Fabric, Color, Gender, Brand, and Status are required.')
             return
         }
 
@@ -604,6 +621,7 @@ export default function EmployeeProducts() {
             product_version: productVersion,
             product_season_id: Number(productSeasonId),
             character_id: form.character_id ? Number(form.character_id) : null,
+            brand_id: Number(brandId),
             status,
             is_active: status === 'active',
         }
@@ -719,6 +737,7 @@ export default function EmployeeProducts() {
                 fabric: product.fabric || '',
                 product_season_id: product.product_season_id ? String(product.product_season_id) : '',
                 character_id: product.character_id ? String(product.character_id) : '',
+                brand_id: product.brand_id ? String(product.brand_id) : '',
                 color: product.color || '',
                 is_active: product.is_active !== false,
             }))
@@ -745,6 +764,7 @@ export default function EmployeeProducts() {
                     fabric: row.fabric,
                     product_season_id: row.product_season_id ? Number(row.product_season_id) : null,
                     character_id: row.character_id ? Number(row.character_id) : null,
+                    brand_id: row.brand_id ? Number(row.brand_id) : null,
                     color: row.color,
                     is_active: row.is_active,
                 }
@@ -1076,6 +1096,15 @@ export default function EmployeeProducts() {
                                                 className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm">
                                             <option value="">Select product type</option>
                                             {productTypeOptions.map((type) => <option key={type} value={type}>{type}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block font-semibold text-xs text-charcoal mb-1">Brand *</label>
+                                        <select required value={form.brand_id}
+                                                onChange={e => setForm({...form, brand_id: e.target.value})}
+                                                className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm">
+                                            <option value="">Select brand</option>
+                                            {productBrandOptions.map((brand) => <option key={brand.id} value={brand.id}>{brand.name}</option>)}
                                         </select>
                                     </div>
                                     <div>
@@ -1821,6 +1850,7 @@ export default function EmployeeProducts() {
                                             <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Fabric</th>
                                             <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Season</th>
                                             <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Character</th>
+                                            <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Brand</th>
                                             <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Color</th>
                                             <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Status</th>
                                         </tr>
@@ -1904,6 +1934,18 @@ export default function EmployeeProducts() {
                                                             <option value="">No character</option>
                                                             {productCharacterOptions.map((character) => (
                                                                 <option key={character.id} value={String(character.id)}>{character.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <select
+                                                            value={row.brand_id}
+                                                            onChange={(e) => updateBulkEditRow(row.id, 'brand_id', e.target.value)}
+                                                            className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-charcoal focus:border-coral focus:outline-none"
+                                                        >
+                                                            <option value="">Select brand</option>
+                                                            {productBrandOptions.map((brand) => (
+                                                                <option key={brand.id} value={String(brand.id)}>{brand.name}</option>
                                                             ))}
                                                         </select>
                                                     </td>

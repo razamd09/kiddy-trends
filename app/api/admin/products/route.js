@@ -176,6 +176,7 @@ function validateRequiredProductFields(payload) {
     const fabric = String(payload?.fabric || '').trim()
     const color = String(payload?.color || '').trim()
     const gender = String(payload?.gender || '').trim()
+    const brandId = Number(payload?.brand_id)
     const status = payload?.status !== undefined
         ? String(payload.status || '').trim()
         : (payload?.is_active === true ? 'active' : payload?.is_active === false ? 'draft' : '')
@@ -185,6 +186,7 @@ function validateRequiredProductFields(payload) {
     if (!fabric) return 'Fabric is required'
     if (!color) return 'Color is required'
     if (!gender) return 'Gender is required'
+    if (!Number.isFinite(brandId) || brandId <= 0) return 'Brand is required'
     if (!status) return 'Status is required'
     return null
 }
@@ -205,6 +207,9 @@ function validatePartialProductFields(payload) {
     if (payload?.gender !== undefined && !String(payload.gender || '').trim()) {
         return 'Gender cannot be empty'
     }
+    if (payload?.brand_id !== undefined && payload.brand_id !== null && !(Number.isFinite(Number(payload.brand_id)) && Number(payload.brand_id) > 0)) {
+        return 'Brand cannot be empty'
+    }
     if (payload?.status !== undefined && !String(payload.status || '').trim()) {
         return 'Status cannot be empty'
     }
@@ -212,6 +217,13 @@ function validatePartialProductFields(payload) {
 }
 
 function normalizeProductSeasonId(value) {
+    if (value === undefined) return undefined
+    if (value === null || value === '') return null
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? Math.trunc(parsed) : null
+}
+
+function normalizeBrandId(value) {
     if (value === undefined) return undefined
     if (value === null || value === '') return null
     const parsed = Number(value)
@@ -451,6 +463,7 @@ export async function POST(request) {
                     product_version: body.product_version || null,
                     product_season_id: normalizeProductSeasonId(body.product_season_id),
                     character_id: normalizeCharacterId(body.character_id),
+                    brand_id: normalizeBrandId(body.brand_id),
                     shopify_handle: generatedHandle,
                     last_action_by: actorIdentity,
                     last_action_type: 'added',
@@ -550,6 +563,10 @@ export async function PUT(request) {
 
         if (updates.character_id !== undefined) {
             cleanUpdates.character_id = normalizeCharacterId(updates.character_id)
+        }
+
+        if (updates.brand_id !== undefined) {
+            cleanUpdates.brand_id = normalizeBrandId(updates.brand_id)
         }
 
         if (updates.variants !== undefined) {
