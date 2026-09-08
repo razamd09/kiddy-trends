@@ -8,7 +8,7 @@ import { getAnalyticsSessionId, trackEvent } from '../lib/analyticsClient'
 const EMAILJS_SERVICE_ID =
   process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || 'service_9p08wct'
 const EMAILJS_TEMPLATE_ID =
-  process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || 'template_gyanmsp'
+  process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID || 'template_ejlv2k2'
 const EMAILJS_PUBLIC_KEY =
   process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY || 'G3OmrUP2PwOat-o1W'
 const ORDER_NOTIFICATION_EMAIL =
