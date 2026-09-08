@@ -380,19 +380,30 @@ export default function EmployeeOrdersPage() {
                                         {getItems(selected).length === 0 ? (
                                             <p className="text-xs text-gray-400">No item details available</p>
                                         ) : getItems(selected).map((item, i) => (
-                                            <div key={i} className="flex items-center justify-between bg-white rounded-xl px-3 py-2 text-sm">
+                                            <a key={i} href="#"
+                                               onClick={(e) => {
+                                                   e.preventDefault()
+                                                   const handle = item.handle
+                                                   if (handle) {
+                                                       window.open(`/products/${handle}`, '_blank')
+                                                   } else {
+                                                       alert('No product link saved for this item. Please search it manually on the store.')
+                                                   }
+                                               }}
+                                               className="flex items-center justify-between bg-white rounded-xl px-3 py-2 text-sm hover:shadow-md hover:border-coral transition-all border-2 border-transparent cursor-pointer">
                                                 <div className="flex items-center gap-2 flex-1 min-w-0">
                                                     {item.image && <img src={item.image} alt="" className="w-8 h-8 object-contain rounded-lg flex-shrink-0" />}
                                                     <div className="min-w-0">
                                                         <p className="font-semibold text-charcoal truncate text-xs">{item.title}</p>
                                                         {item.variantTitle && <p className="text-xs text-gray-400">{item.variantTitle}</p>}
+                                                        {item.handle && <p className="text-[10px] text-coral font-semibold mt-0.5">✓ Click to view product →</p>}
                                                     </div>
                                                 </div>
                                                 <div className="text-right flex-shrink-0 ml-2">
                                                     <p className="text-xs text-gray-400">x{item.quantity}</p>
                                                     <p className="font-bold text-coral text-xs">PKR {(parseFloat(item.price || 0) * item.quantity).toLocaleString()}</p>
                                                 </div>
-                                            </div>
+                                            </a>
                                         ))}
                                     </div>
                                     <div className="border-t border-gray-100 mt-3 pt-3 space-y-1 text-sm">
