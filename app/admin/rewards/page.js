@@ -13,7 +13,29 @@ export default function AdminRewardsPage() {
     const [historyRows, setHistoryRows] = useState([])
     const [promotingUserId, setPromotingUserId] = useState('')
     const [promotionStatus, setPromotionStatus] = useState({})
+    const [selectedIds, setSelectedIds] = useState([])
+    const [bulkPromoting, setBulkPromoting] = useState(false)
     const router = useRouter()
+
+    const PROMOTE_COOLDOWN_MS = 24 * 60 * 60 * 1000
+
+    function cooldownHoursLeft(user) {
+        if (!user?.last_promoted_at) return 0
+        const remaining = PROMOTE_COOLDOWN_MS - (Date.now() - new Date(user.last_promoted_at).getTime())
+        return remaining > 0 ? Math.ceil(remaining / (60 * 60 * 1000)) : 0
+    }
+
+    function toggleSelect(userId) {
+        setSelectedIds((prev) => prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId])
+    }
+
+    function toggleSelectAll() {
+        if (selectedIds.length === users.length) {
+            setSelectedIds([])
+        } else {
+            setSelectedIds(users.map((u) => u.user_id))
+        }
+    }
 
     useEffect(() => {
         async function verifyAndLoad() {
@@ -88,6 +110,7 @@ export default function AdminRewardsPage() {
                 ...prev,
                 [userId]: 'Sent to ' + data.sentTo,
             }))
+            setUsers((prev) => prev.map((u) => u.user_id === user.user_id ? { ...u, last_promoted_at: new Date().toISOString() } : u))
         } catch (error) {
             setPromotionStatus((prev) => ({
                 ...prev,
@@ -95,6 +118,39 @@ export default function AdminRewardsPage() {
             }))
         } finally {
             setPromotingUserId('')
+        }
+    }
+
+    async function sendBulkPromotion() {
+        if (selectedIds.length === 0) return
+        const token = localStorage.getItem('admin_token')
+        setBulkPromoting(true)
+        try {
+            const res = await fetch('/api/admin/rewards/promote', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-admin-token': token || '' },
+                body: JSON.stringify({ userIds: selectedIds }),
+            })
+            const data = await res.json()
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Failed to send promotions')
+            }
+
+            const sentAt = new Date().toISOString()
+            const nextStatus = {}
+            const sentUserIds = new Set()
+            for (const result of data.results || []) {
+                const key = String(result.userId || '').toLowerCase().trim()
+                nextStatus[key] = result.success ? 'Sent to ' + result.sentTo : result.error
+                if (result.success) sentUserIds.add(result.userId)
+            }
+            setPromotionStatus((prev) => ({ ...prev, ...nextStatus }))
+            setUsers((prev) => prev.map((u) => sentUserIds.has(u.user_id) ? { ...u, last_promoted_at: sentAt } : u))
+            setSelectedIds([])
+        } catch (error) {
+            alert(error.message || 'Failed to send promotions')
+        } finally {
+            setBulkPromoting(false)
         }
     }
 
@@ -139,6 +195,27 @@ export default function AdminRewardsPage() {
                     </div>
                 </div>
 
+                {selectedIds.length > 0 && (
+                    <div className="bg-white rounded-2xl p-4 flex items-center justify-between gap-3 border-2 border-coral/20">
+                        <p className="text-sm font-semibold text-charcoal">{selectedIds.length} selected</p>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setSelectedIds([])}
+                                className="px-3 py-1.5 rounded-xl bg-cream text-charcoal text-xs font-semibold hover:bg-gray-200"
+                            >
+                                Clear
+                            </button>
+                            <button
+                                onClick={sendBulkPromotion}
+                                disabled={bulkPromoting}
+                                className="px-4 py-1.5 rounded-xl text-xs font-semibold text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-500"
+                            >
+                                {bulkPromoting ? 'Sending...' : 'Promote Selected (' + selectedIds.length + ')'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 <div className="bg-white rounded-2xl overflow-hidden">
                     {loading ? (
                         <div className="p-6 text-gray-400">Loading rewards data...</div>
@@ -152,6 +229,14 @@ export default function AdminRewardsPage() {
                             <table className="min-w-full text-sm">
                                 <thead className="bg-cream text-gray-500">
                                     <tr>
+                                        <th className="text-left px-4 py-3 font-semibold">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.length === users.length && users.length > 0}
+                                                onChange={toggleSelectAll}
+                                                className="w-4 h-4 cursor-pointer accent-coral"
+                                            />
+                                        </th>
                                         <th className="text-left px-4 py-3 font-semibold">User</th>
                                         <th className="text-left px-4 py-3 font-semibold">WhatsApp</th>
                                         <th className="text-left px-4 py-3 font-semibold">Email</th>
@@ -165,8 +250,17 @@ export default function AdminRewardsPage() {
                                 <tbody>
                                     {users.map((u) => {
                                         const rowUserId = String(u.user_id || '').toLowerCase().trim()
+                                        const hoursLeft = cooldownHoursLeft(u)
                                         return (
                                         <tr key={u.user_id} className="border-t border-gray-100">
+                                            <td className="px-4 py-3">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedIds.includes(u.user_id)}
+                                                    onChange={() => toggleSelect(u.user_id)}
+                                                    className="w-4 h-4 cursor-pointer accent-coral"
+                                                />
+                                            </td>
                                             <td className="px-4 py-3">
                                                 <p className="font-semibold text-charcoal">{u.name || u.user_id}</p>
                                                 <p className="text-xs text-gray-400">{u.user_id}</p>
@@ -189,10 +283,11 @@ export default function AdminRewardsPage() {
                                                     </button>
                                                     <button
                                                         onClick={() => sendPromotion(u)}
-                                                        disabled={promotingUserId === rowUserId || (u.available_points || 0) <= 0}
+                                                        disabled={promotingUserId === rowUserId || (u.available_points || 0) <= 0 || hoursLeft > 0}
+                                                        title={hoursLeft > 0 ? 'Already emailed within the last 24 hours' : ''}
                                                         className="px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:text-gray-500"
                                                     >
-                                                        {promotingUserId === rowUserId ? 'Sending...' : 'Promote'}
+                                                        {promotingUserId === rowUserId ? 'Sending...' : hoursLeft > 0 ? 'Cooldown ' + hoursLeft + 'h' : 'Promote'}
                                                     </button>
                                                 </div>
                                                 {promotionStatus[rowUserId] && (
