@@ -57,13 +57,10 @@ function Icon({ name, className = 'w-6 h-6' }) {
   }
 }
 
-const BRAND_TILE_COLORS = ['bg-coral text-white', 'bg-skyblue text-charcoal', 'bg-mint text-charcoal', 'bg-sunny text-charcoal', 'bg-charcoal text-white']
-
 export default function Home() {
   const [allProducts, setAllProducts] = useState([])
   const [loadingProducts, setLoadingProducts] = useState(true)
   const [activeView, setActiveView] = useState('new-arrivals')
-  const [brands, setBrands] = useState([])
 
   useEffect(() => {
     async function fetchProducts() {
@@ -76,16 +73,6 @@ export default function Home() {
       } catch { setLoadingProducts(false) }
     }
     fetchProducts()
-  }, [])
-
-  useEffect(() => {
-    async function fetchBrands() {
-      try {
-        const data = await fetch('/api/product-brands').then(r => r.json())
-        setBrands(Array.isArray(data?.brands) ? data.brands : [])
-      } catch { setBrands([]) }
-    }
-    fetchBrands()
   }, [])
 
   const visibleProducts = useMemo(() => {
@@ -138,38 +125,6 @@ export default function Home() {
             ))}
           </div>
         </section>
-
-        {/* SHOP BY BRAND */}
-        {brands.length > 0 && (
-          <section className="w-full pt-12">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              <div className="text-center mb-8">
-                <h2 className="section-title mb-3">Shop by Brand</h2>
-                <p className="text-gray-500 text-lg">Pick a brand to see everything they've got</p>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                {brands.map((brand, i) => (
-                  <Link
-                    key={brand.id}
-                    href={'/collections?brand=' + encodeURIComponent(brand.name)}
-                    className="group flex flex-col items-center gap-3 rounded-2xl border border-gray-100 bg-white p-5 text-center card-hover hover:border-coral/40 transition-colors"
-                  >
-                    {brand.image ? (
-                      <span className="w-16 h-16 rounded-full overflow-hidden border border-gray-100 bg-cream flex items-center justify-center">
-                        <img src={brand.image} alt={brand.name} className="w-full h-full object-contain p-2" loading="lazy" />
-                      </span>
-                    ) : (
-                      <span className={'w-16 h-16 rounded-full flex items-center justify-center font-display text-xl ' + BRAND_TILE_COLORS[i % BRAND_TILE_COLORS.length]}>
-                        {brand.name.slice(0, 1)}
-                      </span>
-                    )}
-                    <span className="font-display text-sm text-charcoal leading-tight group-hover:text-coral transition-colors">{brand.name}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
 
         {/* SHOP BY CATEGORY */}
         <section id="shop-by-category" className="bg-white py-16">

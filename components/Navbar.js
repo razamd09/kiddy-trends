@@ -22,6 +22,7 @@ const menuLinks = [
   { href: '/collections?cat=accessories', label: 'Accessories' },
   { href: '/collections?cat=bedding', label: 'Bedding' },
   { href: '/collections?season=Summer', label: 'Summer Clearance Sale' },
+  { href: '/brands', label: 'Shop by Brand' },
 ]
 
 export default function Navbar() {
