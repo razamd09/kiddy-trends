@@ -200,27 +200,28 @@ export default function LandingPreferencePopup() {
       onClick={closePopup}
     >
       <div
-        className="relative w-full max-w-2xl rounded-[2rem] bg-gradient-to-br from-white via-cream to-sunny/30 shadow-2xl border border-white/70 p-6 md:p-8 overflow-hidden"
+        className="relative w-full max-w-2xl max-h-[92vh] rounded-[1.5rem] sm:rounded-[2rem] bg-gradient-to-br from-white via-cream to-sunny/30 shadow-2xl border border-white/70 overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
           onClick={closePopup}
           aria-label="Close popup"
-          className="absolute right-4 top-4 z-20 inline-flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white/95 text-gray-500 shadow-sm transition-colors hover:border-coral/30 hover:text-charcoal"
+          className="absolute right-3 top-3 sm:right-4 sm:top-4 z-20 inline-flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full border border-gray-200 bg-white/95 text-gray-500 shadow-sm transition-colors hover:border-coral/30 hover:text-charcoal"
         >
           ✕
         </button>
         <div className="pointer-events-none absolute -top-12 -right-10 w-44 h-44 rounded-full bg-coral/25 blur-2xl" />
         <div className="pointer-events-none absolute -bottom-14 -left-10 w-52 h-52 rounded-full bg-skyblue/30 blur-2xl" />
 
-        <div className="relative">
+        <div className="overflow-y-auto p-4 sm:p-6 md:p-8">
+        <div className="relative pr-10 sm:pr-12">
           <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-coral bg-white/85 border border-coral/20 rounded-full px-3 py-1 mb-3">
             <span>✨</span>
             {greeting}
           </p>
-          <h2 className="font-display text-2xl md:text-4xl text-charcoal mb-2 leading-tight">What size you want to explore for your kid?</h2>
-          <p className="text-charcoal/70 mb-6">Pick one or many options. We will instantly show matching products for your choices.</p>
+          <h2 className="font-display text-xl sm:text-2xl md:text-4xl text-charcoal mb-2 leading-tight">What size you want to explore for your kid?</h2>
+          <p className="text-charcoal/70 mb-6 text-sm sm:text-base">Pick one or many options. We will instantly show matching products for your choices.</p>
         </div>
 
         <div className="grid gap-5 relative">
@@ -315,11 +316,12 @@ export default function LandingPreferencePopup() {
             </button>
           </div>
         </div>
+        </div>
 
         {isSizeHelpOpen && (
           <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeSizeHelpModal} />
-            <div className="relative w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden">
+            <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl bg-white shadow-2xl">
               <div className="bg-skyblue/30 px-6 py-5 text-center">
                 <div className="text-4xl mb-2">📏</div>
                 <h3 className="font-display text-2xl text-charcoal">Size Help Form</h3>

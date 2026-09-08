@@ -221,13 +221,13 @@ export default function ProductMetadataManager({ title, subtitle, apiPath, respo
 
                             {showImageField && (
                                 <div>
-                                    <label className="block font-semibold text-xs text-charcoal mb-1">Sample Image URL</label>
+                                    <label className="block font-semibold text-xs text-charcoal mb-1">Sample/Logo Image URL</label>
                                     <input
                                         type="url"
                                         value={form.image}
                                         onChange={e => setForm({ ...form, image: e.target.value })}
                                         className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm"
-                                        placeholder="https://example.com/fabric-sample.jpg"
+                                        placeholder={'https://example.com/' + singularLabel.toLowerCase().replace(/\s+/g, '-') + '.jpg'}
                                     />
                                 </div>
                             )}

@@ -8,6 +8,7 @@ export default function AdminProductBrandsPage() {
             apiPath="/api/admin/product-brands"
             responseKey="brands"
             singularLabel="Brand"
+            showImageField={true}
         />
     )
 }

@@ -242,6 +242,7 @@ export default function Collections() {
   const [queryProductType, setQueryProductType] = useState('')
   const [querySeason, setQuerySeason] = useState(null)
   const [queryCharacter, setQueryCharacter] = useState('')
+  const [queryBrand, setQueryBrand] = useState('')
   const [sort, setSort]           = useState('new')
   const [page, setPage]           = useState(1)
   const ITEMS_PER_PAGE = 40
@@ -262,6 +263,7 @@ export default function Collections() {
     const queryProductType = (searchParams.get('product_type') || '').trim().toLowerCase()
     const querySeason = normalizeSeasonQuery(searchParams.get('season'))
     const queryCharacter = (searchParams.get('character') || '').trim().toLowerCase()
+    const queryBrand = (searchParams.get('brand') || '').trim().toLowerCase()
 
     const validCat = categories.some((c) => c.id === queryCat) ? queryCat : null
     const catId = validCat || 'all'
@@ -288,6 +290,7 @@ export default function Collections() {
     setQueryProductType(queryProductType)
     setQuerySeason(querySeason)
     setQueryCharacter(queryCharacter)
+    setQueryBrand(queryBrand)
   }, [searchParams])
 
   useEffect(() => {
@@ -361,6 +364,10 @@ export default function Collections() {
 
     if (queryCharacter) {
       filtered = filtered.filter((p) => String(p?.character || '').toLowerCase() === queryCharacter)
+    }
+
+    if (queryBrand) {
+      filtered = filtered.filter((p) => String(p?.brand || '').toLowerCase() === queryBrand)
     }
   }
 

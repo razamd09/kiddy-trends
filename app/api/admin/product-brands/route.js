@@ -9,6 +9,10 @@ function normalizeName(value) {
     return String(value || '').trim()
 }
 
+function normalizeImageUrl(value) {
+    return String(value || '').trim()
+}
+
 function normalizeSortOrder(value) {
     const parsed = Number(value)
     return Number.isFinite(parsed) ? Math.trunc(parsed) : 0
@@ -17,7 +21,7 @@ function normalizeSortOrder(value) {
 export async function GET() {
     const { data, error } = await supabase
         .from('product_brands')
-        .select('id, name, is_active, sort_order')
+        .select('id, name, image, is_active, sort_order')
         .eq('is_active', true)
         .order('sort_order', { ascending: true })
         .order('name', { ascending: true })
@@ -31,6 +35,7 @@ export async function POST(request) {
         const body = await request.json()
         const name = normalizeName(body.name)
         const sortOrder = normalizeSortOrder(body.sort_order)
+        const image = normalizeImageUrl(body.image)
 
         if (!name) {
             return Response.json({ error: 'Name is required' }, { status: 400 })
@@ -38,8 +43,8 @@ export async function POST(request) {
 
         const { data, error } = await supabase
             .from('product_brands')
-            .insert([{ name, sort_order: sortOrder, is_active: body.is_active !== false }])
-            .select('id, name, is_active, sort_order')
+            .insert([{ name, image: image || null, sort_order: sortOrder, is_active: body.is_active !== false }])
+            .select('id, name, image, is_active, sort_order')
             .single()
 
         if (error) return Response.json({ error: error.message }, { status: 500 })
@@ -68,6 +73,10 @@ export async function PUT(request) {
             updates.name = name
         }
 
+        if (body.image !== undefined) {
+            updates.image = normalizeImageUrl(body.image) || null
+        }
+
         if (body.sort_order !== undefined) {
             updates.sort_order = normalizeSortOrder(body.sort_order)
         }
@@ -80,7 +89,7 @@ export async function PUT(request) {
             .from('product_brands')
             .update(updates)
             .eq('id', id)
-            .select('id, name, is_active, sort_order')
+            .select('id, name, image, is_active, sort_order')
             .single()
 
         if (error) return Response.json({ error: error.message }, { status: 500 })
