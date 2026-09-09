@@ -265,10 +265,10 @@ export default function HomeHeroSlider() {
 
             <div className="relative text-center px-6 max-w-6xl" style={{ zIndex: 3 }}>
               <span
-                className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 mb-6 text-xs tracking-wide shadow-sm"
-                style={{ background: '#ffffff', color: '#1f3a52' }}
+                className="inline-flex items-center gap-2 rounded-full px-6 py-2.5 mb-6 text-sm font-bold tracking-wide shadow-md"
+                style={{ background: '#e8635a', color: '#ffffff' }}
               >
-                <TruckIcon className="w-3.5 h-3.5" /> LOYALTY PERK
+                <TruckIcon className="w-5 h-5" /> LOYALTY PERK
               </span>
               <h2 className="font-display text-5xl sm:text-6xl lg:text-7xl leading-[0.95] mb-8" style={{ color: '#1f3a52' }}>
                 3 orders. Free shipping all month.
