@@ -233,18 +233,11 @@ export default function HomeHeroSlider() {
               </p>
               <div className="flex flex-wrap gap-4 justify-center">
                 <Link
-                  href="/collections?title=winter"
+                  href="/collections?season=Winter"
                   className="rounded-full font-display text-base px-8 py-4 shadow-md hover:scale-105 transition-transform"
                   style={{ background: '#1f3a52', color: '#ffffff' }}
                 >
                   Shop winter collection
-                </Link>
-                <Link
-                  href="/about"
-                  className="rounded-full font-display text-base px-8 py-4 border-2 bg-white/70 hover:bg-white transition-colors"
-                  style={{ color: '#1f3a52', borderColor: '#1f3a52' }}
-                >
-                  Our story
                 </Link>
               </div>
             </div>
