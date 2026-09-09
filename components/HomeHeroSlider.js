@@ -220,7 +220,7 @@ export default function HomeHeroSlider() {
               </div>
             </div>
 
-            <div className="relative text-center px-6 max-w-3xl" style={{ zIndex: 3 }}>
+            <div className="relative text-center px-6 max-w-6xl" style={{ zIndex: 3 }}>
               <h1
                 className="animate-fade-up font-display text-6xl sm:text-7xl lg:text-8xl leading-[0.95] mb-6"
                 style={{ color: '#1f3a52' }}
@@ -264,7 +264,7 @@ export default function HomeHeroSlider() {
               </div>
             </div>
 
-            <div className="relative text-center px-6 max-w-3xl" style={{ zIndex: 3 }}>
+            <div className="relative text-center px-6 max-w-6xl" style={{ zIndex: 3 }}>
               <span
                 className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 mb-6 text-xs tracking-wide shadow-sm"
                 style={{ background: '#ffffff', color: '#1f3a52' }}
@@ -297,7 +297,7 @@ export default function HomeHeroSlider() {
               </div>
             </div>
 
-            <div className="relative text-center px-6 max-w-3xl" style={{ zIndex: 3 }}>
+            <div className="relative text-center px-6 max-w-6xl" style={{ zIndex: 3 }}>
               <span
                 className="inline-flex items-center gap-1.5 font-display text-sm px-4 py-1.5 rounded-full mb-6 shadow-sm"
                 style={{ background: '#ffffff', color: '#1f3a52' }}
