@@ -255,11 +255,13 @@ export default function HomeHeroSlider() {
         {/* Slide 2 — Free shipping loyalty perk */}
         <div className="w-full flex-shrink-0">
           <section
-            className="relative w-full min-h-[560px] sm:min-h-[620px] md:min-h-[680px] lg:min-h-[760px] overflow-hidden flex flex-col items-center justify-center gap-4 md:gap-6 py-10"
+            className="relative w-full min-h-[560px] sm:min-h-[620px] md:min-h-[680px] lg:min-h-[760px] overflow-hidden flex items-center justify-center py-10"
             style={{ background: 'linear-gradient(180deg, #eef5fb 0%, #dbe9f5 100%)' }}
           >
-            <div className="relative w-[64%] sm:w-[46%] md:w-[36%] max-w-xs h-[24vh] md:h-[30vh] flex items-center justify-center" style={{ zIndex: 2 }}>
-              <FreeShippingIllustration />
+            <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none" style={{ zIndex: 1 }}>
+              <div className="relative w-[70%] sm:w-[55%] md:w-[42%] max-w-md h-[75%]">
+                <FreeShippingIllustration />
+              </div>
             </div>
 
             <div className="relative text-center px-6 max-w-3xl" style={{ zIndex: 3 }}>
