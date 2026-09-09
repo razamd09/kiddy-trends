@@ -297,12 +297,13 @@ export default function HomeHeroSlider() {
             </div>
 
             <div className="relative text-center px-6 max-w-6xl" style={{ zIndex: 3 }}>
-              <span
-                className="inline-flex items-center gap-1.5 font-display text-sm px-4 py-1.5 rounded-full mb-6 shadow-sm"
+              <Link
+                href="/collections?season=Summer"
+                className="inline-flex items-center gap-2 font-display text-sm px-6 py-2.5 rounded-full mb-6 shadow-md hover:scale-105 hover:shadow-lg transition-all"
                 style={{ background: '#ffffff', color: '#1f3a52' }}
               >
-                <SunIcon className="w-3.5 h-3.5" /> Summer collection available now
-              </span>
+                <SunIcon className="w-5 h-5" /> Summer collection available now
+              </Link>
               <h2
                 className="font-display text-5xl sm:text-6xl lg:text-7xl leading-[0.95] mb-6"
                 style={{ color: '#1f3a52' }}
