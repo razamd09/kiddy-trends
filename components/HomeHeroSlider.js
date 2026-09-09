@@ -225,8 +225,7 @@ export default function HomeHeroSlider() {
                 className="animate-fade-up font-display text-6xl sm:text-7xl lg:text-8xl leading-[0.95] mb-6"
                 style={{ color: '#1f3a52' }}
               >
-                Cozy season,
-                <span className="block">little explorers.</span>
+                Cozy season, little explorers.
               </h1>
               <p className="animate-fade-up text-lg md:text-xl leading-relaxed mb-9 max-w-xl mx-auto" style={{ color: '#4f6c85' }}>
                 Warm jackets, sweaters and thermals for newborn to 12 years —
@@ -272,7 +271,7 @@ export default function HomeHeroSlider() {
                 <TruckIcon className="w-3.5 h-3.5" /> LOYALTY PERK
               </span>
               <h2 className="font-display text-5xl sm:text-6xl lg:text-7xl leading-[0.95] mb-8" style={{ color: '#1f3a52' }}>
-                3 orders. Free shipping<br className="hidden md:block" /> all month.
+                3 orders. Free shipping all month.
               </h2>
               <Link
                 href="/collections"
@@ -308,9 +307,7 @@ export default function HomeHeroSlider() {
                 className="font-display text-5xl sm:text-6xl lg:text-7xl leading-[0.95] mb-6"
                 style={{ color: '#1f3a52' }}
               >
-                Order summer
-                <span className="block">articles and get</span>
-                <span className="block" style={{ color: '#e8635a' }}>FREE DC</span>
+                Order summer articles and get <span style={{ color: '#e8635a' }}>FREE DC</span>
               </h2>
               <p className="text-lg md:text-xl leading-relaxed mb-9 max-w-xl mx-auto" style={{ color: '#4f6c85' }}>
                 Refresh their wardrobe with the coolest styles of the season!
