@@ -16,14 +16,6 @@ function ChevronIcon({ direction = 'left' }) {
   )
 }
 
-function SnowflakeIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M12 2v20M4.5 6.5l15 11M19.5 6.5l-15 11" strokeLinecap="round" />
-    </svg>
-  )
-}
-
 function TruckIcon({ className = 'w-4 h-4' }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
@@ -229,12 +221,6 @@ export default function HomeHeroSlider() {
             </div>
 
             <div className="relative text-center px-6 max-w-3xl" style={{ zIndex: 3 }}>
-              <span
-                className="animate-fade-up inline-flex items-center gap-1.5 font-display text-sm px-4 py-1.5 rounded-full mb-6 shadow-sm"
-                style={{ background: '#ffffff', color: '#1f3a52' }}
-              >
-                <SnowflakeIcon /> Winter arrivals available now
-              </span>
               <h1
                 className="animate-fade-up font-display text-6xl sm:text-7xl lg:text-8xl leading-[0.95] mb-6"
                 style={{ color: '#1f3a52' }}
