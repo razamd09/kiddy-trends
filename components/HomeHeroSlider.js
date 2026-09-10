@@ -16,14 +16,6 @@ function ChevronIcon({ direction = 'left' }) {
   )
 }
 
-function SunIcon({ className = 'w-4 h-4' }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-      <circle cx="12" cy="12" r="4.2" />
-      <path d="M12 2.5v2.5M12 19v2.5M21.5 12H19M5 12H2.5M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8M18.4 18.4l-1.8-1.8M7.4 7.4L5.6 5.6" />
-    </svg>
-  )
-}
 
 // Illustrated visual for the loyalty slide: a truck drives in from the left
 // (with spinning wheels), arrives at a little house, a parcel pops out at
@@ -276,13 +268,6 @@ export default function HomeHeroSlider() {
             </div>
 
             <div className="relative text-center px-6 max-w-6xl" style={{ zIndex: 3 }}>
-              <Link
-                href="/collections?season=Summer"
-                className="inline-flex items-center gap-2 font-display text-sm px-6 py-2.5 rounded-full mb-6 shadow-md hover:scale-105 hover:shadow-lg transition-all"
-                style={{ background: '#ffffff', color: '#1f3a52' }}
-              >
-                <SunIcon className="w-5 h-5" /> Summer collection available now
-              </Link>
               <h2
                 className="font-display text-5xl sm:text-6xl lg:text-7xl leading-[0.95] mb-6"
                 style={{ color: '#1f3a52' }}
