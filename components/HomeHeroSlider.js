@@ -16,14 +16,6 @@ function ChevronIcon({ direction = 'left' }) {
   )
 }
 
-function TruckIcon({ className = 'w-4 h-4' }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 7h11v9H3z" /><path d="M14 11h4l3 3v2h-7z" /><circle cx="7" cy="18" r="1.6" /><circle cx="17.5" cy="18" r="1.6" />
-    </svg>
-  )
-}
-
 function SunIcon({ className = 'w-4 h-4' }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
@@ -250,20 +242,13 @@ export default function HomeHeroSlider() {
             className="relative w-full min-h-[560px] sm:min-h-[620px] md:min-h-[680px] lg:min-h-[760px] overflow-hidden flex items-center justify-center py-10"
             style={{ background: 'linear-gradient(180deg, #eef5fb 0%, #dbe9f5 100%)' }}
           >
-            <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none" style={{ zIndex: 1 }}>
-              <div className="relative w-[70%] sm:w-[55%] md:w-[42%] max-w-md h-[75%]">
+            <div className="absolute inset-0 flex items-center justify-center opacity-25 pointer-events-none" style={{ zIndex: 1 }}>
+              <div className="relative w-[92%] sm:w-[80%] md:w-[64%] max-w-2xl h-[90%]">
                 <FreeShippingIllustration />
               </div>
             </div>
 
-            <div className="relative text-left px-6 max-w-6xl" style={{ zIndex: 3 }}>
-              <div
-                className="inline-flex items-center justify-center rounded-full w-16 h-16 mb-4 shadow-md"
-                style={{ background: '#e8635a' }}
-                title="Loyalty Perk"
-              >
-                <TruckIcon className="w-7 h-7 text-white" />
-              </div>
+            <div className="relative text-center px-6 max-w-6xl" style={{ zIndex: 3 }}>
               <h2 className="font-display text-5xl sm:text-6xl lg:text-7xl leading-[0.95] mb-8" style={{ color: '#1f3a52' }}>
                 3 orders. Free shipping all month.
               </h2>
