@@ -4,7 +4,7 @@ import emailjs from '@emailjs/browser'
 import RewardsSection from './RewardsSection'
 import { useCart } from '../context/CartContext'
 import { getAnalyticsSessionId, trackEvent } from '../lib/analyticsClient'
-import { metaPixelTrack } from '../lib/metaPixel'
+import { metaPixelTrack, generateMetaEventId, sendServerMetaEvent } from '../lib/metaPixel'
 
 const EMAILJS_SERVICE_ID =
   process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || 'service_9p08wct'
@@ -121,7 +121,8 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
       },
     })
 
-    metaPixelTrack('InitiateCheckout', {
+    const initiateCheckoutEventId = generateMetaEventId('InitiateCheckout')
+    const initiateCheckoutParams = {
       content_ids: isCart
         ? (cartItems || []).map((item) => String(item.productId || ''))
         : [String(product?._id || product?.id || '')],
@@ -129,7 +130,9 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
       num_items: isCart ? (cartItems || []).length : 1,
       value: Number(price || 0),
       currency: 'PKR',
-    })
+    }
+    metaPixelTrack('InitiateCheckout', initiateCheckoutParams, initiateCheckoutEventId)
+    sendServerMetaEvent('InitiateCheckout', initiateCheckoutParams, initiateCheckoutEventId)
   }, [])
 
   useEffect(() => {
