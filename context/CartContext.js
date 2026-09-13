@@ -1,6 +1,7 @@
 'use client'
 import { createContext, useContext, useState, useEffect } from 'react'
 import { trackEvent } from '../lib/analyticsClient'
+import { metaPixelTrack } from '../lib/metaPixel'
 
 const CartContext = createContext()
 
@@ -33,6 +34,14 @@ export function CartProvider({ children }) {
         variant_id: String(variant?.id || ''),
         price: Number(variant?.price || 0),
       },
+    })
+
+    metaPixelTrack('AddToCart', {
+      content_ids: [String(product?._id || product?.id || '')],
+      content_type: 'product',
+      content_name: product?.title || '',
+      value: Number(variant?.price || 0),
+      currency: 'PKR',
     })
 
     setCart(prev => {

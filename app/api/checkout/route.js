@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { normalizePhone, upsertCustomers } from '../admin/customers/customer-data'
+import { sendMetaPurchaseEvent } from '../../../lib/metaConversionsApi'
 
 const ORDER_NOTIFICATION_EMAIL = process.env.ORDER_NOTIFICATION_EMAIL || 'thekiddytrends@gmail.com'
 const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_9p08wct'
@@ -493,9 +494,27 @@ export async function POST(request) {
             .update({ order_number: orderNumber })
             .eq('id', savedOrder.id)
 
+        const requestMetadata = buildRequestMetadata(request)
+
+        try {
+            await sendMetaPurchaseEvent({
+                eventId: orderNumber,
+                value: total,
+                currency: 'PKR',
+                contentIds: (authoritativeCartItems || []).map((item) => String(item.productId || '')),
+                customerEmail,
+                customerPhone: customer?.phone,
+                clientIp: requestMetadata.ip,
+                userAgent: requestMetadata.user_agent,
+                eventSourceUrl: requestMetadata.host ? `https://${requestMetadata.host}/checkout` : undefined,
+                cookieHeader: request.headers.get('cookie'),
+            })
+        } catch (capiErr) {
+            console.log('Meta Conversions API error:', capiErr)
+        }
+
         const analyticsSessionId = String(request.headers.get('x-analytics-session') || '').trim()
         if (analyticsSessionId) {
-                const requestMetadata = buildRequestMetadata(request)
                 await supabase
                 .from('website_analytics_events')
                 .insert([{

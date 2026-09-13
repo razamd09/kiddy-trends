@@ -4,6 +4,7 @@ import emailjs from '@emailjs/browser'
 import RewardsSection from './RewardsSection'
 import { useCart } from '../context/CartContext'
 import { getAnalyticsSessionId, trackEvent } from '../lib/analyticsClient'
+import { metaPixelTrack } from '../lib/metaPixel'
 
 const EMAILJS_SERVICE_ID =
   process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || 'service_9p08wct'
@@ -118,6 +119,16 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
         is_cart: Boolean(isCart),
         items_count: isCart ? Number((cartItems || []).length) : 1,
       },
+    })
+
+    metaPixelTrack('InitiateCheckout', {
+      content_ids: isCart
+        ? (cartItems || []).map((item) => String(item.productId || ''))
+        : [String(product?._id || product?.id || '')],
+      content_type: 'product',
+      num_items: isCart ? (cartItems || []).length : 1,
+      value: Number(price || 0),
+      currency: 'PKR',
     })
   }, [])
 
@@ -439,6 +450,19 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
             },
           })
         } catch {}
+
+        // eventId (the order number) must match the event_id the server sends
+        // to the Meta Conversions API for this same order, so Meta
+        // deduplicates the browser-side and server-side Purchase into one.
+        metaPixelTrack('Purchase', {
+          content_ids: isCart
+            ? (cartItems || []).map((item) => String(item.productId || ''))
+            : [String(product?._id || product?.id || '')],
+          content_type: 'product',
+          num_items: isCart ? (cartItems || []).length : 1,
+          value: Number(data.total ?? total),
+          currency: 'PKR',
+        }, orderNumber)
 
         try {
           await Promise.race([

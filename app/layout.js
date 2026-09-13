@@ -56,7 +56,7 @@ export default function RootLayout({ children }) {
       </Script>
 
       {/* Facebook Pixel */}
-      <Script id="facebook-pixel" strategy="lazyOnload">
+      <Script id="facebook-pixel" strategy="afterInteractive">
         {`
             !function(f,b,e,v,n,t,s)
             {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -66,7 +66,7 @@ export default function RootLayout({ children }) {
             t.src=v;s=b.getElementsByTagName(e)[0];
             s.parentNode.insertBefore(t,s)}(window, document,'script',
             'https://connect.facebook.net/en_US/fbevents.js');
-            fbq('init', '8362200723884208');
+            fbq('init', '${process.env.NEXT_PUBLIC_META_PIXEL_ID || '8362200723884208'}');
             fbq('track', 'PageView');
           `}
       </Script>

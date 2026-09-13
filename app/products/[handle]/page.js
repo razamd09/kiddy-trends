@@ -8,6 +8,7 @@ import CheckoutModal from '../../../components/CheckoutModal'
 import RecentlyViewed from '../../../components/RecentlyViewed'
 import SizeRecommender from '../../../components/SizeRecommender'
 import { getAnalyticsSessionId, trackEvent } from '../../../lib/analyticsClient'
+import { metaPixelTrack } from '../../../lib/metaPixel'
 
 const girlReviewers = [
   { name: 'Ayesha K.',   city: 'Lahore',      review: 'Love this product! The fabric is so soft and my daughter absolutely adores it. Will definitely order again!' },
@@ -250,6 +251,14 @@ export default function ProductPage() {
     trackEvent('product_view', {
       path: typeof window !== 'undefined' ? window.location.pathname : '/products',
       product_id: String(product._id || product.id || ''),
+    })
+
+    metaPixelTrack('ViewContent', {
+      content_ids: [String(product._id || product.id || '')],
+      content_type: 'product',
+      content_name: product.title || '',
+      value: Number(product.price || 0),
+      currency: 'PKR',
     })
   }, [product])
 
