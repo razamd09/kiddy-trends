@@ -289,8 +289,6 @@ export default function ProductPage() {
       : Math.round(displayPrice * (1 + discountPct / 100) / 100) * 100
     const saveAmount = Math.max(0, fakeOriginal - displayPrice)
 
-  const lowStock = availableStock > 0 && availableStock <= 5 ? availableStock : null
-
   const hasVariants = Array.isArray(product?.variants) && product.variants.some((variant) => {
     const title = String(variant?.title || '').trim()
     const option1 = String(variant?.option1 || '').trim()
@@ -482,14 +480,6 @@ export default function ProductPage() {
                 Save PKR {formatRupees(saveAmount)}
               </span>
               </div>
-
-              {/* Low stock */}
-              {lowStock && (
-                  <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 mb-4">
-                    <ProductInfoIcon type="flame" className="w-4 h-4 text-orange-500" />
-                    <p className="text-orange-600 font-semibold text-sm">Only {lowStock} left in stock — order soon!</p>
-                  </div>
-              )}
 
               {/* Variants */}
               {hasVariants && (
