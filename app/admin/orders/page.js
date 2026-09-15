@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { formatPakistanDateTime } from '../../../lib/dateFormat'
 
 const statusConfig = {
     pending:    { color: 'bg-orange-100 text-orange-600 border-orange-200', icon: '⏳', label: 'Pending' },
@@ -357,7 +358,7 @@ export default function AdminOrders() {
                                 </div>
                                 <p className="text-xs text-gray-400 mb-1">{order.customer_city} · {order.customer_phone}</p>
                                 <div className="flex items-center justify-between">
-                                    <p className="text-xs text-gray-300">{new Date(order.created_at).toLocaleString('en-PK')}</p>
+                                    <p className="text-xs text-gray-300">{formatPakistanDateTime(order.created_at)}</p>
                                     <p className="font-bold text-coral text-sm">PKR {(order.total || 0).toLocaleString()}</p>
                                 </div>
                             </div>
@@ -392,7 +393,7 @@ export default function AdminOrders() {
                                         <p className="font-display text-xl text-charcoal">
                                             {selected.order_number || 'Order #' + selected.id}
                                         </p>
-                                        <p className="text-xs text-gray-400">{new Date(selected.created_at).toLocaleString('en-PK')}</p>
+                                        <p className="text-xs text-gray-400">{formatPakistanDateTime(selected.created_at)}</p>
                                     </div>
                                     <button onClick={() => setSelected(null)} className="text-gray-300 hover:text-coral text-xl">✕</button>
                                 </div>

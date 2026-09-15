@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { formatPakistanDate } from '../../../lib/dateFormat'
 
 export default function AdminDashboard() {
     const [stats, setStats]     = useState(null)
@@ -158,7 +159,7 @@ function RecentOrders() {
                 <div key={order.id} className="flex items-center justify-between p-3 bg-cream rounded-xl">
                     <div>
                         <p className="font-semibold text-sm text-charcoal">{order.customer_name}</p>
-                        <p className="text-xs text-gray-400">{order.customer_city} · {new Date(order.created_at).toLocaleDateString()}</p>
+                        <p className="text-xs text-gray-400">{order.customer_city} · {formatPakistanDate(order.created_at)}</p>
                     </div>
                     <div className="text-right">
                         <p className="font-bold text-sm text-coral">PKR {order.total?.toLocaleString()}</p>

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { formatPakistanDateTime } from '../../../lib/dateFormat'
 
 export default function AdminRewardsPage() {
     const [verified, setVerified] = useState(false)
@@ -336,7 +337,7 @@ export default function AdminRewardsPage() {
                                         <tbody>
                                             {historyRows.map((r) => (
                                                 <tr key={r.id} className="border-t border-gray-100">
-                                                    <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{new Date(r.created_at).toLocaleString('en-PK')}</td>
+                                                    <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{formatPakistanDateTime(r.created_at)}</td>
                                                     <td className="px-3 py-2 font-semibold text-charcoal">{r.order_number}</td>
                                                     <td className="px-3 py-2 font-semibold text-green-600">{r.earned_points} pts</td>
                                                     <td className="px-3 py-2 font-semibold text-coral">{r.redeemed_points} pts</td>

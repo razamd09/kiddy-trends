@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { formatPakistanDate } from '../../lib/dateFormat'
 
 const statusSteps = [
   { id: 'pending',    icon: '✅', label: 'Order Placed',  desc: 'Your order has been received' },
@@ -99,7 +100,7 @@ export default function OrderTracking() {
                       <div>
                         <p className="font-display text-2xl text-coral">{order.order_number}</p>
                         <p className="text-xs text-gray-400">
-                          Placed on {new Date(order.created_at).toLocaleDateString('en-PK', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                          Placed on {formatPakistanDate(order.created_at, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                         </p>
                       </div>
                       {order.status === 'cancelled' ? (

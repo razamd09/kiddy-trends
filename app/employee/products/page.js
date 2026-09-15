@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { formatPakistanDate } from '../../../lib/dateFormat'
 
 const MONOCHROME_BG_COLORS = ['transparent', '#000000', '#1f2937', '#374151', '#6b7280', '#9ca3af', '#ffffff']
 const STANDARD_BG_COLORS = ['#991b1b', '#7c7a00', '#166534', '#0f766e', '#1d4ed8', '#6b21a8', '#ea580c', '#ec4899']
@@ -1595,7 +1596,7 @@ export default function EmployeeProducts() {
                                                     <td className="px-4 py-3 text-xs text-gray-500">
                                                         <div className="space-y-1">
                                                             <p>{formatProductActor(product.last_action_by)}</p>
-                                                            <p className="text-gray-400">{product.created_at ? new Date(product.created_at).toLocaleDateString() : '—'}</p>
+                                                            <p className="text-gray-400">{product.created_at ? formatPakistanDate(product.created_at) : '—'}</p>
                                                         </div>
                                                     </td>
                                                     <td className="px-4 py-3 text-center">

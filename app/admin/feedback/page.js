@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { formatPakistanDateTime } from '../../../lib/dateFormat'
 
 export default function AdminFeedback() {
     const [feedback, setFeedback] = useState([])
@@ -109,7 +110,7 @@ export default function AdminFeedback() {
                                 <div className="flex items-start justify-between mb-4">
                                     <div>
                                         <p className="font-display text-base text-charcoal">{f.customer_name || 'Anonymous'}</p>
-                                        <p className="text-xs text-gray-400">{f.customer_phone || 'No phone'} · {new Date(f.created_at).toLocaleString('en-PK')}</p>
+                                        <p className="text-xs text-gray-400">{f.customer_phone || 'No phone'} · {formatPakistanDateTime(f.created_at)}</p>
                                     </div>
                                     <div className="text-right">
                                         <div className="flex gap-0.5 justify-end">
