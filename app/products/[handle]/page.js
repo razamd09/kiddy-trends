@@ -415,7 +415,7 @@ export default function ProductPage() {
 
               {/* Badges */}
               <div className="flex flex-wrap gap-2 mb-4">
-                <span className="bg-coral text-white text-xs px-3 py-1 rounded-full font-semibold">{discountPct}% OFF</span>
+                <span className="bg-coral text-white text-xs px-3 py-1 rounded-full font-semibold">Upto {discountPct}% Off</span>
                 {titleParts.badges.map((badge) => (
                     <span key={badge} className="bg-cream text-charcoal text-xs px-3 py-1 rounded-full font-semibold border border-gray-100">{badge}</span>
                 ))}

@@ -145,7 +145,7 @@ export default function ProductCard({ product }) {
 
           {/* Discount badge */}
           <span className="absolute top-2 left-2 bg-coral text-white text-xs px-2 py-1 rounded-full font-bold z-10">
-            {discountPct}% OFF
+            Upto {discountPct}% Off
           </span>
 
           {isSoldOut && (
