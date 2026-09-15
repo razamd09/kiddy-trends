@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import { useCart } from '../context/CartContext'
 import CheckoutModal from './CheckoutModal'
 import WishlistButton from './WishlistButton'
@@ -121,8 +122,9 @@ export default function ProductCard({ product }) {
   <WishlistButton product={product} />
           {image ? (
             <div className="absolute inset-0 bg-white flex items-center justify-center p-3">
-              <img src={image} alt={product.title}
-                className="w-full h-full object-contain" loading="lazy" decoding="async"
+              <Image src={image} alt={product.title} fill
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                className="object-contain"
                 onError={() => {
                   if (imageIndex < imageCandidates.length - 1) {
                     setImageIndex(prev => prev + 1)
@@ -265,9 +267,10 @@ export default function ProductCard({ product }) {
               </svg>
             </button>
 
-            <div className="flex min-h-[18rem] items-center justify-center bg-gray-50 p-6 md:min-h-[28rem]">
+            <div className="relative flex min-h-[18rem] items-center justify-center bg-gray-50 p-6 md:min-h-[28rem]">
               {image ? (
-                <img src={image} alt={product.title} className="max-h-[26rem] w-full object-contain" />
+                <Image src={image} alt={product.title} fill sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-contain" />
               ) : (
                 <CardIcon type="shirt" className="h-20 w-20 text-gray-300" />
               )}
