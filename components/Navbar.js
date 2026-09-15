@@ -22,6 +22,7 @@ const menuLinks = [
   { href: '/collections?cat=bedding', label: 'Bedding' },
   { href: '/collections?season=Summer', label: 'Summer Clearance Sale' },
   { href: '/brands', label: 'Shop by Brand' },
+  { href: '/collections?character=Hello%20Kitty', label: 'Hello Kitty' },
 ]
 
 export default function Navbar() {
