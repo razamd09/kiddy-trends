@@ -29,5 +29,8 @@ export async function GET() {
     }
 
     if (error) return Response.json({ error: error.message }, { status: 500 })
-    return Response.json({ codes: data })
+
+    const response = Response.json({ codes: data })
+    response.headers.set('Cache-Control', 'public, max-age=60, s-maxage=120, stale-while-revalidate=300')
+    return response
 }

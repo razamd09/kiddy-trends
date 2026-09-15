@@ -17,9 +17,19 @@ function normalizeDisplayTitle(rawTitle) {
 async function getProduct(handle) {
   try {
     const res = await fetch(SITE_URL + '/api/products?handle=' + encodeURIComponent(handle), { cache: 'no-store' })
-    if (!res.ok) return null
     const data = await res.json()
-    return data.success && data.products?.length > 0 ? data.products[0] : null
+    let product = data.success && data.products?.length > 0 ? data.products[0] : null
+
+    if (!product && /^prd_id\s*=\s*\d+$/i.test(String(handle || ''))) {
+      const productId = Number(String(handle).split('=').pop())
+      const fallbackRes = await fetch(SITE_URL + '/api/products?limit=400', { cache: 'no-store' })
+      const fallbackData = await fallbackRes.json()
+      product = (fallbackData.products || []).find((candidate) =>
+        Number(candidate?._id) === productId || Number(candidate?.id) === productId
+      ) || null
+    }
+
+    return product
   } catch {
     return null
   }
@@ -98,7 +108,7 @@ export default async function ProductPage({ params }) {
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       )}
-      <ProductPageClient />
+      <ProductPageClient initialProduct={product} />
     </>
   )
 }

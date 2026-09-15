@@ -1,4 +1,5 @@
 import './globals.css'
+import { Fredoka, Nunito } from 'next/font/google'
 import { CartProvider } from '../context/CartContext'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
@@ -8,6 +9,23 @@ import LiveNotifications from '../components/LiveNotifications'
 import BottomNav from '../components/BottomNav'
 import DynamicSocialProofBar from '../components/DynamicSocialProofBar'
 import AnalyticsTracker from '../components/AnalyticsTracker'
+
+// The Google Fonts catalog merged the old standalone "Fredoka One" family
+// into the variable "Fredoka" family; weight 500 is the closest match to
+// how "Fredoka One" originally rendered.
+const fredokaOne = Fredoka({
+  subsets: ['latin'],
+  weight: '500',
+  variable: '--font-display',
+  display: 'swap',
+})
+
+const nunito = Nunito({
+  subsets: ['latin'],
+  weight: ['400', '600', '700', '800', '900'],
+  variable: '--font-body',
+  display: 'swap',
+})
 
 export const metadata = {
   title: 'Kiddy Trends – Fun Fashion for Little Ones',
@@ -42,7 +60,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-      <html lang="en">
+      <html lang="en" className={fredokaOne.variable + ' ' + nunito.variable}>
       <body>
       {/* Google Analytics */}
       <Script src="https://www.googletagmanager.com/gtag/js?id=G-RWMHQN9PL4" strategy="afterInteractive" />

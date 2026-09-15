@@ -11,6 +11,26 @@ export default function WishlistButton({ product }) {
     } catch {}
   }, [product.id])
 
+  function syncToServer(action, item) {
+    try {
+      const phone = localStorage.getItem('wishlist_phone')
+      if (!phone) return
+      const productId = String(item?._id ?? item?.id ?? '')
+      if (!productId) return
+      if (action === 'add') {
+        fetch('/api/wishlist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, product: item }),
+        }).catch(() => {})
+      } else {
+        fetch('/api/wishlist?phone=' + encodeURIComponent(phone) + '&productId=' + encodeURIComponent(productId), {
+          method: 'DELETE',
+        }).catch(() => {})
+      }
+    } catch {}
+  }
+
   function toggle(e) {
     e.preventDefault()
     e.stopPropagation()
@@ -19,8 +39,10 @@ export default function WishlistButton({ product }) {
       let updated
       if (wishlisted) {
         updated = stored.filter(p => p.id !== product.id)
+        syncToServer('remove', product)
       } else {
         updated = [product, ...stored].slice(0, 50)
+        syncToServer('add', product)
       }
       localStorage.setItem('wishlist', JSON.stringify(updated))
       setWishlisted(!wishlisted)

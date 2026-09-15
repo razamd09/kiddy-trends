@@ -17,6 +17,7 @@ const moduleLinks = [
   { href: '/admin/employees', label: 'Employees' },
   { href: '/admin/attendance', label: 'Attendance' },
   { href: '/admin/rewards', label: 'Rewards' },
+  { href: '/admin/newsletter', label: 'Newsletter' },
   { href: '/admin/discount-codes', label: 'Discount Codes' },
   { href: '/admin/shipping-rates', label: 'Shipping Rates' },
   { href: '/admin/analytics', label: 'Analytics' },

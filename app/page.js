@@ -147,7 +147,7 @@ export default function Home() {
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
                   loading="lazy"
                   fetchPriority="low"
-                  quality={95}
+                  quality={80}
                 />
               </Link>
             ))}
@@ -254,7 +254,7 @@ export default function Home() {
               fill
               sizes="100vw"
               className="object-cover"
-              quality={95}
+              quality={80}
             />
             <div
               className="absolute inset-0 flex items-center"
@@ -333,7 +333,7 @@ export default function Home() {
               fill
               sizes="100vw"
               className="object-cover"
-              quality={95}
+              quality={80}
             />
             <div
               className="absolute inset-0"

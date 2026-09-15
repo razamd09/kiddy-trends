@@ -175,14 +175,14 @@ function getProductTitleParts(product) {
   }
 }
 
-export default function ProductPageClient() {
+export default function ProductPageClient({ initialProduct = null }) {
   const { handle } = useParams()
   const { addToCart, cart } = useCart()
 
-  const [product, setProduct]             = useState(null)
+  const [product, setProduct]             = useState(initialProduct)
   const [related, setRelated]             = useState([])
-  const [loading, setLoading]             = useState(true)
-  const [selectedVariant, setSelectedVariant] = useState(null)
+  const [loading, setLoading]             = useState(!initialProduct)
+  const [selectedVariant, setSelectedVariant] = useState(initialProduct?.variants?.[0] || null)
   const [activeImg, setActiveImg]         = useState(0)
   const [zoomed, setZoomed]               = useState(false)
   const [touchStart, setTouchStart]       = useState(0)
@@ -190,10 +190,20 @@ export default function ProductPageClient() {
   const [showCheckout, setShowCheckout]   = useState(false)
   const [showSizeChart, setShowSizeChart] = useState(false)
   const [views, setViews]                 = useState(0)
+  const [bundleChecked, setBundleChecked] = useState({ 0: true, 1: true, 2: true })
+  const [bundleAdded, setBundleAdded]     = useState(false)
 
   const mainImage = product?.images?.[activeImg]?.src || product?.images?.[0]?.src
 
   useEffect(() => {
+    function recordRecentlyViewed(p) {
+      try {
+        const stored   = JSON.parse(localStorage.getItem('recently_viewed') || '[]')
+        const filtered = stored.filter((item) => item._id !== p._id && item.id !== p.id)
+        localStorage.setItem('recently_viewed', JSON.stringify([p, ...filtered].slice(0, 10)))
+      } catch {}
+    }
+
     async function fetchProduct() {
       try {
         const res = await fetch('/api/products?handle=' + encodeURIComponent(handle), { cache: 'no-store' })
@@ -212,17 +222,29 @@ export default function ProductPageClient() {
         if (p) {
           setProduct(p)
           setSelectedVariant(p.variants?.[0])
-          try {
-            const stored   = JSON.parse(localStorage.getItem('recently_viewed') || '[]')
-            const filtered = stored.filter((item) => item._id !== p._id && item.id !== p.id)
-            localStorage.setItem('recently_viewed', JSON.stringify([p, ...filtered].slice(0, 10)))
-          } catch {}
+          recordRecentlyViewed(p)
+        } else {
+          setProduct(null)
         }
         setLoading(false)
       } catch { setLoading(false) }
     }
+
+    setActiveImg(0)
+    setZoomed(false)
+
+    // The server component already fetched this product for metadata/JSON-LD —
+    // reuse it instead of re-fetching the same data client-side.
+    if (initialProduct) {
+      setProduct(initialProduct)
+      setSelectedVariant(initialProduct.variants?.[0] || null)
+      recordRecentlyViewed(initialProduct)
+      setLoading(false)
+      return
+    }
+
     if (handle) fetchProduct()
-  }, [handle])
+  }, [handle, initialProduct])
 
   useEffect(() => {
     if (!product) return
@@ -302,6 +324,30 @@ export default function ProductPageClient() {
     addToCart(product, selectedVariant)
     setAdded(true)
     setTimeout(() => setAdded(false), 2000)
+  }
+
+  const BUNDLE_DISCOUNT_PCT = 10
+  const bundleItems = product ? [product, ...related.slice(0, 2)] : []
+  function getBundleVariant(item, index) {
+    return index === 0 ? (selectedVariant || item.variants?.[0]) : item.variants?.[0]
+  }
+  const selectedBundleItems = bundleItems.filter((_, i) => bundleChecked[i] !== false)
+  const bundleOriginalTotal = selectedBundleItems.reduce((sum, item, i) => {
+    const idx = bundleItems.indexOf(item)
+    return sum + parseFloat(getBundleVariant(item, idx)?.price || 0)
+  }, 0)
+  const bundleDiscountedTotal = Math.round(bundleOriginalTotal * (1 - BUNDLE_DISCOUNT_PCT / 100))
+
+  function handleAddBundleToCart() {
+    selectedBundleItems.forEach((item) => {
+      const idx = bundleItems.indexOf(item)
+      const variant = getBundleVariant(item, idx)
+      if (!variant) return
+      const discountedVariant = { ...variant, price: (parseFloat(variant.price) * (1 - BUNDLE_DISCOUNT_PCT / 100)).toFixed(2) }
+      addToCart(item, discountedVariant)
+    })
+    setBundleAdded(true)
+    setTimeout(() => setBundleAdded(false), 2000)
   }
 
   function handleSwipe(e) {
@@ -535,6 +581,42 @@ export default function ProductPageClient() {
                   Buy Now
                 </button>
               </div>
+
+              {/* Frequently Bought Together */}
+              {bundleItems.length > 1 && (
+                  <div className="bg-cream rounded-2xl p-4 mb-4">
+                    <h3 className="font-display text-lg text-charcoal mb-3">Frequently Bought Together</h3>
+                    <div className="flex items-center gap-2 flex-wrap mb-4">
+                      {bundleItems.map((item, i) => (
+                          <div key={item._id || item.id} className="flex items-center gap-2">
+                            {i > 0 && <span className="text-gray-300 text-xl font-bold">+</span>}
+                            <label className="flex flex-col items-center gap-1.5 cursor-pointer">
+                              <div className="relative w-16 h-16 rounded-xl overflow-hidden border-2 border-white bg-white">
+                                {item.images?.[0]?.src && (
+                                    <Image src={item.images[0].src} alt={item.title} fill sizes="64px" className="object-contain" />
+                                )}
+                              </div>
+                              <input type="checkbox" disabled={i === 0}
+                                     checked={bundleChecked[i] !== false}
+                                     onChange={(e) => setBundleChecked((prev) => ({ ...prev, [i]: e.target.checked }))}
+                                     className="accent-coral w-4 h-4" />
+                            </label>
+                          </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap mb-3">
+                      <span className="font-display text-xl text-coral">PKR {formatRupees(bundleDiscountedTotal)}</span>
+                      <span className="text-sm text-gray-400 line-through">PKR {formatRupees(bundleOriginalTotal)}</span>
+                      <span className="bg-coral/10 text-coral text-xs px-2 py-1 rounded-full font-semibold">Save {BUNDLE_DISCOUNT_PCT}%</span>
+                    </div>
+                    <button onClick={handleAddBundleToCart} disabled={selectedBundleItems.length < 2}
+                            className={'w-full py-3 rounded-xl font-semibold text-sm transition-all ' +
+                                (selectedBundleItems.length < 2 ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                                    : bundleAdded ? 'bg-mint text-white' : 'bg-coral text-white hover:bg-opacity-90')}>
+                      {bundleAdded ? 'Added to Cart ✓' : 'Add ' + selectedBundleItems.length + ' Items to Cart'}
+                    </button>
+                  </div>
+              )}
 
               <button onClick={() => setShowSizeChart(true)}
                       className="text-center text-sm text-coral hover:underline mb-4 inline-flex items-center justify-center gap-1.5 w-full">

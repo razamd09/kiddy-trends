@@ -16,8 +16,8 @@ module.exports = {
         charcoal:'#2D2D2D',
       },
       fontFamily: {
-        display: ['Fredoka One', 'cursive'],
-        body:    ['Nunito', 'sans-serif'],
+        display: ['var(--font-display)', 'cursive'],
+        body:    ['var(--font-body)', 'sans-serif'],
       },
       keyframes: {
         float: {
