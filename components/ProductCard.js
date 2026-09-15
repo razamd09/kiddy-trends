@@ -151,7 +151,7 @@ export default function ProductCard({ product }) {
 
           {/* Low stock badge */}
           {lowStock && !isSoldOut && (
-            <span className="absolute top-2 right-2 bg-sunny text-charcoal text-xs px-2 py-1 rounded-full font-bold z-10">
+            <span className="absolute top-9 left-2 bg-sunny text-charcoal text-xs px-2 py-1 rounded-full font-bold z-10">
               Only {lowStock} left!
             </span>
           )}
