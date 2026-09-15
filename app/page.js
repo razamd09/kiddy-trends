@@ -60,6 +60,9 @@ export default function Home() {
   const [allProducts, setAllProducts] = useState([])
   const [loadingProducts, setLoadingProducts] = useState(true)
   const [activeView, setActiveView] = useState('new-arrivals')
+  const [newsletterEmail, setNewsletterEmail] = useState('')
+  const [newsletterStatus, setNewsletterStatus] = useState('idle') // idle | loading | success | error
+  const [newsletterMessage, setNewsletterMessage] = useState('')
 
   useEffect(() => {
     async function fetchProducts() {
@@ -92,6 +95,32 @@ export default function Home() {
 
     return allProducts.slice(0, NEW_ARRIVALS_TARGET)
   }, [activeView, allProducts])
+
+  async function handleNewsletterSubmit(e) {
+    e.preventDefault()
+    if (newsletterStatus === 'loading') return
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newsletterEmail.trim())) {
+      setNewsletterStatus('error')
+      setNewsletterMessage('Please enter a valid email address')
+      return
+    }
+    setNewsletterStatus('loading')
+    try {
+      const res = await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newsletterEmail.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error(data.error || 'Something went wrong')
+      setNewsletterStatus('success')
+      setNewsletterMessage(data.alreadySubscribed ? "You're already subscribed!" : "You're subscribed! Check your inbox 🎉")
+      setNewsletterEmail('')
+    } catch (err) {
+      setNewsletterStatus('error')
+      setNewsletterMessage(err.message || 'Something went wrong, please try again')
+    }
+  }
 
   return (
       <>
@@ -315,10 +344,22 @@ export default function Home() {
                 <h2 className="font-display text-3xl md:text-4xl text-white mb-3">New arrivals every week</h2>
                 <p className="text-white/85 text-lg">Be the first to know about new collections & deals.</p>
               </div>
-              <div className="flex gap-3 flex-wrap">
-                <input type="email" placeholder="your@email.com"
-                       className="px-5 py-3 rounded-full border border-white/30 bg-white/95 focus:outline-none focus:border-coral font-body text-base w-60" />
-                <button className="btn-primary whitespace-nowrap">Notify me</button>
+              <div>
+                <form onSubmit={handleNewsletterSubmit} className="flex gap-3 flex-wrap">
+                  <input type="email" placeholder="your@email.com" required
+                         value={newsletterEmail}
+                         onChange={(e) => { setNewsletterEmail(e.target.value); if (newsletterStatus !== 'idle') setNewsletterStatus('idle') }}
+                         className="px-5 py-3 rounded-full border border-white/30 bg-white/95 focus:outline-none focus:border-coral font-body text-base w-60" />
+                  <button type="submit" disabled={newsletterStatus === 'loading'}
+                          className="btn-primary whitespace-nowrap disabled:opacity-60">
+                    {newsletterStatus === 'loading' ? 'Sending…' : 'Notify me'}
+                  </button>
+                </form>
+                {newsletterMessage && (
+                  <p className={'mt-2 text-sm font-semibold ' + (newsletterStatus === 'error' ? 'text-red-300' : 'text-mint')}>
+                    {newsletterMessage}
+                  </p>
+                )}
               </div>
             </div>
           </div>

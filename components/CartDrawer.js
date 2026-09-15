@@ -2,17 +2,44 @@
 import { useState } from 'react'
 import { useCart } from '../context/CartContext'
 import CheckoutModal from './CheckoutModal'
+import { getAnalyticsSessionId } from '../lib/analyticsClient'
 
 
 
 export default function CartDrawer() {
 const [emailInput, setEmailInput]     = useState('')
 const [abandonEmail, setAbandonEmail] = useState('')
+const [emailStatus, setEmailStatus]   = useState('idle') // idle | loading | success | error
+const [emailError, setEmailError]     = useState('')
 
-function handleSaveEmail() {
-  if (!emailInput.includes('@')) return
-  setAbandonEmail(emailInput)
-  localStorage.setItem('cart_email', emailInput)
+async function handleSaveEmail() {
+  const trimmed = emailInput.trim()
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+    setEmailStatus('error')
+    setEmailError('Please enter a valid email address')
+    return
+  }
+  setEmailStatus('loading')
+  try {
+    const res = await fetch('/api/abandoned-cart', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: trimmed,
+        sessionId: getAnalyticsSessionId(),
+        cartItems: cart.map((item) => ({ title: item.title, quantity: item.quantity })),
+        totalPrice,
+      }),
+    })
+    const data = await res.json()
+    if (!res.ok || !data.success) throw new Error(data.error || 'Something went wrong')
+    setAbandonEmail(trimmed)
+    localStorage.setItem('cart_email', trimmed)
+    setEmailStatus('success')
+  } catch (err) {
+    setEmailStatus('error')
+    setEmailError(err.message || 'Something went wrong, please try again')
+  }
 }
 
   const { cart, cartOpen, setCartOpen, removeFromCart, updateQuantity, totalItems, totalPrice } = useCart()
@@ -108,24 +135,30 @@ function handleSaveEmail() {
                 <span className="font-display text-lg text-charcoal">Total</span>
                 <span className="font-display text-2xl text-coral">PKR {totalPrice.toLocaleString()}</span>
               </div>
+              {/* Abandoned cart email capture */}
+              {cart.length > 0 && !abandonEmail && (
+                <div>
+                  <div className="bg-sunny/20 rounded-2xl p-3 flex gap-2">
+                    <input type="email" placeholder="Email for order updates..."
+                      value={emailInput}
+                      onChange={e => { setEmailInput(e.target.value); if (emailStatus !== 'idle') setEmailStatus('idle') }}
+                      className="flex-1 text-xs px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:border-coral bg-white" />
+                    <button type="button" onClick={handleSaveEmail} disabled={emailStatus === 'loading'}
+                      className="text-xs bg-coral text-white px-3 py-2 rounded-xl font-bold hover:bg-opacity-90 disabled:opacity-60">
+                      {emailStatus === 'loading' ? 'Saving…' : 'Save'}
+                    </button>
+                  </div>
+                  {emailStatus === 'error'
+                    ? <p className="text-xs text-red-500 mt-1 text-center">{emailError}</p>
+                    : <p className="text-xs text-gray-400 mt-1 text-center">Get notified about your cart</p>}
+                </div>
+              )}
+              {abandonEmail && (
+                <p className="text-xs text-mint font-semibold text-center">We've emailed your cart to {abandonEmail} ✅</p>
+              )}
+
               <button onClick={() => setShowCheckout(true)}
   className="w-full bg-coral text-white font-display text-lg py-4 rounded-2xl hover:bg-opacity-90 transition-all hover:scale-[1.02] active:scale-95 shadow-md block text-center">
-  
-  {/* Abandoned cart email capture */}
-{cart.length > 0 && !abandonEmail && (
-  <div className="px-4 pb-3">
-    <div className="bg-sunny/20 rounded-2xl p-3 flex gap-2">
-      <input type="email" placeholder="Email for order updates..."
-        value={emailInput} onChange={e => setEmailInput(e.target.value)}
-        className="flex-1 text-xs px-3 py-2 rounded-xl border border-gray-200 focus:outline-none focus:border-coral bg-white" />
-      <button onClick={handleSaveEmail}
-        className="text-xs bg-coral text-white px-3 py-2 rounded-xl font-bold hover:bg-opacity-90">
-        Save
-      </button>
-    </div>
-    <p className="text-xs text-gray-400 mt-1 text-center">Get notified about your cart</p>
-  </div>
-)}
   Checkout
 </button>
               <button onClick={() => setCartOpen(false)}
