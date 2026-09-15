@@ -335,42 +335,42 @@ export default function Collections() {
   const showGenderFilter = ['kids', 'toddler', 'tweens'].includes(activeCat)
   const isSeasonDealSort = sort === 'winter_deals' || sort === 'summer_deals'
 
-  let filtered = products
+  let filtered = activeCat === 'all'
+    ? products
+    : products.filter(p => productMatchesFilter(p, activeCat, activeSub, subFilters, activeGender))
 
-  if (!isSeasonDealSort) {
-    filtered = activeCat === 'all'
-      ? products
-      : products.filter(p => productMatchesFilter(p, activeCat, activeSub, subFilters, activeGender))
-
-    if (queryGenders.length > 0) {
-      filtered = filtered.filter((p) => productMatchesAnyGenders(p, queryGenders))
-    }
-
-    if (queryAges.length > 0) {
-      filtered = filtered.filter((p) => productMatchesAnyAges(p, queryAges))
-    }
-
-    if (queryTitle) {
-      filtered = filtered.filter((p) => String(p?.title || '').toLowerCase().includes(queryTitle))
-    }
-
-    if (queryProductType) {
-      filtered = filtered.filter((p) => productTypeMatches(p?.product_type, queryProductType))
-    }
-
-    if (querySeason) {
-      filtered = filtered.filter((p) => String(p?.product_season || '') === querySeason)
-    }
-
-    if (queryCharacter) {
-      filtered = filtered.filter((p) => String(p?.character || '').toLowerCase() === queryCharacter)
-    }
-
-    if (queryBrand) {
-      filtered = filtered.filter((p) => String(p?.brand || '').toLowerCase() === queryBrand)
-    }
+  if (queryGenders.length > 0) {
+    filtered = filtered.filter((p) => productMatchesAnyGenders(p, queryGenders))
   }
 
+  if (queryAges.length > 0) {
+    filtered = filtered.filter((p) => productMatchesAnyAges(p, queryAges))
+  }
+
+  if (queryTitle) {
+    filtered = filtered.filter((p) => String(p?.title || '').toLowerCase().includes(queryTitle))
+  }
+
+  if (queryProductType) {
+    filtered = filtered.filter((p) => productTypeMatches(p?.product_type, queryProductType))
+  }
+
+  if (querySeason) {
+    filtered = filtered.filter((p) => String(p?.product_season || '') === querySeason)
+  }
+
+  if (queryCharacter) {
+    filtered = filtered.filter((p) => String(p?.character || '').toLowerCase() === queryCharacter)
+  }
+
+  if (queryBrand) {
+    filtered = filtered.filter((p) => String(p?.brand || '').toLowerCase() === queryBrand)
+  }
+
+  // Season-deal sorting (Winter/Summer Deals) layers on top of whatever
+  // category/age/gender filters are active, rather than replacing them —
+  // e.g. picking an age group while "Winter Deals" is selected should
+  // narrow the deals to that age, not show every winter deal regardless.
   if (isSeasonDealSort) {
     const seasonKeyword = sort === 'winter_deals' ? 'winter' : 'summer'
     filtered = filtered.filter((p) => isSeasonDealProduct(p, seasonKeyword))
