@@ -75,7 +75,6 @@ export default function ProductCard({ product }) {
   const inCart       = cart.find(i => i.variantId === selectedVariant?.id)?.quantity || 0
   const isMaxed      = inCart >= availableStock
   const rating       = getCardRating(product.id)
-  const lowStock     = availableStock > 0 && availableStock <= 3 ? availableStock : null
   const discountPct  = getFakeDiscount(product)
 
   // If no compare price is set, generate a display original price.
@@ -149,13 +148,6 @@ export default function ProductCard({ product }) {
             {discountPct}% OFF
           </span>
 
-          {/* Low stock badge */}
-          {lowStock && !isSoldOut && (
-            <span className="absolute top-9 left-2 bg-sunny text-charcoal text-xs px-2 py-1 rounded-full font-bold z-10">
-              Only {lowStock} left!
-            </span>
-          )}
-
           {isSoldOut && (
             <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
               <span className="bg-white text-charcoal font-display text-sm px-3 py-1 rounded-full">Sold Out</span>
@@ -201,12 +193,6 @@ export default function ProductCard({ product }) {
             <p className="text-gray-400 text-xs line-through">PKR {displayOriginal.toLocaleString()}</p>
           </div>
 
-          {/* Low stock warning text */}
-          {lowStock && !isSoldOut && (
-            <p className="text-orange-500 text-xs font-bold mt-1 flex items-center gap-1">
-              <CardIcon type="flame" className="w-3.5 h-3.5" /> Only {lowStock} left in stock!
-            </p>
-          )}
 
           {/* Variant selector */}
           {hasVariants && (
@@ -315,10 +301,6 @@ export default function ProductCard({ product }) {
                     ))}
                   </select>
                 </label>
-              )}
-
-              {lowStock && !isSoldOut && (
-                <p className="mt-3 text-sm font-semibold text-orange-500">Only {lowStock} left in stock</p>
               )}
 
               <div className="mt-auto flex gap-2 pt-6">
