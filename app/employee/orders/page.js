@@ -375,6 +375,32 @@ export default function EmployeeOrdersPage() {
                                     </div>
                                 </div>
 
+                                {selected.utm_data && Object.keys(selected.utm_data).length > 0 && (
+                                    <div className="bg-cream rounded-2xl p-4">
+                                        <p className="font-display text-sm text-charcoal mb-3">📣 Campaign Source</p>
+                                        <div className="flex flex-wrap gap-2 text-xs">
+                                            {selected.utm_data.utm_source && (
+                                                <span className="bg-white border border-gray-200 rounded-full px-3 py-1"><span className="text-gray-400">Source:</span> <span className="font-semibold">{selected.utm_data.utm_source}</span></span>
+                                            )}
+                                            {selected.utm_data.utm_medium && (
+                                                <span className="bg-white border border-gray-200 rounded-full px-3 py-1"><span className="text-gray-400">Medium:</span> <span className="font-semibold">{selected.utm_data.utm_medium}</span></span>
+                                            )}
+                                            {selected.utm_data.utm_campaign && (
+                                                <span className="bg-white border border-gray-200 rounded-full px-3 py-1"><span className="text-gray-400">Campaign:</span> <span className="font-semibold">{selected.utm_data.utm_campaign}</span></span>
+                                            )}
+                                            {selected.utm_data.fbclid && (
+                                                <span className="bg-white border border-gray-200 rounded-full px-3 py-1 font-semibold">Facebook/Instagram Ad</span>
+                                            )}
+                                            {selected.utm_data.gclid && (
+                                                <span className="bg-white border border-gray-200 rounded-full px-3 py-1 font-semibold">Google Ad</span>
+                                            )}
+                                            {selected.utm_data.ttclid && (
+                                                <span className="bg-white border border-gray-200 rounded-full px-3 py-1 font-semibold">TikTok Ad</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="bg-cream rounded-2xl p-4">
                                     <p className="font-display text-sm text-charcoal mb-3">📦 Items</p>
                                     <div className="space-y-2">

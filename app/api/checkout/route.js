@@ -342,7 +342,8 @@ export async function GET(request) {
 
 export async function POST(request) {
     try {
-        const { cartItems, customer } = await request.json()
+        const { cartItems, customer, utm } = await request.json()
+        const utmData = utm && typeof utm === 'object' && Object.keys(utm).length > 0 ? utm : null
         const customerEmail = String(customer?.email || '').trim().toLowerCase()
 
         const subtotalFromItems = (cartItems || []).reduce((s, i) => s + (parseFloat(i.price || 0) * (i.quantity || 1)), 0)
@@ -478,6 +479,7 @@ export async function POST(request) {
                 total,
                 status:            'pending',
                 notes:             notesText,
+                utm_data:          utmData,
             }])
             .select()
             .single()

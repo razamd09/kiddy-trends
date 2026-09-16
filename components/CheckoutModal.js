@@ -5,6 +5,7 @@ import RewardsSection from './RewardsSection'
 import { useCart } from '../context/CartContext'
 import { getAnalyticsSessionId, trackEvent } from '../lib/analyticsClient'
 import { metaPixelTrack, generateMetaEventId, sendServerMetaEvent } from '../lib/metaPixel'
+import { getStoredUtmParams } from '../lib/utmCapture'
 
 const EMAILJS_SERVICE_ID =
   process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID || 'service_9p08wct'
@@ -412,6 +413,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
         },
         body: JSON.stringify({
           cartItems: items,
+          utm: getStoredUtmParams(),
           customer: {
             name:     form.name,
             email:    form.email,
