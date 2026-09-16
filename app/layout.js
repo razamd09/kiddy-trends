@@ -89,10 +89,6 @@ export default function RootLayout({ children }) {
           `}
       </Script>
 
-      {/* TikTok & Instagram embeds */}
-      <Script src="https://www.tiktok.com/embed.js" strategy="lazyOnload" />
-      <Script src="https://www.instagram.com/embed.js" strategy="lazyOnload" />
-
       <CartProvider>
         <AnalyticsTracker />
         <LiveNotifications />
