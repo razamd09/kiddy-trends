@@ -71,7 +71,7 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
 
-          {/* Logo + Menu */}
+          {/* Logo + Menu + Desktop links — one flex group so every gap matches */}
           <div className="flex items-center gap-2">
             <Link href="/" className="flex items-center gap-3 group">
               <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-md group-hover:scale-105 transition-transform">
@@ -108,16 +108,16 @@ export default function Navbar() {
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Desktop links */}
-          <div className="hidden lg:flex items-center gap-2">
-            {links.map(link => (
-              <Link key={link.href} href={link.href}
-                className="inline-flex items-center justify-center text-center leading-tight whitespace-nowrap font-display text-charcoal hover:text-coral bg-cream/60 border border-gray-100 hover:border-coral/30 px-3 xl:px-4 rounded-full transition-all text-sm xl:text-base h-16 min-w-[8.75rem]">
-                {link.label}
-              </Link>
-            ))}
+            {/* Desktop links */}
+            <div className="hidden lg:flex items-center gap-2">
+              {links.map(link => (
+                <Link key={link.href} href={link.href}
+                  className="inline-flex items-center justify-center text-center leading-tight whitespace-nowrap font-display text-charcoal hover:text-coral bg-cream/60 border border-gray-100 hover:border-coral/30 px-3 xl:px-4 rounded-full transition-all text-sm xl:text-base h-16 min-w-[8.75rem]">
+                  {link.label}
+                </Link>
+              ))}
+            </div>
           </div>
 
           {/* Right icons */}
