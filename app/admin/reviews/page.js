@@ -8,7 +8,7 @@ export default function AdminReviews() {
     const [reviews, setReviews] = useState([])
     const [loading, setLoading] = useState(true)
     const [verified, setVerified] = useState(false)
-    const [filter, setFilter] = useState('pending') // pending | approved | all
+    const [filter, setFilter] = useState('all') // pending | approved | all
     const router = useRouter()
 
     useEffect(() => {

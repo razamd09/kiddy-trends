@@ -242,20 +242,21 @@ export default function ProductPageClient({ initialProduct = null }) {
     sendServerMetaEvent('ViewContent', viewContentParams, viewContentEventId)
   }, [product])
 
+  async function fetchReviews(productId) {
+    try {
+      const res = await fetch('/api/reviews?productId=' + productId)
+      const data = await res.json()
+      if (data.success) {
+        setReviews(data.reviews || [])
+        setReviewCount(data.count || 0)
+        setAverageRating(data.averageRating || 0)
+      }
+    } catch {}
+  }
+
   useEffect(() => {
     if (!product) return
-    async function fetchReviews() {
-      try {
-        const res = await fetch('/api/reviews?productId=' + (product._id || product.id))
-        const data = await res.json()
-        if (data.success) {
-          setReviews(data.reviews || [])
-          setReviewCount(data.count || 0)
-          setAverageRating(data.averageRating || 0)
-        }
-      } catch {}
-    }
-    fetchReviews()
+    fetchReviews(product._id || product.id)
   }, [product?._id])
 
   async function handleSubmitReview(e) {
@@ -286,8 +287,9 @@ export default function ProductPageClient({ initialProduct = null }) {
       const data = await res.json()
       if (!res.ok || !data.success) throw new Error(data.error || 'Something went wrong')
       setReviewSubmitStatus('success')
-      setReviewSubmitMessage('Thanks! Your review will appear after a quick check.')
+      setReviewSubmitMessage('Thanks for your review!')
       setReviewForm({ name: '', rating: 0, text: '' })
+      fetchReviews(product._id || product.id)
     } catch (err) {
       setReviewSubmitStatus('error')
       setReviewSubmitMessage(err.message || 'Something went wrong, please try again')

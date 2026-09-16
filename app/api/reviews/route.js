@@ -60,7 +60,7 @@ export async function POST(request) {
                 customer_name: customerName,
                 rating,
                 review_text: reviewText || null,
-                is_approved: false,
+                is_approved: true,
             }])
 
         if (error) return Response.json({ success: false, error: error.message }, { status: 500 })
