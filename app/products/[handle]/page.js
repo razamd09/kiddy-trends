@@ -77,9 +77,20 @@ export async function generateMetadata({ params }) {
   }
 }
 
+async function getReviewStats(productId) {
+  try {
+    const res = await fetch(SITE_URL + '/api/reviews?productId=' + productId, { cache: 'no-store' })
+    const data = await res.json()
+    return data.success ? { count: data.count || 0, averageRating: data.averageRating || 0 } : null
+  } catch {
+    return null
+  }
+}
+
 export default async function ProductPage({ params }) {
   const { handle } = await params
   const product = await getProduct(handle)
+  const reviewStats = product ? await getReviewStats(product._id || product.id) : null
 
   const jsonLd = product ? {
     '@context': 'https://schema.org',
@@ -98,6 +109,12 @@ export default async function ProductPage({ params }) {
         ? 'https://schema.org/InStock'
         : 'https://schema.org/OutOfStock',
     },
+    // Only include real, customer-submitted ratings — never fabricated data.
+    aggregateRating: reviewStats && reviewStats.count > 0 ? {
+      '@type': 'AggregateRating',
+      ratingValue: String(reviewStats.averageRating),
+      reviewCount: String(reviewStats.count),
+    } : undefined,
   } : null
 
   return (

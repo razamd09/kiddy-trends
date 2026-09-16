@@ -12,9 +12,11 @@ export default async function sitemap() {
     { url: SITE_URL + '/faq', lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
     { url: SITE_URL + '/refund-policy', lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
     { url: SITE_URL + '/size-chart', lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
+    { url: SITE_URL + '/blog', lastModified: new Date(), changeFrequency: 'weekly', priority: 0.6 },
   ]
 
   let productRoutes = []
+  let blogRoutes = []
   try {
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -36,7 +38,22 @@ export default async function sitemap() {
         priority: 0.8,
       }))
     }
+
+    const { data: posts, error: postsError } = await supabase
+      .from('blog_posts')
+      .select('slug, updated_at, published_at')
+      .eq('is_published', true)
+      .limit(2000)
+
+    if (!postsError && Array.isArray(posts)) {
+      blogRoutes = posts.map((post) => ({
+        url: SITE_URL + '/blog/' + post.slug,
+        lastModified: post.updated_at ? new Date(post.updated_at) : (post.published_at ? new Date(post.published_at) : new Date()),
+        changeFrequency: 'monthly',
+        priority: 0.5,
+      }))
+    }
   } catch {}
 
-  return [...staticRoutes, ...productRoutes]
+  return [...staticRoutes, ...productRoutes, ...blogRoutes]
 }

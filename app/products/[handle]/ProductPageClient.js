@@ -11,58 +11,6 @@ import SizeRecommender from '../../../components/SizeRecommender'
 import { getAnalyticsSessionId, trackEvent } from '../../../lib/analyticsClient'
 import { metaPixelTrack, generateMetaEventId, sendServerMetaEvent } from '../../../lib/metaPixel'
 
-const girlReviewers = [
-  { name: 'Ayesha K.',   city: 'Lahore',      review: 'Love this product! The fabric is so soft and my daughter absolutely adores it. Will definitely order again!' },
-  { name: 'Sana M.',     city: 'Karachi',     review: 'Amazing quality for the price. The colors are exactly as shown. My daughter looks so cute in it!' },
-  { name: 'Fatima R.',   city: 'Islamabad',   review: 'Ordered for my 4 year old and she loves it. Super soft material and fits perfectly. Great value!' },
-  { name: 'Nadia A.',    city: 'Faisalabad',  review: 'Very happy with this purchase. Fast delivery and quality is better than expected. My daughter wears it every day!' },
-  { name: 'Hina S.',     city: 'Multan',      review: 'Beautiful design and excellent quality. My little girl looks adorable in this. Will order more!' },
-  { name: 'Zara T.',     city: 'Rawalpindi',  review: 'So cute and affordable! My daughter gets compliments every time she wears it. Highly recommended!' },
-  { name: 'Maria B.',    city: 'Sialkot',     review: 'Great product! My daughter wears it all day without any discomfort. The fabric is so soft!' },
-  { name: 'Amna Q.',     city: 'Peshawar',    review: 'Excellent quality at such an affordable price. My princess loves it. Very happy customer!' },
-  { name: 'Rabia N.',    city: 'Gujranwala',  review: 'My 6 year old daughter keeps asking to wear this every day. Super soft and durable fabric!' },
-  { name: 'Saima H.',    city: 'Quetta',      review: 'Very satisfied with this order. My daughter looked so beautiful in it. Definitely buying more!' },
-]
-
-const boyReviewers = [
-  { name: 'Sadia A.',    city: 'Lahore',      review: 'My son loves this outfit! The fabric is very comfortable and he wears it all day long.' },
-  { name: 'Uzma K.',     city: 'Karachi',     review: 'Amazing quality for the price. My son looks so handsome in this. Fast delivery too!' },
-  { name: 'Hira R.',     city: 'Islamabad',   review: 'Ordered for my 5 year old son and he loves it. Super soft material and fits perfectly!' },
-  { name: 'Samina B.',   city: 'Faisalabad',  review: 'Very happy with this purchase. My son wears this to school and gets lots of compliments!' },
-  { name: 'Nazia H.',    city: 'Multan',      review: 'Excellent quality! My son refused to wear anything else after getting this. Highly recommended!' },
-  { name: 'Farah T.',    city: 'Rawalpindi',  review: 'So comfortable and affordable! My son loves the colors. Packaging was also very neat.' },
-  { name: 'Shabana B.',  city: 'Sialkot',     review: 'Great product! My son wears it every day. Very durable and the stitching is excellent!' },
-  { name: 'Parveen Q.',  city: 'Peshawar',    review: 'Excellent quality at such an affordable price. My son looks so smart in this outfit!' },
-  { name: 'Nasreen N.',  city: 'Gujranwala',  review: 'My 7 year old son keeps asking to wear this every day. Super soft and very durable!' },
-  { name: 'Shahida H.',  city: 'Quetta',      review: 'Very satisfied with this order. My son loved it immediately. Definitely buying more!' },
-]
-
-const neutralReviewers = [
-  { name: 'Ayesha K.',  city: 'Lahore',     review: 'Amazing quality for the price! The product looks exactly as shown. Fast delivery too. Highly recommended!' },
-  { name: 'Sana M.',    city: 'Karachi',    review: 'Very satisfied with this purchase. Great value for money and the quality is excellent!' },
-  { name: 'Fatima R.',  city: 'Islamabad',  review: 'Excellent product! Super soft material and very durable. Will definitely order again!' },
-  { name: 'Nadia A.',   city: 'Faisalabad', review: 'Very happy with this purchase. Fast delivery and quality is much better than expected!' },
-  { name: 'Hina S.',    city: 'Multan',     review: 'Beautiful design and excellent quality. The fabric is breathable and very comfortable!' },
-  { name: 'Uzma F.',    city: 'Lahore',     review: 'Kiddy Trends never disappoints! Consistent quality every time. Will keep ordering!' },
-  { name: 'Rabia N.',   city: 'Gujranwala', review: 'Super soft and durable fabric. Great value for money. Packaging was also very neat!' },
-  { name: 'Saima H.',   city: 'Quetta',     review: 'Very satisfied with this order. Product exactly as described and delivery was quick!' },
-]
-
-function getProductReviews(productId, title) {
-  const seed = productId % 100
-  if (seed > 50) return null
-  const titleLower = (title || '').toLowerCase()
-  const isBoy  = titleLower.includes('boy') || titleLower.includes('boys')
-  const isGirl = titleLower.includes('girl') || titleLower.includes('girls') || titleLower.includes('frock') || titleLower.includes('dress')
-  const pool     = isBoy ? boyReviewers : isGirl ? girlReviewers : neutralReviewers
-  const count    = (productId % 3) + 1
-  const startIdx = productId % pool.length
-  const selected = []
-  for (let i = 0; i < count; i++) selected.push(pool[(startIdx + i) % pool.length])
-  const rating = (productId % 2 === 0) ? 5 : 4
-  return { rating, reviews: selected }
-}
-
 function StarRating({ rating }) {
   return (
       <div className="flex gap-0.5">
@@ -192,6 +140,12 @@ export default function ProductPageClient({ initialProduct = null }) {
   const [views, setViews]                 = useState(0)
   const [bundleChecked, setBundleChecked] = useState({ 0: true, 1: true, 2: true })
   const [bundleAdded, setBundleAdded]     = useState(false)
+  const [reviews, setReviews]             = useState([])
+  const [reviewCount, setReviewCount]     = useState(0)
+  const [averageRating, setAverageRating] = useState(0)
+  const [reviewForm, setReviewForm]       = useState({ name: '', rating: 0, text: '' })
+  const [reviewSubmitStatus, setReviewSubmitStatus] = useState('idle') // idle | loading | success | error
+  const [reviewSubmitMessage, setReviewSubmitMessage] = useState('')
 
   const mainImage = product?.images?.[activeImg]?.src || product?.images?.[0]?.src
 
@@ -288,6 +242,58 @@ export default function ProductPageClient({ initialProduct = null }) {
     sendServerMetaEvent('ViewContent', viewContentParams, viewContentEventId)
   }, [product])
 
+  useEffect(() => {
+    if (!product) return
+    async function fetchReviews() {
+      try {
+        const res = await fetch('/api/reviews?productId=' + (product._id || product.id))
+        const data = await res.json()
+        if (data.success) {
+          setReviews(data.reviews || [])
+          setReviewCount(data.count || 0)
+          setAverageRating(data.averageRating || 0)
+        }
+      } catch {}
+    }
+    fetchReviews()
+  }, [product?._id])
+
+  async function handleSubmitReview(e) {
+    e.preventDefault()
+    if (reviewSubmitStatus === 'loading') return
+    if (!reviewForm.name.trim()) {
+      setReviewSubmitStatus('error')
+      setReviewSubmitMessage('Please enter your name')
+      return
+    }
+    if (!reviewForm.rating) {
+      setReviewSubmitStatus('error')
+      setReviewSubmitMessage('Please select a rating')
+      return
+    }
+    setReviewSubmitStatus('loading')
+    try {
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: product._id || product.id,
+          customerName: reviewForm.name.trim(),
+          rating: reviewForm.rating,
+          reviewText: reviewForm.text.trim(),
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) throw new Error(data.error || 'Something went wrong')
+      setReviewSubmitStatus('success')
+      setReviewSubmitMessage('Thanks! Your review will appear after a quick check.')
+      setReviewForm({ name: '', rating: 0, text: '' })
+    } catch (err) {
+      setReviewSubmitStatus('error')
+      setReviewSubmitMessage(err.message || 'Something went wrong, please try again')
+    }
+  }
+
   const price        = parseFloat(selectedVariant?.price || 0)
   const displayPrice = Math.round(price)
   const comparePrice = parseFloat(selectedVariant?.compare_at_price || 0)
@@ -383,7 +389,6 @@ export default function ProductPageClient({ initialProduct = null }) {
   const productTags = typeof product.tags === 'string'
       ? product.tags.split(',').map(t => t.trim()).filter(Boolean)
       : (product.tags || [])
-  const reviewData = getProductReviews(product.id, product.title)
   const titleParts = getProductTitleParts(product)
   const displayTitle = normalizeDisplayTitle(product.title)
   const displayGender = (product.gender && String(product.gender).trim()) || getProductGender(product.title)
@@ -512,11 +517,11 @@ export default function ProductPageClient({ initialProduct = null }) {
               </div>
 
               {/* Star rating */}
-              {reviewData && (
+              {reviewCount > 0 && (
                   <div className="flex items-center gap-2 mb-4">
-                    <StarRating rating={reviewData.rating} />
-                    <span className="font-semibold text-sm text-charcoal">{reviewData.rating}.0</span>
-                    <span className="text-sm text-gray-400">({reviewData.reviews.length} review{reviewData.reviews.length > 1 ? 's' : ''})</span>
+                    <StarRating rating={Math.round(averageRating)} />
+                    <span className="font-semibold text-sm text-charcoal">{averageRating.toFixed(1)}</span>
+                    <span className="text-sm text-gray-400">({reviewCount} review{reviewCount > 1 ? 's' : ''})</span>
                   </div>
               )}
 
@@ -643,32 +648,73 @@ export default function ProductPageClient({ initialProduct = null }) {
               )}
 
               {/* Reviews */}
-              {reviewData && (
-                  <div className="border-t border-gray-100 mt-6 pt-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <StarRating rating={reviewData.rating} />
-                      <span className="font-display text-lg text-charcoal">{reviewData.rating}.0</span>
-                      <span className="text-sm text-gray-400">({reviewData.reviews.length} review{reviewData.reviews.length > 1 ? 's' : ''})</span>
-                    </div>
-                    <div className="space-y-3">
-                      {reviewData.reviews.map((r, i) => (
-                          <div key={i} className="bg-cream rounded-2xl p-4">
-                            <div className="flex items-center gap-2 mb-2">
-                              <div className="w-8 h-8 bg-coral/20 rounded-full flex items-center justify-center font-display text-coral text-sm flex-shrink-0">
-                                {r.name[0]}
-                              </div>
-                              <div>
-                                <p className="font-semibold text-sm text-charcoal">{r.name}</p>
-                                <p className="text-xs text-gray-400">{r.city}</p>
-                              </div>
-                              <div className="ml-auto"><StarRating rating={reviewData.rating} /></div>
+              <div className="border-t border-gray-100 mt-6 pt-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <h3 className="font-display text-xl text-charcoal">Customer Reviews</h3>
+                  {reviewCount > 0 && (
+                    <>
+                      <StarRating rating={Math.round(averageRating)} />
+                      <span className="font-display text-lg text-charcoal">{averageRating.toFixed(1)}</span>
+                      <span className="text-sm text-gray-400">({reviewCount})</span>
+                    </>
+                  )}
+                </div>
+
+                {reviews.length === 0 ? (
+                  <p className="text-sm text-gray-400 mb-4">No reviews yet — be the first to share your experience!</p>
+                ) : (
+                  <div className="space-y-3 mb-6">
+                    {reviews.map((r) => (
+                        <div key={r.id} className="bg-cream rounded-2xl p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 bg-coral/20 rounded-full flex items-center justify-center font-display text-coral text-sm flex-shrink-0">
+                              {r.customer_name[0]}
                             </div>
-                            <p className="text-sm text-gray-600 leading-relaxed">"{r.review}"</p>
+                            <div>
+                              <p className="font-semibold text-sm text-charcoal">{r.customer_name}</p>
+                            </div>
+                            <div className="ml-auto"><StarRating rating={r.rating} /></div>
                           </div>
+                          {r.review_text && (
+                            <p className="text-sm text-gray-600 leading-relaxed">"{r.review_text}"</p>
+                          )}
+                        </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Write a review */}
+                <div className="bg-cream/60 rounded-2xl p-4">
+                  <h4 className="font-display text-base text-charcoal mb-3">Write a Review</h4>
+                  <form onSubmit={handleSubmitReview} className="space-y-3">
+                    <div className="flex items-center gap-1">
+                      {[1,2,3,4,5].map((s) => (
+                        <button key={s} type="button" onClick={() => setReviewForm((f) => ({ ...f, rating: s }))}
+                          className="p-0.5" aria-label={s + ' star' + (s > 1 ? 's' : '')}>
+                          <svg className={'w-6 h-6 ' + (s <= reviewForm.rating ? 'text-yellow-400' : 'text-gray-200')} fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.95-.69l1.07-3.292z" />
+                          </svg>
+                        </button>
                       ))}
                     </div>
-                  </div>
-              )}
+                    <input type="text" placeholder="Your name" value={reviewForm.name}
+                      onChange={(e) => { setReviewForm((f) => ({ ...f, name: e.target.value })); if (reviewSubmitStatus !== 'idle') setReviewSubmitStatus('idle') }}
+                      className="w-full text-sm px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-coral bg-white" />
+                    <textarea placeholder="Share your experience (optional)" value={reviewForm.text} rows={3}
+                      onChange={(e) => setReviewForm((f) => ({ ...f, text: e.target.value }))}
+                      className="w-full text-sm px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:border-coral bg-white resize-none" />
+                    <button type="submit" disabled={reviewSubmitStatus === 'loading'}
+                      className="btn-primary text-sm disabled:opacity-60">
+                      {reviewSubmitStatus === 'loading' ? 'Submitting…' : 'Submit Review'}
+                    </button>
+                    {reviewSubmitMessage && (
+                      <p className={'text-sm font-semibold ' + (reviewSubmitStatus === 'error' ? 'text-red-500' : 'text-mint')}>
+                        {reviewSubmitMessage}
+                      </p>
+                    )}
+                  </form>
+                </div>
+              </div>
             </div>
           </div>
 
