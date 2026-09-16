@@ -58,10 +58,36 @@ export const metadata = {
   },
 }
 
+const organizationJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'Kiddy Trends',
+  url: 'https://thekiddytrends.com',
+  logo: 'https://thekiddytrends.com/logo.jpg',
+  description: 'Shop cute & affordable kids clothing, bedding, bags and accessories in Pakistan. Newborn to 12 years. Cash on Delivery available across Pakistan.',
+  sameAs: [
+    'https://instagram.com/trendykids.2020',
+    'https://facebook.com/thetrendykidsshop',
+    'https://www.tiktok.com/@kiddy.trends',
+    'https://youtube.com/@kiddytrends5518',
+  ],
+  contactPoint: {
+    '@type': 'ContactPoint',
+    telephone: '+92-336-0677340',
+    contactType: 'customer service',
+    areaServed: 'PK',
+    availableLanguage: ['en', 'ur'],
+  },
+}
+
 export default function RootLayout({ children }) {
   return (
       <html lang="en" className={fredokaOne.variable + ' ' + nunito.variable}>
       <body>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+      />
       {/* Google Analytics */}
       <Script src="https://www.googletagmanager.com/gtag/js?id=G-RWMHQN9PL4" strategy="afterInteractive" />
       <Script id="google-analytics" strategy="afterInteractive">

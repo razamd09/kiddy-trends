@@ -98,6 +98,7 @@ export default function Footer() {
                 ['/', 'Home'],
                 ['/collections', 'Collections'],
                 ['/about', 'About Us'],
+                ['/faq', 'FAQ'],
                 ['/refund-policy', 'Refund Policy'],
                 ['/size-chart',    'Size Chart'],
                 ['/feedback',      'Share Feedback'],

@@ -9,6 +9,7 @@ export default async function sitemap() {
     { url: SITE_URL + '/collections', lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
     { url: SITE_URL + '/brands', lastModified: new Date(), changeFrequency: 'weekly', priority: 0.6 },
     { url: SITE_URL + '/about', lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
+    { url: SITE_URL + '/faq', lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
     { url: SITE_URL + '/refund-policy', lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
     { url: SITE_URL + '/size-chart', lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
   ]
