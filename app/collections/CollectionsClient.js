@@ -45,49 +45,16 @@ const categories = [
   { id: 'accessories', label: 'Accessories', emoji: '🎀', color: 'bg-mint/20',    subFilters: [] },
 ]
 
-function productMatchesFilter(product, catId, subId, subFilters, gender) {
-  const text = [
-    product.title,
-    product.product_type,
-    ...(product.tags || []),
-    ...(product.variants || []).map(v =>
-      [v.title, v.option1, v.option2, v.option3].filter(Boolean).join(' ')
-    ),
-    ...(product.options || []).flatMap(o => o.values || [])
-  ].join(' ').toLowerCase()
-
-  const type  = (product.product_type || '').toLowerCase()
-  const title = (product.title || '').toLowerCase()
-  const category = (product.category || '').toLowerCase()
-  const beddingKw = ['bedding', 'bedsheet', 'bed sheet', 'duvet', 'razai', 'comforter', 'pillow', 'fitted sheet']
-
-  if (gender) {
-    const hasBoys = /\bboys?\b/.test(title)
-    const hasGirls = /\bgirls?\b/.test(title)
-    if (gender === 'boys' && !hasBoys) return false
-    if (gender === 'girls' && !hasGirls) return false
-  }
-
-  if (subId) {
-    const sub = subFilters.find(s => s.id === subId)
-    if (!sub) return false
-    return sub.keywords.some(k => text.includes(k.toLowerCase()))
-  }
-
-  const newbornKw  = ['0-3','0 to 3','0/3','0-3m','3-6','3 to 6','3/6','3-6m','6-9','6 to 9','6/9','6-9m','9-12','9 to 12','9/12','9-12m','newborn','new born','infant','0 month','1 month','2 month','3 month','4 month','5 month','6 month','7 month','8 month','9 month','10 month','11 month']
-  const toddlerKw  = ['12-18','12 to 18','12/18','18-24','18 to 24','18/24','1-2 year','1 to 2 year','1 year','2 year','3 year','toddler','1yr','2yr','3yr']
-  const kidsKw     = ['4 year','5 year','6 year','7 year','8 year','4yr','5yr','6yr','7yr','8yr','4-5','5-6','6-7','7-8','3-4']
-  const tweensKw   = ['9 year','10 year','11 year','12 year','9yr','10yr','11yr','12yr','tween','9-10','11-12']
-
-  if (catId === 'newborn')     return newbornKw.some(k => text.includes(k)) || category.includes('newborn') || category.includes('infant') || type.includes('newborn') || type.includes('infant')
-  if (catId === 'toddler')     return toddlerKw.some(k => text.includes(k))
-  if (catId === 'kids')        return kidsKw.some(k => text.includes(k))
-  if (catId === 'tweens')      return tweensKw.some(k => text.includes(k))
-  if (catId === 'bedding')     return beddingKw.some((k) => text.includes(k) || type.includes(k) || category.includes(k))
-  if (catId === 'bags')        return category.includes('bag') || type.includes('bag') || type.includes('backpack') || title.includes('bag') || title.includes('backpack')
-  if (catId === 'accessories') return category.includes('access') || type.includes('access') || type.includes('hair') || title.includes('pin') || title.includes('hair') || title.includes('ponytail') || title.includes('scrunchie') || title.includes('clip') || title.includes('headband')
-  return true
-}
+// Every age-bracket id maps to its match keywords / display label, regardless
+// of which broad category it lives under — built once at module load.
+const AGE_KEYWORDS_BY_ID = {}
+const AGE_LABEL_BY_ID = {}
+categories.forEach((cat) => {
+  ;(cat.subFilters || []).forEach((sub) => {
+    AGE_KEYWORDS_BY_ID[sub.id] = sub.keywords || []
+    AGE_LABEL_BY_ID[sub.id] = sub.label
+  })
+})
 
 function getProductText(product) {
   return [
@@ -101,6 +68,51 @@ function getProductText(product) {
   ].join(' ').toLowerCase()
 }
 
+// Broad category browsing when no specific age bracket is selected (e.g. the
+// "Kids" pill on its own, or Bedding/Bags/Accessories which have no ages at all).
+function matchesCategoryBucket(product, catId) {
+  const text = getProductText(product)
+  const type = (product.product_type || '').toLowerCase()
+  const title = (product.title || '').toLowerCase()
+  const category = (product.category || '').toLowerCase()
+
+  const newbornKw  = ['0-3','0 to 3','0/3','0-3m','3-6','3 to 6','3/6','3-6m','6-9','6 to 9','6/9','6-9m','9-12','9 to 12','9/12','9-12m','newborn','new born','infant','0 month','1 month','2 month','3 month','4 month','5 month','6 month','7 month','8 month','9 month','10 month','11 month']
+  const toddlerKw  = ['12-18','12 to 18','12/18','18-24','18 to 24','18/24','1-2 year','1 to 2 year','1 year','2 year','3 year','toddler','1yr','2yr','3yr']
+  const kidsKw     = ['4 year','5 year','6 year','7 year','8 year','4yr','5yr','6yr','7yr','8yr','4-5','5-6','6-7','7-8','3-4']
+  const tweensKw   = ['9 year','10 year','11 year','12 year','9yr','10yr','11yr','12yr','tween','9-10','11-12']
+  const beddingKw  = ['bedding', 'bedsheet', 'bed sheet', 'duvet', 'razai', 'comforter', 'pillow', 'fitted sheet']
+
+  if (catId === 'newborn')     return newbornKw.some(k => text.includes(k)) || category.includes('newborn') || category.includes('infant') || type.includes('newborn') || type.includes('infant')
+  if (catId === 'toddler')     return toddlerKw.some(k => text.includes(k))
+  if (catId === 'kids')        return kidsKw.some(k => text.includes(k))
+  if (catId === 'tweens')      return tweensKw.some(k => text.includes(k))
+  if (catId === 'bedding')     return beddingKw.some((k) => text.includes(k) || type.includes(k) || category.includes(k))
+  if (catId === 'bags')        return category.includes('bag') || type.includes('bag') || type.includes('backpack') || title.includes('bag') || title.includes('backpack')
+  if (catId === 'accessories') return category.includes('access') || type.includes('access') || type.includes('hair') || title.includes('pin') || title.includes('hair') || title.includes('ponytail') || title.includes('scrunchie') || title.includes('clip') || title.includes('headband')
+  return true
+}
+
+function matchesGenderId(product, genderId) {
+  const title = (product.title || '').toLowerCase()
+  if (genderId === 'boys') return /\bboys?\b/.test(title)
+  if (genderId === 'girls') return /\bgirls?\b/.test(title)
+  return true
+}
+
+// Empty selection or both genders selected = no restriction.
+function matchesAnyGenders(product, genderIds) {
+  if (!Array.isArray(genderIds) || genderIds.length === 0 || genderIds.length >= 2) return true
+  return matchesGenderId(product, genderIds[0])
+}
+
+function matchesAnyAges(product, ageIds) {
+  if (!Array.isArray(ageIds) || ageIds.length === 0) return true
+  const text = getProductText(product)
+  return ageIds.some((ageId) =>
+    (AGE_KEYWORDS_BY_ID[ageId] || []).some((kw) => text.includes(String(kw).toLowerCase()))
+  )
+}
+
 function productTypeMatches(productType, queryProductType) {
   const productValue = String(productType || '').trim().toLowerCase()
   const queryValue = String(queryProductType || '').trim().toLowerCase()
@@ -111,45 +123,31 @@ function productTypeMatches(productType, queryProductType) {
   return mockNeckValues.has(productValue) && mockNeckValues.has(queryValue)
 }
 
-function productMatchesAnyAges(product, ageIds) {
-  if (!Array.isArray(ageIds) || ageIds.length === 0) return true
-
-  const text = getProductText(product)
-  const keywordByAgeId = {}
-  categories.forEach((cat) => {
-    ;(cat.subFilters || []).forEach((sub) => {
-      keywordByAgeId[sub.id] = sub.keywords || []
-    })
-  })
-
-  return ageIds.some((ageId) =>
-    (keywordByAgeId[ageId] || []).some((kw) => text.includes(String(kw).toLowerCase()))
-  )
+function getProductSeason(product) {
+  return String(product?.product_season || '').trim()
 }
 
-function productMatchesAnyGenders(product, genders) {
-  if (!Array.isArray(genders) || genders.length === 0 || genders.length >= 2) return true
-
-  const title = (product.title || '').toLowerCase()
-  const wantsBoys = genders.includes('boys')
-  const wantsGirls = genders.includes('girls')
-  const hasBoys = /\bboys?\b/.test(title)
-  const hasGirls = /\bgirls?\b/.test(title)
-
-  if (wantsBoys && !wantsGirls) return hasBoys
-  if (!wantsBoys && wantsGirls) return hasGirls
-  return true
+function normalizeProductVersion(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
-function getVersionPriority(product) {
-  return isNewArrivalsVersion(product?.product_version) ? 1 : 0
+// "Old Packs" is the only product_version value that represents deal/clearance
+// stock — matched against the structured field, not fuzzy title text.
+function isOldPackProduct(product) {
+  const version = normalizeProductVersion(product?.product_version)
+  return version.includes('old') && version.includes('pack')
 }
 
-function getTitlePriority(product) {
-  const title = String(product?.title || '').toLowerCase()
-  if (title.includes('summer new arrival 2026')) return 2
-  if (title.includes('2026')) return 1
-  return 0
+function normalizeSeasonQuery(value) {
+  const normalized = String(value || '').trim().toLowerCase().replace(/[^a-z_]/g, '')
+  if (normalized === 'winter') return 'Winter'
+  if (normalized === 'summer') return 'Summer'
+  if (normalized === 'mid_weather' || normalized === 'midweather') return 'Mid_Weather'
+  return null
 }
 
 function getCreatedAtValue(product) {
@@ -166,58 +164,10 @@ function getPriceValue(product) {
   return Number.isFinite(value) ? value : 0
 }
 
-function normalizeProductVersion(value) {
-  return String(value || '')
-    .toLowerCase()
-    .replace(/[^a-z]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-function normalizeSearchText(value) {
-  return String(value || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-function normalizeSeasonQuery(value) {
-  const normalized = String(value || '').trim().toLowerCase().replace(/[^a-z_]/g, '')
-  if (normalized === 'winter') return 'Winter'
-  if (normalized === 'summer') return 'Summer'
-  if (normalized === 'mid_weather' || normalized === 'midweather') return 'Mid_Weather'
-  return null
-}
-
-function isOldPackProduct(product) {
-  const version = normalizeProductVersion(product?.product_version)
-  return version.includes('old') && version.includes('pack')
-}
-
-function isSeasonDealProduct(product, seasonKeyword) {
-  const normalizedTitle = normalizeSearchText(product?.title)
-  return isOldPackProduct(product) && normalizedTitle.includes(seasonKeyword)
-}
-
 function compareBySelectedSort(a, b, sort) {
   if (sort === 'low') return getPriceValue(a) - getPriceValue(b)
   if (sort === 'high') return getPriceValue(b) - getPriceValue(a)
   if (sort === 'best_selling') return getInventoryValue(b) - getInventoryValue(a)
-  if (sort === 'winter_deals' || sort === 'summer_deals') return getCreatedAtValue(b) - getCreatedAtValue(a)
-  return getCreatedAtValue(b) - getCreatedAtValue(a)
-}
-
-function compareProducts(a, b, sort) {
-  const versionDiff = getVersionPriority(b) - getVersionPriority(a)
-  if (versionDiff !== 0) return versionDiff
-
-  const selectedSortDiff = compareBySelectedSort(a, b, sort)
-  if (selectedSortDiff !== 0) return selectedSortDiff
-
-  const titlePriorityDiff = getTitlePriority(b) - getTitlePriority(a)
-  if (titlePriorityDiff !== 0) return titlePriorityDiff
-
   return getCreatedAtValue(b) - getCreatedAtValue(a)
 }
 
@@ -330,18 +280,22 @@ export default function CollectionsClient({ initialProducts = [] }) {
   const activeCatObj = categories.find(c => c.id === activeCat)
   const subFilters   = activeCatObj?.subFilters || []
   const showGenderFilter = ['kids', 'toddler', 'tweens'].includes(activeCat)
-  const isSeasonDealSort = sort === 'winter_deals' || sort === 'summer_deals'
 
-  let filtered = activeCat === 'all'
-    ? products
-    : products.filter(p => productMatchesFilter(p, activeCat, activeSub, subFilters, activeGender))
+  // On-page pills (single-select) take priority; otherwise fall back to
+  // whatever gender/size the customer already picked in the homepage popup.
+  const effectiveGenders = activeGender ? [activeGender] : queryGenders
+  const effectiveAgeIds  = activeSub ? [activeSub] : queryAges
 
-  if (queryGenders.length > 0) {
-    filtered = filtered.filter((p) => productMatchesAnyGenders(p, queryGenders))
+  let filtered = products
+
+  if (effectiveAgeIds.length > 0) {
+    filtered = filtered.filter((p) => matchesAnyAges(p, effectiveAgeIds))
+  } else if (activeCat !== 'all') {
+    filtered = filtered.filter((p) => matchesCategoryBucket(p, activeCat))
   }
 
-  if (queryAges.length > 0) {
-    filtered = filtered.filter((p) => productMatchesAnyAges(p, queryAges))
+  if (effectiveGenders.length > 0) {
+    filtered = filtered.filter((p) => matchesAnyGenders(p, effectiveGenders))
   }
 
   if (queryTitle) {
@@ -353,7 +307,7 @@ export default function CollectionsClient({ initialProducts = [] }) {
   }
 
   if (querySeason) {
-    filtered = filtered.filter((p) => String(p?.product_season || '') === querySeason)
+    filtered = filtered.filter((p) => getProductSeason(p) === querySeason)
   }
 
   if (queryCharacter) {
@@ -364,22 +318,25 @@ export default function CollectionsClient({ initialProducts = [] }) {
     filtered = filtered.filter((p) => String(p?.brand || '').toLowerCase() === queryBrand)
   }
 
-  // Season-deal sorting (Winter/Summer Deals) layers on top of whatever
-  // category/age/gender filters are active, rather than replacing them —
-  // e.g. picking an age group while "Winter Deals" is selected should
-  // narrow the deals to that age, not show every winter deal regardless.
-  if (isSeasonDealSort) {
-    const seasonKeyword = sort === 'winter_deals' ? 'winter' : 'summer'
-    filtered = filtered.filter((p) => isSeasonDealProduct(p, seasonKeyword))
-  }
-
-  if (sort === 'new' || sort === 'all') {
-    filtered = [...filtered].sort((a, b) => getCreatedAtValue(b) - getCreatedAtValue(a))
-  } else if (queryGenders.length > 0) {
-    // For Boys/Girls menu filters, prioritize latest products from DB strictly by created_at.
-    filtered = [...filtered].sort((a, b) => getCreatedAtValue(b) - getCreatedAtValue(a))
+  // Sort mode decides both which product_version(s) are eligible and the
+  // final order — always on top of the gender/age/category filtering above,
+  // never replacing it.
+  if (sort === 'winter_deals' || sort === 'summer_deals') {
+    const seasonName = sort === 'winter_deals' ? 'Winter' : 'Summer'
+    filtered = filtered
+      .filter((p) => getProductSeason(p) === seasonName && isOldPackProduct(p))
+      .sort((a, b) => getCreatedAtValue(b) - getCreatedAtValue(a))
+  } else if (sort === 'new' || sort === 'all') {
+    // New Arrivals first, then Old Packs — each group newest first.
+    filtered = filtered
+      .filter((p) => isNewArrivalsVersion(p?.product_version) || isOldPackProduct(p))
+      .sort((a, b) => {
+        const rankOf = (p) => (isNewArrivalsVersion(p?.product_version) ? 0 : 1)
+        const rankDiff = rankOf(a) - rankOf(b)
+        return rankDiff !== 0 ? rankDiff : getCreatedAtValue(b) - getCreatedAtValue(a)
+      })
   } else {
-    filtered = [...filtered].sort((a, b) => compareProducts(a, b, sort))
+    filtered = [...filtered].sort((a, b) => compareBySelectedSort(a, b, sort))
   }
 
   // Pagination
@@ -396,6 +353,15 @@ export default function CollectionsClient({ initialProducts = [] }) {
 
   function handleSortChange(nextSort) {
     setSort(nextSort)
+    setPage(1)
+  }
+
+  function resetAllFilters() {
+    setActiveCat('all')
+    setActiveGender(null)
+    setActiveSub(null)
+    setQueryAges([])
+    setQueryGenders([])
     setPage(1)
   }
 
@@ -463,8 +429,12 @@ export default function CollectionsClient({ initialProducts = [] }) {
       <div className="flex items-center justify-between mb-6">
         <p className="text-sm text-gray-400 font-semibold">
           {loading ? 'Loading...' : `${filtered.length} product${filtered.length !== 1 ? 's' : ''}`}
-          {activeGender && <span className="ml-2 text-coral">· {activeGender === 'boys' ? 'Boys' : 'Girls'}</span>}
-          {activeSub && <span className="ml-2 text-coral">· {subFilters.find(s => s.id === activeSub)?.label}</span>}
+          {effectiveGenders.length === 1 && (
+            <span className="ml-2 text-coral">· {effectiveGenders[0] === 'boys' ? 'Boys' : 'Girls'}</span>
+          )}
+          {effectiveAgeIds.length > 0 && (
+            <span className="ml-2 text-coral">· {effectiveAgeIds.map((id) => AGE_LABEL_BY_ID[id]).filter(Boolean).join(', ')}</span>
+          )}
         </p>
         <select value={sort} onChange={e => handleSortChange(e.target.value)}
           className="px-4 py-2 rounded-full border-2 border-gray-100 text-sm font-semibold text-center focus:outline-none focus:border-coral bg-cream">
@@ -500,7 +470,7 @@ export default function CollectionsClient({ initialProducts = [] }) {
           <div className="text-6xl mb-4">🔍</div>
           <h3 className="font-display text-2xl text-gray-400">No products found</h3>
           <p className="text-gray-400 mt-2 mb-6">Try a different age group or category</p>
-          <button onClick={() => { setActiveCat('all'); setActiveSub(null) }} className="btn-primary">
+          <button onClick={resetAllFilters} className="btn-primary">
             View All Products
           </button>
         </div>
