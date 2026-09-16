@@ -400,16 +400,6 @@ export default function Collections() {
   function handleSortChange(nextSort) {
     setSort(nextSort)
     setPage(1)
-
-    // Seasonal modes should always run globally, independent of existing query/category filters.
-    if (nextSort === 'winter_deals' || nextSort === 'summer_deals') {
-      setActiveCat('all')
-      setActiveGender(null)
-      setActiveSub(null)
-      setQueryAges([])
-      setQueryGenders([])
-      setQueryTitle('')
-    }
   }
 
   return (
