@@ -122,7 +122,7 @@ export default function ProductCard({ product }) {
   <WishlistButton product={product} />
           {image ? (
             <div className="absolute inset-0 bg-white flex items-center justify-center p-3">
-              <Image src={image} alt={product.title} fill
+              <Image src={image} alt={product.title} fill unoptimized
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                 className="object-contain"
                 onError={() => {
@@ -269,7 +269,7 @@ export default function ProductCard({ product }) {
 
             <div className="relative flex min-h-[18rem] items-center justify-center bg-gray-50 p-6 md:min-h-[28rem]">
               {image ? (
-                <Image src={image} alt={product.title} fill sizes="(max-width: 768px) 100vw, 50vw"
+                <Image src={image} alt={product.title} fill unoptimized sizes="(max-width: 768px) 100vw, 50vw"
                   className="object-contain" />
               ) : (
                 <CardIcon type="shirt" className="h-20 w-20 text-gray-300" />

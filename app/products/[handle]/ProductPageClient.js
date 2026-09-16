@@ -431,7 +431,7 @@ export default function ProductPageClient({ initialProduct = null }) {
                 <div className={'absolute inset-0 flex items-center justify-center overflow-hidden ' + (zoomed ? 'cursor-zoom-out' : 'cursor-zoom-in')}
                      onClick={() => setZoomed(!zoomed)}>
                   {product.images?.length > 0 ? (
-                      <Image src={mainImage} alt={displayTitle} fill priority
+                      <Image src={mainImage} alt={displayTitle} fill priority unoptimized
                        sizes="(max-width: 768px) 100vw, 50vw"
                        className={'object-cover transition-transform duration-300 ' + (zoomed ? 'scale-125' : '')} />
                   ) : (
@@ -469,7 +469,7 @@ export default function ProductPageClient({ initialProduct = null }) {
                     {product.images.map((img, i) => (
                         <button key={i} onClick={() => setActiveImg(i)}
                                 className={'relative w-16 h-16 rounded-2xl overflow-hidden border-2 transition-all ' + (activeImg === i ? 'border-coral scale-105' : 'border-gray-100 hover:border-coral/40')}>
-                          <Image src={img.src} alt={displayTitle + ' ' + (i+1)} fill sizes="64px"
+                          <Image src={img.src} alt={displayTitle + ' ' + (i+1)} fill unoptimized sizes="64px"
                                className="object-cover" />
                         </button>
                     ))}
@@ -612,7 +612,7 @@ export default function ProductPageClient({ initialProduct = null }) {
                             <label className="flex flex-col items-center gap-1.5 cursor-pointer">
                               <div className="relative w-16 h-16 rounded-xl overflow-hidden border-2 border-white bg-white">
                                 {item.images?.[0]?.src && (
-                                    <Image src={item.images[0].src} alt={item.title} fill sizes="64px" className="object-contain" />
+                                    <Image src={item.images[0].src} alt={item.title} fill unoptimized sizes="64px" className="object-contain" />
                                 )}
                               </div>
                               <input type="checkbox" disabled={i === 0}
