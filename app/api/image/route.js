@@ -49,12 +49,24 @@ function getSupabaseStoragePath(url) {
     return null
 }
 
-function redirectWithCache(url) {
+// Fetches the resolved upstream URL and streams the bytes back directly
+// instead of issuing an HTTP redirect. next/image's optimizer (/_next/image)
+// has been seen failing to follow the redirect and caching that failure as a
+// 404, which then persists until the cache entry expires — proxying the
+// bytes ourselves removes that whole failure mode.
+async function proxyImage(url) {
     const target = toAbsoluteUrl(url)
-    return new Response(null, {
-        status: 307,
+    const upstream = await fetch(target)
+
+    if (!upstream.ok || !upstream.body) {
+        return Response.json({ success: false, error: 'Upstream image fetch failed' }, { status: 502 })
+    }
+
+    const contentType = upstream.headers.get('content-type') || 'image/webp'
+    return new Response(upstream.body, {
+        status: 200,
         headers: {
-            Location: target,
+            'Content-Type': contentType,
             'Cache-Control': 'public, max-age=300, s-maxage=300, stale-while-revalidate=86400',
         },
     })
@@ -76,17 +88,17 @@ export async function GET(request) {
                 .createSignedUrl(storagePath, 60 * 60)
 
             if (!signError && signedData?.signedUrl) {
-                return redirectWithCache(signedData.signedUrl)
+                return await proxyImage(signedData.signedUrl)
             }
 
             const { data: publicUrlData } = supabase.storage.from('products').getPublicUrl(storagePath)
             if (publicUrlData?.publicUrl) {
-                return redirectWithCache(publicUrlData.publicUrl)
+                return await proxyImage(publicUrlData.publicUrl)
             }
         }
 
         if (/^https?:\/\//i.test(src)) {
-            return redirectWithCache(src)
+            return await proxyImage(src)
         }
 
         return Response.json({ success: false, error: 'Unable to resolve image URL' }, { status: 404 })
