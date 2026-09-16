@@ -203,9 +203,6 @@ function isSeasonDealProduct(product, seasonKeyword) {
 function compareBySelectedSort(a, b, sort) {
   if (sort === 'low') return getPriceValue(a) - getPriceValue(b)
   if (sort === 'high') return getPriceValue(b) - getPriceValue(a)
-  if (sort === 'az') return String(a?.title || '').localeCompare(String(b?.title || ''))
-  if (sort === 'za') return String(b?.title || '').localeCompare(String(a?.title || ''))
-  if (sort === 'old') return getCreatedAtValue(a) - getCreatedAtValue(b)
   if (sort === 'best_selling') return getInventoryValue(b) - getInventoryValue(a)
   if (sort === 'winter_deals' || sort === 'summer_deals') return getCreatedAtValue(b) - getCreatedAtValue(a)
   return getCreatedAtValue(b) - getCreatedAtValue(a)
@@ -376,7 +373,7 @@ export default function CollectionsClient({ initialProducts = [] }) {
     filtered = filtered.filter((p) => isSeasonDealProduct(p, seasonKeyword))
   }
 
-  if (sort === 'new') {
+  if (sort === 'new' || sort === 'all') {
     filtered = [...filtered].sort((a, b) => getCreatedAtValue(b) - getCreatedAtValue(a))
   } else if (queryGenders.length > 0) {
     // For Boys/Girls menu filters, prioritize latest products from DB strictly by created_at.
@@ -471,15 +468,13 @@ export default function CollectionsClient({ initialProducts = [] }) {
         </p>
         <select value={sort} onChange={e => handleSortChange(e.target.value)}
           className="px-4 py-2 rounded-full border-2 border-gray-100 text-sm font-semibold text-center focus:outline-none focus:border-coral bg-cream">
+          <option value="all">All Products</option>
           <option value="new">Newest First</option>
           <option value="winter_deals">Winter Deals</option>
           <option value="summer_deals">Summer Deals</option>
           <option value="best_selling">Best Selling</option>
-          <option value="az">A–Z</option>
-          <option value="za">Z–A</option>
           <option value="low">Price: Low to High</option>
           <option value="high">Price: High to Low</option>
-          <option value="old">Oldest First</option>
         </select>
       </div>
 
