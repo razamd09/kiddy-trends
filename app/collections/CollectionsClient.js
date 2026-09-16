@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import ProductCard from '../../components/ProductCard'
-import { isNewArrivalsVersion } from '../../lib/newArrivals'
 
 const categories = [
   {
@@ -127,21 +126,6 @@ function getProductSeason(product) {
   return String(product?.product_season || '').trim()
 }
 
-function normalizeProductVersion(value) {
-  return String(value || '')
-    .toLowerCase()
-    .replace(/[^a-z]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-// "Old Packs" is the only product_version value that represents deal/clearance
-// stock — matched against the structured field, not fuzzy title text.
-function isOldPackProduct(product) {
-  const version = normalizeProductVersion(product?.product_version)
-  return version.includes('old') && version.includes('pack')
-}
-
 function normalizeSeasonQuery(value) {
   const normalized = String(value || '').trim().toLowerCase().replace(/[^a-z_]/g, '')
   if (normalized === 'winter') return 'Winter'
@@ -153,22 +137,6 @@ function normalizeSeasonQuery(value) {
 function getCreatedAtValue(product) {
   const value = new Date(product?.created_at || 0).getTime()
   return Number.isFinite(value) ? value : 0
-}
-
-function getInventoryValue(product) {
-  return product?.variants?.[0]?.inventory_quantity || 0
-}
-
-function getPriceValue(product) {
-  const value = parseFloat(product?.variants?.[0]?.price)
-  return Number.isFinite(value) ? value : 0
-}
-
-function compareBySelectedSort(a, b, sort) {
-  if (sort === 'low') return getPriceValue(a) - getPriceValue(b)
-  if (sort === 'high') return getPriceValue(b) - getPriceValue(a)
-  if (sort === 'best_selling') return getInventoryValue(b) - getInventoryValue(a)
-  return getCreatedAtValue(b) - getCreatedAtValue(a)
 }
 
 // Cache products in module scope so they persist between renders
@@ -190,7 +158,6 @@ export default function CollectionsClient({ initialProducts = [] }) {
   const [querySeason, setQuerySeason] = useState(null)
   const [queryCharacter, setQueryCharacter] = useState('')
   const [queryBrand, setQueryBrand] = useState('')
-  const [sort, setSort]           = useState('new')
   const [page, setPage]           = useState(1)
   const ITEMS_PER_PAGE = 40
 
@@ -318,26 +285,7 @@ export default function CollectionsClient({ initialProducts = [] }) {
     filtered = filtered.filter((p) => String(p?.brand || '').toLowerCase() === queryBrand)
   }
 
-  // Sort mode decides both which product_version(s) are eligible and the
-  // final order — always on top of the gender/age/category filtering above,
-  // never replacing it.
-  if (sort === 'winter_deals' || sort === 'summer_deals') {
-    const seasonName = sort === 'winter_deals' ? 'Winter' : 'Summer'
-    filtered = filtered
-      .filter((p) => getProductSeason(p) === seasonName && isOldPackProduct(p))
-      .sort((a, b) => getCreatedAtValue(b) - getCreatedAtValue(a))
-  } else if (sort === 'new' || sort === 'all') {
-    // New Arrivals first, then Old Packs — each group newest first.
-    filtered = filtered
-      .filter((p) => isNewArrivalsVersion(p?.product_version) || isOldPackProduct(p))
-      .sort((a, b) => {
-        const rankOf = (p) => (isNewArrivalsVersion(p?.product_version) ? 0 : 1)
-        const rankDiff = rankOf(a) - rankOf(b)
-        return rankDiff !== 0 ? rankDiff : getCreatedAtValue(b) - getCreatedAtValue(a)
-      })
-  } else {
-    filtered = [...filtered].sort((a, b) => compareBySelectedSort(a, b, sort))
-  }
+  filtered = [...filtered].sort((a, b) => getCreatedAtValue(b) - getCreatedAtValue(a))
 
   // Pagination
   const totalPages   = Math.ceil(filtered.length / ITEMS_PER_PAGE)
@@ -348,11 +296,6 @@ export default function CollectionsClient({ initialProducts = [] }) {
     setActiveCat(catId)
     setActiveGender(null)
     setActiveSub(null)
-    setPage(1)
-  }
-
-  function handleSortChange(nextSort) {
-    setSort(nextSort)
     setPage(1)
   }
 
@@ -425,8 +368,8 @@ export default function CollectionsClient({ initialProducts = [] }) {
         </div>
       )}
 
-      {/* Sort + count */}
-      <div className="flex items-center justify-between mb-6">
+      {/* Count */}
+      <div className="mb-6">
         <p className="text-sm text-gray-400 font-semibold">
           {loading ? 'Loading...' : `${filtered.length} product${filtered.length !== 1 ? 's' : ''}`}
           {effectiveGenders.length === 1 && (
@@ -436,16 +379,6 @@ export default function CollectionsClient({ initialProducts = [] }) {
             <span className="ml-2 text-coral">· {effectiveAgeIds.map((id) => AGE_LABEL_BY_ID[id]).filter(Boolean).join(', ')}</span>
           )}
         </p>
-        <select value={sort} onChange={e => handleSortChange(e.target.value)}
-          className="px-4 py-2 rounded-full border-2 border-gray-100 text-sm font-semibold text-center focus:outline-none focus:border-coral bg-cream">
-          <option value="all">All Products</option>
-          <option value="new">Newest First</option>
-          <option value="winter_deals">Winter Deals</option>
-          <option value="summer_deals">Summer Deals</option>
-          <option value="best_selling">Best Selling</option>
-          <option value="low">Price: Low to High</option>
-          <option value="high">Price: High to Low</option>
-        </select>
       </div>
 
       {/* Loading skeleton */}
