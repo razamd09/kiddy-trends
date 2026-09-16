@@ -10,6 +10,7 @@ import RecentlyViewed from '../../../components/RecentlyViewed'
 import SizeRecommender from '../../../components/SizeRecommender'
 import { getAnalyticsSessionId, trackEvent } from '../../../lib/analyticsClient'
 import { metaPixelTrack, generateMetaEventId, sendServerMetaEvent } from '../../../lib/metaPixel'
+import { trackGA4Event, ga4Item } from '../../../lib/ga4'
 
 function StarRating({ rating }) {
   return (
@@ -240,6 +241,17 @@ export default function ProductPageClient({ initialProduct = null }) {
     }
     metaPixelTrack('ViewContent', viewContentParams, viewContentEventId)
     sendServerMetaEvent('ViewContent', viewContentParams, viewContentEventId)
+
+    trackGA4Event('view_item', {
+      currency: 'PKR',
+      value: Number(product.variants?.[0]?.price || product.price || 0),
+      items: [ga4Item({
+        id: product._id || product.id,
+        name: product.title,
+        price: product.variants?.[0]?.price || product.price,
+        brand: product.brand,
+      })],
+    })
   }, [product])
 
   async function fetchReviews(productId) {

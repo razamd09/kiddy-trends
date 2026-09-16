@@ -5,6 +5,7 @@ import RewardsSection from './RewardsSection'
 import { useCart } from '../context/CartContext'
 import { getAnalyticsSessionId, trackEvent } from '../lib/analyticsClient'
 import { metaPixelTrack, generateMetaEventId, sendServerMetaEvent } from '../lib/metaPixel'
+import { trackGA4Event, ga4Item } from '../lib/ga4'
 import { getStoredUtmParams } from '../lib/utmCapture'
 
 const EMAILJS_SERVICE_ID =
@@ -134,6 +135,14 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
     }
     metaPixelTrack('InitiateCheckout', initiateCheckoutParams, initiateCheckoutEventId)
     sendServerMetaEvent('InitiateCheckout', initiateCheckoutParams, initiateCheckoutEventId)
+
+    trackGA4Event('begin_checkout', {
+      currency: 'PKR',
+      value: Number(price || 0),
+      items: isCart
+        ? (cartItems || []).map((item) => ga4Item({ id: item.productId, name: item.title, price: item.price, quantity: item.quantity }))
+        : [ga4Item({ id: product?._id || product?.id, name: product?.title, price: variant?.price, brand: product?.brand })],
+    })
   }, [])
 
   useEffect(() => {
@@ -468,6 +477,16 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
           value: Number(data.total ?? total),
           currency: 'PKR',
         }, orderNumber)
+
+        trackGA4Event('purchase', {
+          transaction_id: String(orderNumber || ''),
+          currency: 'PKR',
+          value: Number(data.total ?? total),
+          shipping: Number(shipping || 0),
+          items: isCart
+            ? (cartItems || []).map((item) => ga4Item({ id: item.productId, name: item.title, price: item.price, quantity: item.quantity }))
+            : [ga4Item({ id: product?._id || product?.id, name: product?.title, price: variant?.price, brand: product?.brand })],
+        })
 
         try {
           await Promise.race([

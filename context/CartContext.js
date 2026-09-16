@@ -2,6 +2,7 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { trackEvent } from '../lib/analyticsClient'
 import { metaPixelTrack, generateMetaEventId, sendServerMetaEvent } from '../lib/metaPixel'
+import { trackGA4Event, ga4Item } from '../lib/ga4'
 
 const CartContext = createContext()
 
@@ -46,6 +47,17 @@ export function CartProvider({ children }) {
     }
     metaPixelTrack('AddToCart', addToCartParams, addToCartEventId)
     sendServerMetaEvent('AddToCart', addToCartParams, addToCartEventId)
+
+    trackGA4Event('add_to_cart', {
+      currency: 'PKR',
+      value: Number(variant?.price || 0),
+      items: [ga4Item({
+        id: product?._id || product?.id,
+        name: product?.title,
+        price: variant?.price,
+        brand: product?.brand,
+      })],
+    })
 
     setCart(prev => {
       const variantStock = Number.isFinite(Number(variant?.inventory_quantity))

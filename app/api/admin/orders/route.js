@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { sendEmailWithEmailJs } from '../customers/customer-data'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -28,6 +29,28 @@ export async function GET(request) {
 }
 
 const RESTOCK_MARKER = '[Stock restored]'
+const REVIEW_REQUEST_MARKER = '[Review requested]'
+
+// Fires once, the moment an order transitions into "delivered" — there's no
+// scheduled-job infra in this app, so this is the practical trigger point
+// for a post-purchase "how was your order?" email instead of a real N-days-
+// after-delivery delay.
+async function sendReviewRequestEmail(order) {
+    const email = String(order.customer_email || '').trim()
+    if (!email) return
+
+    const items = parseOrderItems(order.items)
+    const firstItem = items[0]
+    const productLink = firstItem?.productId
+        ? 'https://thekiddytrends.com/products/prd_id=' + firstItem.productId
+        : 'https://thekiddytrends.com/collections'
+    const name = String(order.customer_name || '').trim() || 'there'
+
+    const message = 'Hi ' + name + ', we hope your little one is loving their new Kiddy Trends order! '
+        + "We'd love to hear what you think — it only takes a minute to leave a review: " + productLink
+
+    await sendEmailWithEmailJs(email, 'How was your order from Kiddy Trends?', message, name)
+}
 
 function parseOrderItems(raw) {
     try {
@@ -121,6 +144,22 @@ export async function PUT(request) {
         } catch (restockError) {
             console.log('Restock error on cancel:', restockError)
             // Fall through: still cancel the order even if restock hit an issue.
+        }
+    }
+
+    // Send a post-purchase review-request email once, the moment an order is
+    // first marked delivered (guarded the same way as the restock marker
+    // above, so repeated saves never send it twice).
+    const isDelivering = status === 'delivered' && current.status !== 'delivered'
+    const alreadyRequestedReview = String(current.notes || '').includes(REVIEW_REQUEST_MARKER)
+    if (isDelivering && !alreadyRequestedReview) {
+        try {
+            await sendReviewRequestEmail(current)
+            const baseNotes = (typeof updates.notes === 'string' ? updates.notes : current.notes) || ''
+            updates.notes = (String(baseNotes).trim() + ' ' + REVIEW_REQUEST_MARKER).trim()
+        } catch (reviewEmailError) {
+            console.log('Review request email error:', reviewEmailError)
+            // Fall through: still mark the order delivered even if the email fails.
         }
     }
 
