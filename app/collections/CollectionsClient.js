@@ -20,24 +20,24 @@ const categories = [
       { id: '1-2y',   label: '1–2 Year',    keywords: ['12-18','18-24','12 to 18','18 to 24','1 year','2 year','1yr','2yr'] },
       { id: '12-18m', label: '12–18 Months', keywords: ['12-18','12 to 18','12/18'] },
       { id: '18-24m', label: '18–24 Months', keywords: ['18-24','18 to 24','18/24'] },
-      { id: '2-3y',   label: '2–3 Year',     keywords: ['2-3 year','2 to 3','2/3 year','2yr','3yr'] },
+      { id: '2-3y',   label: '2–3 Year',     keywords: ['2-3','2-3 year','2 to 3','2/3 year','2yr','3yr'] },
     ]
   },
   {
     id: 'kids', label: 'Kids', emoji: '🎒', color: 'bg-mint/30',
     subFilters: [
-      { id: '3-4y', label: '3–4 Year', keywords: ['3-4 year','3 to 4','3/4 year','3yr','4yr'] },
-      { id: '4-5y', label: '4–5 Year', keywords: ['4-5 year','4 to 5','4/5 year','4yr','5yr'] },
-      { id: '5-6y', label: '5–6 Year', keywords: ['5-6 year','5 to 6','5/6 year','5yr','6yr'] },
-      { id: '6-7y', label: '6–7 Year', keywords: ['6-7 year','6 to 7','6/7 year','6yr','7yr'] },
-      { id: '7-8y', label: '7–8 Year', keywords: ['7-8 year','7 to 8','7/8 year','7yr','8yr'] },
+      { id: '3-4y', label: '3–4 Year', keywords: ['3-4','3-4 year','3 to 4','3/4 year','3yr','4yr'] },
+      { id: '4-5y', label: '4–5 Year', keywords: ['4-5','4-5 year','4 to 5','4/5 year','4yr','5yr'] },
+      { id: '5-6y', label: '5–6 Year', keywords: ['5-6','5-6 year','5 to 6','5/6 year','5yr','6yr'] },
+      { id: '6-7y', label: '6–7 Year', keywords: ['6-7','6-7 year','6 to 7','6/7 year','6yr','7yr'] },
+      { id: '7-8y', label: '7–8 Year', keywords: ['7-8','7-8 year','7 to 8','7/8 year','7yr','8yr'] },
     ]
   },
   {
     id: 'tweens', label: 'Tweens', emoji: '⭐', color: 'bg-coral/20',
     subFilters: [
-      { id: '9-10y',  label: '9–10 Year',  keywords: ['9-10 year','9 to 10','9yr','10yr'] },
-      { id: '11-12y', label: '11–12 Year', keywords: ['11-12 year','11 to 12','11yr','12yr'] },
+      { id: '9-10y',  label: '9–10 Year',  keywords: ['9-10','9-10 year','9 to 10','9yr','10yr'] },
+      { id: '11-12y', label: '11–12 Year', keywords: ['11-12','11-12 year','11 to 12','11yr','12yr'] },
     ]
   },
   { id: 'bedding',     label: 'Bedding',     emoji: '🛏️', color: 'bg-skyblue/20', subFilters: [] },
