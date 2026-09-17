@@ -12,7 +12,20 @@ async function getInitialProducts() {
   }
 }
 
+async function getInitialInstagramPosts() {
+  try {
+    const res = await fetch(SITE_URL + '/api/instagram-feed', { next: { revalidate: 3600 } })
+    const data = await res.json()
+    return data.success ? (data.posts || []) : []
+  } catch {
+    return []
+  }
+}
+
 export default async function HomePage() {
-  const initialProducts = await getInitialProducts()
-  return <HomeClient initialProducts={initialProducts} />
+  const [initialProducts, initialInstagramPosts] = await Promise.all([
+    getInitialProducts(),
+    getInitialInstagramPosts(),
+  ])
+  return <HomeClient initialProducts={initialProducts} initialInstagramPosts={initialInstagramPosts} />
 }

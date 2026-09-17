@@ -56,13 +56,14 @@ function Icon({ name, className = 'w-6 h-6' }) {
   }
 }
 
-export default function Home({ initialProducts = [] }) {
+export default function Home({ initialProducts = [], initialInstagramPosts = [] }) {
   const [allProducts, setAllProducts] = useState(initialProducts)
   const [loadingProducts, setLoadingProducts] = useState(initialProducts.length === 0)
   const [activeView, setActiveView] = useState('new-arrivals')
   const [newsletterEmail, setNewsletterEmail] = useState('')
   const [newsletterStatus, setNewsletterStatus] = useState('idle') // idle | loading | success | error
   const [newsletterMessage, setNewsletterMessage] = useState('')
+  const [instagramPosts, setInstagramPosts] = useState(initialInstagramPosts)
 
   useEffect(() => {
     // The server component already fetched page 1 for first paint — only
@@ -78,6 +79,19 @@ export default function Home({ initialProducts = [] }) {
       } catch { setLoadingProducts(false) }
     }
     fetchProducts()
+  }, [])
+
+  useEffect(() => {
+    // Server component already fetched this for first paint — only fall
+    // back to a client-side fetch if that failed or returned nothing.
+    if (initialInstagramPosts.length > 0) return
+    async function fetchInstagramFeed() {
+      try {
+        const data = await fetch('/api/instagram-feed').then(r => r.json())
+        setInstagramPosts(Array.isArray(data?.posts) ? data.posts : [])
+      } catch {}
+    }
+    fetchInstagramFeed()
   }, [])
 
   const visibleProducts = useMemo(() => {
@@ -308,14 +322,32 @@ export default function Home({ initialProducts = [] }) {
                className="text-coral font-bold hover:underline">@trendykids.2020</a>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {['DZ7W_ZWo-k1','DZ9YMmLCCjg','DZ4bJK5iHA3','DZ21w0hCOEz'].map(id => (
-                <div key={id} className="rounded-xl overflow-hidden border border-gray-200 bg-white min-h-[480px]">
-                  <LazyMount minHeight={480}>
-                    <iframe src={'https://www.instagram.com/p/' + id + '/embed/captioned/'}
-                            className="w-full" style={{height:'480px',border:'none'}}
-                            allowFullScreen loading="lazy" title={'Instagram post ' + id}
-                            scrolling="no" />
-                  </LazyMount>
+            {instagramPosts.map(post => (
+                <div key={post.id} className="rounded-xl overflow-hidden border border-gray-200 bg-white min-h-[480px]">
+                  {post.embedFallback ? (
+                    <LazyMount minHeight={480}>
+                      <iframe src={'https://www.instagram.com/p/' + post.id + '/embed/captioned/'}
+                              className="w-full" style={{height:'480px',border:'none'}}
+                              allowFullScreen loading="lazy" title={'Instagram post ' + post.id}
+                              scrolling="no" />
+                    </LazyMount>
+                  ) : (
+                    <a href={post.permalink} target="_blank" rel="noopener noreferrer"
+                       className="group relative block w-full h-[480px] bg-cream">
+                      {post.imageUrl && (
+                        <img src={post.imageUrl} alt={post.caption ? post.caption.slice(0, 100) : 'Instagram post'}
+                             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" />
+                      )}
+                      {post.mediaType === 'VIDEO' && (
+                        <span className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/50 flex items-center justify-center text-white">▶</span>
+                      )}
+                      {post.caption && (
+                        <span className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent text-white text-xs p-3 line-clamp-2">
+                          {post.caption}
+                        </span>
+                      )}
+                    </a>
+                  )}
                 </div>
             ))}
           </div>
