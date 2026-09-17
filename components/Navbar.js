@@ -10,6 +10,7 @@ const links = [
   { href: '/collections',     label: 'Collections' },
   { href: '/size-chart',      label: 'Size Chart' },
   { href: '/order-tracking',  label: 'Track Order' },
+  { href: '/my-orders',       label: 'My Orders' },
   { href: '/feedback',        label: 'Feedback' },
 ]
 

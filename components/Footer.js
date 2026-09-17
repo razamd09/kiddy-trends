@@ -104,6 +104,7 @@ export default function Footer() {
                 ['/size-chart',    'Size Chart'],
                 ['/feedback',      'Share Feedback'],
                 ['/order-tracking','Track Order'],
+                ['/my-orders',     'My Orders'],
               ].map(([href, label]) => (
                 <li key={href}>
                   <Link href={href} className="hover:text-coral transition-colors">

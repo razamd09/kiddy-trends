@@ -20,6 +20,23 @@ const ONLINE_ACCOUNT_LABELS = {
     bankalfalah: 'Bank Alfalah',
 }
 
+const STATUS_WHATSAPP_MESSAGES = {
+    pending:    (name, orderNumber) => `Hi ${name}! We've received your Kiddy Trends order ${orderNumber} and it's being reviewed. We'll update you shortly. 🧸`,
+    processing: (name, orderNumber) => `Hi ${name}! Your Kiddy Trends order ${orderNumber} is confirmed and being packed. 📦`,
+    dispatched: (name, orderNumber) => `Hi ${name}! 🚚 Your Kiddy Trends order ${orderNumber} has been dispatched and is on its way. Track it anytime at thekiddytrends.com/order-tracking`,
+    delivered:  (name, orderNumber) => `Hi ${name}! ✅ Your Kiddy Trends order ${orderNumber} has been delivered. We hope your little one loves it! We'd love it if you left a quick review at thekiddytrends.com 💛`,
+    cancelled:  (name, orderNumber) => `Hi ${name}, your Kiddy Trends order ${orderNumber} has been cancelled. If this wasn't expected, please reply here and we'll sort it out right away.`,
+}
+
+function buildStatusWhatsAppLink(order) {
+    const phoneDigits = String(order.customer_whatsapp || order.customer_phone || '').replace(/\D/g, '')
+    if (!phoneDigits) return null
+    const name = String(order.customer_name || '').trim().split(' ')[0] || 'there'
+    const orderNumber = order.order_number || ('#' + order.id)
+    const buildMessage = STATUS_WHATSAPP_MESSAGES[order.status] || STATUS_WHATSAPP_MESSAGES.pending
+    return 'https://wa.me/' + phoneDigits + '?text=' + encodeURIComponent(buildMessage(name, orderNumber))
+}
+
 function playSound() {
     try {
         const ctx  = new (window.AudioContext || window.webkitAudioContext)()
@@ -615,6 +632,12 @@ export default function AdminOrders() {
                                     </div>
                                     {updating && (
                                         <p className="text-xs text-coral text-center mt-2 animate-pulse">Updating status...</p>
+                                    )}
+                                    {buildStatusWhatsAppLink(selected) && (
+                                        <a href={buildStatusWhatsAppLink(selected)} target="_blank" rel="noopener noreferrer"
+                                           className="mt-3 flex items-center justify-center gap-2 w-full bg-green-500 text-white text-sm font-bold py-2.5 rounded-xl hover:bg-green-600 transition-colors">
+                                            📲 Send WhatsApp Update ({statusConfig[selected.status]?.label})
+                                        </a>
                                     )}
                                 </div>
 
