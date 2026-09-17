@@ -20,9 +20,9 @@ const LANDING_PROMO_STORAGE_KEY = 'kt_landing_promo_state'
 const GIFT_FLASH_SEEN_KEY = 'kt_checkout_reward_flash_seen'
 
 const ONLINE_PAYMENT_ACCOUNTS = [
-  { id: 'jazzcash', name: 'JazzCash', accountNumber: '03028423887', accountTitle: 'Raza Mohy ud Din', color: '#D4145A', textColor: '#ffffff' },
-  { id: 'sadapay', name: 'SadaPay', accountNumber: '03334549382', accountTitle: 'Raza Mohy ud Din', color: '#0B3D2E', textColor: '#ffffff' },
-  { id: 'bankalfalah', name: 'Bank Alfalah', accountNumber: '00281003549921', accountTitle: 'Cadcom Communication', color: '#B71C2B', textColor: '#ffffff' },
+  { id: 'jazzcash', name: 'JazzCash', accountNumber: '03028423887', accountTitle: 'Raza Mohy ud Din', logo: '/payment-logos/jazzcash.png' },
+  { id: 'sadapay', name: 'SadaPay', accountNumber: '03334549382', accountTitle: 'Raza Mohy ud Din', logo: '/payment-logos/sadapay.png' },
+  { id: 'bankalfalah', name: 'Bank Alfalah', accountNumber: '00281003549921', accountTitle: 'Cadcom Communication', logo: '/payment-logos/bank-alfalah.png' },
 ]
 
 function toNumber(value) {
@@ -819,9 +819,8 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                       {ONLINE_PAYMENT_ACCOUNTS.map((acc) => (
                         <button key={acc.id} type="button" onClick={() => setOnlineAccount(acc.id)}
                           className={'w-full text-left rounded-2xl border-2 p-3 flex items-center gap-3 transition-all ' + (onlineAccount === acc.id ? 'border-coral' : 'border-gray-100 hover:border-coral/40')}>
-                          <div className="w-12 h-12 rounded-xl flex items-center justify-center font-display text-sm flex-shrink-0"
-                            style={{ backgroundColor: acc.color, color: acc.textColor }}>
-                            {acc.name.split(' ').map((w) => w[0]).join('').slice(0, 2)}
+                          <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-white border border-gray-100 flex-shrink-0 overflow-hidden p-1.5">
+                            <img src={acc.logo} alt={acc.name} className="w-full h-full object-contain" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-display text-sm text-charcoal">{acc.name}</p>
