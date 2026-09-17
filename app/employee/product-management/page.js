@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import EmployeePortalNav from '@/components/EmployeePortalNav'
 
 const modules = [
     {
@@ -85,6 +86,7 @@ export default function EmployeeProductManagementDashboard() {
                     Logout
                 </button>
             </div>
+            <EmployeePortalNav />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="mb-6">

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import MonthlyAttendanceSummary from '../../../components/MonthlyAttendanceSummary'
+import EmployeePortalNav from '@/components/EmployeePortalNav'
 
 export default function EmployeeDashboard() {
     const [employee, setEmployee]     = useState(null)
@@ -152,6 +153,7 @@ export default function EmployeeDashboard() {
                 </div>
                 <button onClick={logout} className="text-sm text-gray-400 hover:text-coral">Logout →</button>
             </div>
+            <EmployeePortalNav />
 
             <div className="max-w-lg mx-auto px-4 py-8 space-y-5">
 
@@ -218,62 +220,7 @@ export default function EmployeeDashboard() {
                 <div className="bg-white rounded-3xl p-5">
                     <MonthlyAttendanceSummary records={history} />
                 </div>
-
-                <div className="bg-white rounded-3xl p-5">
-                    <p className="font-display text-lg text-charcoal mb-4">Module Access</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <ModuleCard
-                            enabled={true}
-                            title="Manage Orders"
-                            icon="📦"
-                            href="/employee/orders"
-                            subtitle="View and update order status"
-                        />
-                        <ModuleCard
-                            enabled={true}
-                            title="Product Management"
-                            icon="P"
-                            href="/employee/product-management"
-                            subtitle="Products, categories, versions, and types"
-                        />
-                        <ModuleCard
-                            enabled={true}
-                            title="Reward Points"
-                            icon="⭐"
-                            href="/employee/rewards"
-                            subtitle="View member points summary"
-                        />
-                        <ModuleCard
-                            enabled={true}
-                            title="Customers"
-                            icon="👥"
-                            href="/employee/customers"
-                            subtitle="Search customer records"
-                        />
-                    </div>
-                </div>
             </div>
         </div>
-    )
-}
-
-function ModuleCard({ enabled, title, icon, href, subtitle }) {
-    if (!enabled) {
-        return (
-            <div className="rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 p-4 text-center opacity-70">
-                <div className="text-2xl mb-2">{icon}</div>
-                <p className="font-display text-base text-charcoal">{title}</p>
-                <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
-                <p className="text-xs text-red-400 mt-2 font-semibold">Disabled by admin</p>
-            </div>
-        )
-    }
-
-    return (
-        <a href={href} className="rounded-2xl border-2 border-gray-100 bg-cream p-4 text-center hover:border-coral transition-colors block">
-            <div className="text-2xl mb-2">{icon}</div>
-            <p className="font-display text-base text-charcoal">{title}</p>
-            <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
-        </a>
     )
 }

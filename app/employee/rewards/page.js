@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import EmployeePortalNav from '@/components/EmployeePortalNav'
 
 export default function EmployeeRewardsPage() {
     const [employee, setEmployee] = useState(null)
@@ -37,6 +38,7 @@ export default function EmployeeRewardsPage() {
                     <h1 className="font-display text-xl text-charcoal">Reward Points</h1>
                 </div>
             </div>
+            <EmployeePortalNav />
 
             <div className="max-w-6xl mx-auto px-4 py-6 space-y-4">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
