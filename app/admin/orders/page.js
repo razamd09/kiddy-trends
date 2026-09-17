@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatPakistanDateTime } from '../../../lib/dateFormat'
+import AdminPortalNav from '@/components/AdminPortalNav'
 
 const statusConfig = {
     pending:    { color: 'bg-orange-100 text-orange-600 border-orange-200', icon: '⏳', label: 'Pending' },
@@ -305,6 +306,7 @@ export default function AdminOrders() {
                     </button>
                 </div>
             </div>
+            <AdminPortalNav />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 

@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import AdminPortalNav from '@/components/AdminPortalNav'
 
 export default function AdminDiscountCodes() {
   const [codes, setCodes] = useState([])
@@ -179,6 +180,7 @@ export default function AdminDiscountCodes() {
           Logout →
         </button>
       </div>
+      <AdminPortalNav />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Form */}

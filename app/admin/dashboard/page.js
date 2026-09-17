@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatPakistanDate } from '../../../lib/dateFormat'
+import AdminPortalNav from '@/components/AdminPortalNav'
 
 export default function AdminDashboard() {
     const [stats, setStats]     = useState(null)
@@ -66,6 +67,7 @@ export default function AdminDashboard() {
                     Logout →
                 </button>
             </div>
+            <AdminPortalNav />
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 

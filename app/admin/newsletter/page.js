@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatPakistanDateTime } from '../../../lib/dateFormat'
+import AdminPortalNav from '@/components/AdminPortalNav'
 
 export default function AdminNewsletterPage() {
     const [verified, setVerified] = useState(false)
@@ -93,6 +94,7 @@ export default function AdminNewsletterPage() {
                 </div>
                 <button onClick={logout} className="text-sm text-gray-400 hover:text-coral">Logout →</button>
             </div>
+            <AdminPortalNav />
 
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 

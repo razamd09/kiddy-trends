@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import AdminPortalNav from '@/components/AdminPortalNav'
 
 export default function AdminAnalyticsPage() {
   const [verified, setVerified] = useState(false)
@@ -135,6 +136,7 @@ export default function AdminAnalyticsPage() {
           </select>
         </div>
       </div>
+      <AdminPortalNav />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {error && (

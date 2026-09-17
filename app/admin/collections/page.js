@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import AdminPortalNav from '@/components/AdminPortalNav'
 
 export default function AdminCollections() {
     const [collections, setCollections] = useState([])
@@ -131,6 +132,7 @@ export default function AdminCollections() {
                     </Link>
                 </div>
             </div>
+            <AdminPortalNav />
 
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 

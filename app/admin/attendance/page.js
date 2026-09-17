@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import MonthlyAttendanceSummary, { computeMonthlySummary, absentDatesTooltip } from '../../../components/MonthlyAttendanceSummary'
+import AdminPortalNav from '@/components/AdminPortalNav'
 
 function pad(n) { return String(n).padStart(2, '0') }
 function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) }
@@ -132,6 +133,7 @@ export default function AdminAttendance() {
                 </div>
                 <button onClick={logout} className="text-sm text-gray-400 hover:text-coral">Logout →</button>
             </div>
+            <AdminPortalNav />
 
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 

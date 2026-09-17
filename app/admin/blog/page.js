@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatPakistanDate } from '../../../lib/dateFormat'
+import AdminPortalNav from '@/components/AdminPortalNav'
 
 const emptyForm = { id: null, title: '', slug: '', excerpt: '', content: '', cover_image: '', is_published: false }
 
@@ -141,6 +142,7 @@ export default function AdminBlog() {
                     <button onClick={logout} className="text-sm text-gray-400 hover:text-coral">Logout →</button>
                 </div>
             </div>
+            <AdminPortalNav />
 
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                 {loading ? (

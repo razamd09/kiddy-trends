@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import AdminPortalNav from '@/components/AdminPortalNav'
 
 export default function ProductMetadataManager({ title, subtitle, apiPath, responseKey, singularLabel, authMode = 'admin', showImageField = false }) {
     const [verified, setVerified] = useState(false)
@@ -183,6 +184,7 @@ export default function ProductMetadataManager({ title, subtitle, apiPath, respo
                     Logout
                 </button>
             </div>
+            {authMode === 'admin' && <AdminPortalNav />}
 
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,420px)_1fr] gap-6">

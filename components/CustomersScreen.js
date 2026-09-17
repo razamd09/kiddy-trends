@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import AdminPortalNav from '@/components/AdminPortalNav'
 
 function parseCsv(text) {
     const rows = []
@@ -364,6 +365,7 @@ export default function CustomersScreen({ mode = 'admin' }) {
                 </div>
                 <button onClick={logout} className="text-sm text-gray-400 hover:text-coral">Logout →</button>
             </div>
+            {isAdmin && <AdminPortalNav />}
 
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
                 <form onSubmit={submitSearch} className="bg-white rounded-2xl p-4 flex flex-col sm:flex-row gap-3">

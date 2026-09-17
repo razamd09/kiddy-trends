@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import AdminPortalNav from '@/components/AdminPortalNav'
 
 export default function AdminEmployees() {
     const defaultPermissions = { can_manage_orders: true, can_manage_products: true, can_manage_rewards: true }
@@ -148,6 +149,7 @@ export default function AdminEmployees() {
                     <button onClick={logout} className="text-sm text-gray-400 hover:text-coral">Logout →</button>
                 </div>
             </div>
+            <AdminPortalNav />
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
 
