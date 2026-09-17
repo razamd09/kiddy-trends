@@ -1,28 +1,103 @@
 'use client'
 
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-const moduleLinks = [
-  { href: '/admin/dashboard', label: 'Dashboard' },
-  { href: '/admin/product-management', label: 'Product Management' },
-  { href: '/admin/orders', label: 'Orders' },
-  { href: '/admin/products', label: 'Products' },
-  { href: '/admin/product-categories', label: 'Categories' },
-  { href: '/admin/product-versions', label: 'Versions' },
-  { href: '/admin/product-fabrics', label: 'Fabrics' },
-  { href: '/admin/product-types', label: 'Types' },
-  { href: '/admin/collections', label: 'Collections' },
-  { href: '/admin/customers', label: 'Customers' },
-  { href: '/admin/employees', label: 'Employees' },
-  { href: '/admin/attendance', label: 'Attendance' },
-  { href: '/admin/rewards', label: 'Rewards' },
-  { href: '/admin/newsletter', label: 'Newsletter' },
-  { href: '/admin/discount-codes', label: 'Discount Codes' },
-  { href: '/admin/shipping-rates', label: 'Shipping Rates' },
-  { href: '/admin/analytics', label: 'Analytics' },
-  { href: '/admin/feedback', label: 'Feedback' },
+const menus = [
+  { label: 'Dashboard', href: '/admin/dashboard' },
+  {
+    label: 'Product Management',
+    items: [
+      { href: '/admin/products', label: 'Products' },
+      { href: '/admin/product-categories', label: 'Categories' },
+      { href: '/admin/product-versions', label: 'Versions' },
+      { href: '/admin/product-fabrics', label: 'Fabrics' },
+      { href: '/admin/product-types', label: 'Types' },
+      { href: '/admin/collections', label: 'Collections' },
+    ],
+  },
+  { label: 'Orders', href: '/admin/orders' },
+  {
+    label: 'Customers',
+    items: [
+      { href: '/admin/customers', label: 'Customers' },
+      { href: '/admin/rewards', label: 'Rewards' },
+      { href: '/admin/feedback', label: 'Feedback' },
+    ],
+  },
+  {
+    label: 'Team',
+    items: [
+      { href: '/admin/employees', label: 'Employees' },
+      { href: '/admin/attendance', label: 'Attendance' },
+    ],
+  },
+  {
+    label: 'Marketing',
+    items: [
+      { href: '/admin/newsletter', label: 'Newsletter' },
+      { href: '/admin/discount-codes', label: 'Discount Codes' },
+      { href: '/admin/analytics', label: 'Analytics' },
+    ],
+  },
+  { label: 'Shipping Rates', href: '/admin/shipping-rates' },
 ]
+
+function isMenuActive(menu, pathname) {
+  if (menu.href) return pathname === menu.href || pathname.startsWith(menu.href + '/')
+  return menu.items.some((item) => pathname === item.href || pathname.startsWith(item.href + '/'))
+}
+
+function MenuDropdown({ menu, pathname }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  const active = isMenuActive(menu, pathname)
+
+  useEffect(() => {
+    function onClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={
+          'flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ' +
+          (active ? 'bg-charcoal text-white' : 'bg-cream text-charcoal hover:bg-coral/10 hover:text-coral')
+        }
+      >
+        {menu.label}
+        <span className={'text-[10px] transition-transform ' + (open ? 'rotate-180' : '')}>▾</span>
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-40 mt-1.5 min-w-[180px] rounded-2xl border border-gray-100 bg-white p-1.5 shadow-lg">
+          {menu.items.map((item) => {
+            const itemActive = pathname === item.href || pathname.startsWith(item.href + '/')
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setOpen(false)}
+                className={
+                  'block rounded-xl px-3 py-2 text-xs font-semibold transition-colors ' +
+                  (itemActive ? 'bg-charcoal text-white' : 'text-charcoal hover:bg-coral/10 hover:text-coral')
+                }
+              >
+                {item.label}
+              </Link>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function AdminPortalNav() {
   const pathname = usePathname()
@@ -39,23 +114,24 @@ export default function AdminPortalNav() {
           ← Back
         </Link>
         <div className="flex flex-wrap items-center gap-2">
-          {moduleLinks.map((link) => {
-            const active = pathname === link.href || pathname.startsWith(link.href + '/')
-            return (
+          {menus.map((menu) =>
+            menu.href ? (
               <Link
-                key={link.href}
-                href={link.href}
+                key={menu.href}
+                href={menu.href}
                 className={
                   'rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ' +
-                  (active
+                  (pathname === menu.href || pathname.startsWith(menu.href + '/')
                     ? 'bg-charcoal text-white'
                     : 'bg-cream text-charcoal hover:bg-coral/10 hover:text-coral')
                 }
               >
-                {link.label}
+                {menu.label}
               </Link>
+            ) : (
+              <MenuDropdown key={menu.label} menu={menu} pathname={pathname} />
             )
-          })}
+          )}
         </div>
       </div>
     </div>
