@@ -14,6 +14,12 @@ const statusConfig = {
 
 const allStatuses = ['pending', 'processing', 'dispatched', 'delivered', 'cancelled']
 
+const ONLINE_ACCOUNT_LABELS = {
+    jazzcash: 'JazzCash',
+    sadapay: 'SadaPay',
+    bankalfalah: 'Bank Alfalah',
+}
+
 function playSound() {
     try {
         const ctx  = new (window.AudioContext || window.webkitAudioContext)()
@@ -125,6 +131,21 @@ export default function EmployeeOrdersPage() {
         if (data.success) {
             setSelected(prev => prev ? { ...prev, status } : null)
             setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o))
+        }
+        setUpdating(false)
+    }
+
+    async function verifyPayment(id, verified) {
+        setUpdating(true)
+        const res = await fetch('/api/admin/orders', {
+            method:  'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ id, payment_verified: verified })
+        })
+        const data = await res.json()
+        if (data.success) {
+            setSelected(prev => prev ? { ...prev, payment_verified: verified } : null)
+            setOrders(prev => prev.map(o => o.id === id ? { ...o, payment_verified: verified } : o))
         }
         setUpdating(false)
     }
@@ -323,6 +344,11 @@ export default function EmployeeOrdersPage() {
                                     </span>
                                 </div>
                                 <p className="text-xs text-gray-400 mb-1">{order.customer_city} · {order.customer_phone}</p>
+                                {order.payment_method === 'online' && (
+                                    <span className={'inline-block text-[10px] px-2 py-0.5 rounded-full font-bold mb-1 ' + (order.payment_verified ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600')}>
+                                        💳 {order.payment_verified ? 'Payment Verified' : 'Verify Payment'}
+                                    </span>
+                                )}
                                 <div className="flex items-center justify-between">
                                     <p className="text-xs text-gray-300">{formatPakistanDateTime(order.created_at)}</p>
                                     <p className="font-bold text-coral text-sm">PKR {(order.total || 0).toLocaleString()}</p>
@@ -400,6 +426,35 @@ export default function EmployeeOrdersPage() {
                                         </div>
                                     </div>
                                 )}
+
+                                {/* Payment */}
+                                <div className="bg-cream rounded-2xl p-4">
+                                    <p className="font-display text-sm text-charcoal mb-3">💳 Payment</p>
+                                    {selected.payment_method === 'online' ? (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="bg-white border border-gray-200 rounded-full px-3 py-1 text-xs font-semibold">
+                                                    {ONLINE_ACCOUNT_LABELS[selected.payment_account] || selected.payment_account || 'Online Payment'}
+                                                </span>
+                                                <span className={'text-xs px-3 py-1 rounded-full font-semibold ' + (selected.payment_verified ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600')}>
+                                                    {selected.payment_verified ? '✓ Verified' : '⏳ Needs Verification'}
+                                                </span>
+                                            </div>
+                                            {selected.payment_proof_url && (
+                                                <a href={'/api/image?src=' + encodeURIComponent(selected.payment_proof_url)} target="_blank" rel="noopener noreferrer">
+                                                    <img src={'/api/image?src=' + encodeURIComponent(selected.payment_proof_url)} alt="Payment proof"
+                                                        className="max-h-64 rounded-xl border border-gray-200 object-contain bg-white" />
+                                                </a>
+                                            )}
+                                            <button onClick={() => verifyPayment(selected.id, !selected.payment_verified)} disabled={updating}
+                                                className={'text-xs px-4 py-2 rounded-full font-bold transition-colors ' + (selected.payment_verified ? 'bg-gray-100 text-charcoal hover:bg-gray-200' : 'bg-mint text-white hover:bg-opacity-90')}>
+                                                {selected.payment_verified ? 'Mark as Unverified' : 'Mark Payment Verified'}
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <span className="text-sm text-gray-500">💵 Cash on Delivery</span>
+                                    )}
+                                </div>
 
                                 <div className="bg-cream rounded-2xl p-4">
                                     <p className="font-display text-sm text-charcoal mb-3">📦 Items</p>

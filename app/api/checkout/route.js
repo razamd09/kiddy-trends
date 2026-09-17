@@ -346,6 +346,17 @@ export async function POST(request) {
         const utmData = utm && typeof utm === 'object' && Object.keys(utm).length > 0 ? utm : null
         const customerEmail = String(customer?.email || '').trim().toLowerCase()
 
+        const VALID_ONLINE_ACCOUNTS = new Set(['jazzcash', 'sadapay', 'bankalfalah'])
+        const paymentMethod = customer?.payment?.method === 'online' ? 'online' : 'cod'
+        const paymentAccount = paymentMethod === 'online' && VALID_ONLINE_ACCOUNTS.has(customer?.payment?.account)
+            ? customer.payment.account
+            : null
+        const paymentProofUrl = paymentMethod === 'online' ? String(customer?.payment?.proofPath || '').trim() || null : null
+
+        if (paymentMethod === 'online' && (!paymentAccount || !paymentProofUrl)) {
+            return Response.json({ success: false, error: 'Payment account and proof of transaction are required for online payment' }, { status: 400 })
+        }
+
         const subtotalFromItems = (cartItems || []).reduce((s, i) => s + (parseFloat(i.price || 0) * (i.quantity || 1)), 0)
         const subtotalFromCustomer = Math.max(0, toNumber(customer?.order_subtotal || 0))
         const subtotal = subtotalFromCustomer > 0 ? subtotalFromCustomer : subtotalFromItems
@@ -480,6 +491,9 @@ export async function POST(request) {
                 status:            'pending',
                 notes:             notesText,
                 utm_data:          utmData,
+                payment_method:    paymentMethod,
+                payment_account:   paymentAccount,
+                payment_proof_url: paymentProofUrl,
             }])
             .select()
             .single()

@@ -36,7 +36,7 @@ function getSupabaseStoragePath(url) {
     const publicMarker = '/storage/v1/object/public/products/'
     const signedMarker = '/storage/v1/object/sign/products/'
 
-    if (trimmed.startsWith('images/')) {
+    if (trimmed.startsWith('images/') || trimmed.startsWith('payment-proofs/')) {
         return trimmed.split('?')[0]
     }
     if (trimmed.includes(publicMarker)) {

@@ -19,6 +19,12 @@ const ORDER_NOTIFICATION_EMAIL =
 const LANDING_PROMO_STORAGE_KEY = 'kt_landing_promo_state'
 const GIFT_FLASH_SEEN_KEY = 'kt_checkout_reward_flash_seen'
 
+const ONLINE_PAYMENT_ACCOUNTS = [
+  { id: 'jazzcash', name: 'JazzCash', accountNumber: '03028423887', accountTitle: 'Raza Mohy ud Din', color: '#D4145A', textColor: '#ffffff' },
+  { id: 'sadapay', name: 'SadaPay', accountNumber: '03334549382', accountTitle: 'Raza Mohy ud Din', color: '#0B3D2E', textColor: '#ffffff' },
+  { id: 'bankalfalah', name: 'Bank Alfalah', accountNumber: '00281003549921', accountTitle: 'Cadcom Communication', color: '#B71C2B', textColor: '#ffffff' },
+]
+
 function toNumber(value) {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : 0
@@ -91,6 +97,11 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
   const [discountCodeError, setDiscountCodeError] = useState('')
   const [rewards, setRewards]         = useState({ phone: '', points: 0, redeemed: 0 })
   const [freeShippingInfo, setFreeShippingInfo] = useState(null)
+  const [paymentMethod, setPaymentMethod] = useState('cod') // 'cod' | 'online'
+  const [onlineAccount, setOnlineAccount] = useState(null)
+  const [proofFile, setProofFile]     = useState(null)
+  const [proofPreview, setProofPreview] = useState('')
+  const [proofError, setProofError]   = useState('')
   const [showGiftFlash, setShowGiftFlash] = useState(false)
   const [shippingRate, setShippingRate] = useState({
     flat_price: 250,
@@ -220,7 +231,36 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
     if (!form.address.trim()) e.address = 'Address is required'
     if (!form.city)           e.city    = 'Please select your city'
     setErrors(e)
-    return Object.keys(e).length === 0
+
+    let paymentOk = true
+    if (paymentMethod === 'online') {
+      if (!onlineAccount) {
+        setProofError('Please select which account you paid to')
+        paymentOk = false
+      } else if (!proofFile) {
+        setProofError('Please upload a screenshot of your payment transaction')
+        paymentOk = false
+      } else {
+        setProofError('')
+      }
+    } else {
+      setProofError('')
+    }
+
+    return Object.keys(e).length === 0 && paymentOk
+  }
+
+  function handleProofFileChange(file) {
+    if (!file) {
+      setProofFile(null)
+      setProofPreview('')
+      return
+    }
+    setProofError('')
+    setProofFile(file)
+    const reader = new FileReader()
+    reader.onload = () => setProofPreview(String(reader.result || ''))
+    reader.readAsDataURL(file)
   }
 
   async function lookupCustomerByPhone(phoneDigits) {
@@ -390,6 +430,18 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
     if (!validate()) return
     setLoading(true)
     try {
+      let proofPath = ''
+      if (paymentMethod === 'online') {
+        const uploadForm = new FormData()
+        uploadForm.append('file', proofFile)
+        const uploadRes = await fetch('/api/checkout/upload-proof', { method: 'POST', body: uploadForm })
+        const uploadData = await uploadRes.json().catch(() => ({}))
+        if (!uploadRes.ok || !uploadData?.success) {
+          throw new Error(uploadData?.error || 'Failed to upload payment proof. Please try again.')
+        }
+        proofPath = uploadData.path
+      }
+
       const items    = isCart
         ? cartItems.map(i => ({
             variantId: i.variantId,
@@ -436,7 +488,9 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
             order_shipping: Number(shipping || 0),
             order_total: Number(total || 0),
             rewards: { redeem: rewards.redeemed || 0 },
-            payment:  'cod',
+            payment: paymentMethod === 'online'
+              ? { method: 'online', account: onlineAccount, proofPath }
+              : { method: 'cod' },
           }
         })
       })
@@ -735,14 +789,71 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                 {errors.address && <p className="text-red-400 text-xs mt-1">{errors.address}</p>}
               </div>
 
-              {/* COD */}
-              <div className="bg-coral/10 border-2 border-coral rounded-2xl p-4 flex items-center gap-3">
-                <div className="text-3xl">💵</div>
-                <div>
-                  <p className="font-display text-base text-charcoal">Cash on Delivery</p>
-                  <p className="text-xs text-gray-500">Pay when your order arrives</p>
+              {/* Payment method */}
+              <div>
+                <label className="block font-semibold text-sm text-charcoal mb-2">Payment Method *</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button type="button" onClick={() => setPaymentMethod('cod')}
+                    className={'text-left rounded-2xl border-2 p-4 flex items-center gap-3 transition-all ' + (paymentMethod === 'cod' ? 'border-coral bg-coral/10' : 'border-gray-100 bg-cream hover:border-coral/40')}>
+                    <div className="text-2xl">💵</div>
+                    <div>
+                      <p className="font-display text-sm text-charcoal">Cash on Delivery</p>
+                      <p className="text-[11px] text-gray-500">Pay on arrival</p>
+                    </div>
+                  </button>
+                  <button type="button" onClick={() => setPaymentMethod('online')}
+                    className={'text-left rounded-2xl border-2 p-4 flex items-center gap-3 transition-all ' + (paymentMethod === 'online' ? 'border-coral bg-coral/10' : 'border-gray-100 bg-cream hover:border-coral/40')}>
+                    <div className="text-2xl">💳</div>
+                    <div>
+                      <p className="font-display text-sm text-charcoal">Online Payment</p>
+                      <p className="text-[11px] text-gray-500">JazzCash / SadaPay / Bank</p>
+                    </div>
+                  </button>
                 </div>
-                <span className="ml-auto text-coral font-bold text-xs">✓ Selected</span>
+
+                {paymentMethod === 'online' && (
+                  <div className="mt-3 space-y-3">
+                    <p className="text-xs text-gray-500">Select the account you sent payment to, then upload a screenshot of the transaction as proof.</p>
+
+                    <div className="space-y-2">
+                      {ONLINE_PAYMENT_ACCOUNTS.map((acc) => (
+                        <button key={acc.id} type="button" onClick={() => setOnlineAccount(acc.id)}
+                          className={'w-full text-left rounded-2xl border-2 p-3 flex items-center gap-3 transition-all ' + (onlineAccount === acc.id ? 'border-coral' : 'border-gray-100 hover:border-coral/40')}>
+                          <div className="w-12 h-12 rounded-xl flex items-center justify-center font-display text-sm flex-shrink-0"
+                            style={{ backgroundColor: acc.color, color: acc.textColor }}>
+                            {acc.name.split(' ').map((w) => w[0]).join('').slice(0, 2)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-display text-sm text-charcoal">{acc.name}</p>
+                            <p className="text-xs text-gray-500">Acc# {acc.accountNumber} · {acc.accountTitle}</p>
+                          </div>
+                          {onlineAccount === acc.id && <span className="text-coral font-bold text-xs flex-shrink-0">✓</span>}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-xs text-charcoal mb-1.5">Upload Payment Proof *</label>
+                      {proofPreview ? (
+                        <div className="relative rounded-2xl overflow-hidden border-2 border-gray-100 bg-cream">
+                          <img src={proofPreview} alt="Payment proof" className="w-full max-h-56 object-contain" />
+                          <button type="button" onClick={() => handleProofFileChange(null)}
+                            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/95 shadow-md flex items-center justify-center text-charcoal hover:bg-coral hover:text-white transition-colors">
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center gap-1.5 border-2 border-dashed border-gray-200 rounded-2xl p-6 cursor-pointer hover:border-coral/40 transition-colors bg-cream">
+                          <span className="text-2xl">📎</span>
+                          <span className="text-xs font-semibold text-charcoal">Tap to upload screenshot</span>
+                          <input type="file" accept="image/*" className="hidden"
+                            onChange={(e) => handleProofFileChange(e.target.files?.[0] || null)} />
+                        </label>
+                      )}
+                      {proofError && <p className="text-red-400 text-xs mt-1">{proofError}</p>}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Discount Code */}

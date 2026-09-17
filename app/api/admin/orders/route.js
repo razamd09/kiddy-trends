@@ -109,9 +109,9 @@ async function restockOrderItems(items) {
 }
 
 export async function PUT(request) {
-    const { id, status, notes } = await request.json()
+    const { id, status, notes, payment_verified } = await request.json()
 
-    if (!id || (status === undefined && notes === undefined)) {
+    if (!id || (status === undefined && notes === undefined && payment_verified === undefined)) {
         return Response.json({ error: 'Order id and at least one field are required' }, { status: 400 })
     }
 
@@ -130,6 +130,7 @@ export async function PUT(request) {
     const updates = { updated_at: new Date().toISOString() }
     if (status) updates.status = status
     if (typeof notes === 'string') updates.notes = notes
+    if (typeof payment_verified === 'boolean') updates.payment_verified = payment_verified
 
     // Restock only when an order actually transitions INTO cancelled, and only once
     // (guarded by both the status transition and a notes marker) so repeated saves
