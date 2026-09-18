@@ -147,6 +147,10 @@ export default function BulkCaptionUploadPage() {
         setBrandOptions(Array.isArray(brandsRes?.brands) ? brandsRes.brands : [])
     }
 
+    function effectiveGender(item) { return item.gender || batch.gender }
+    function effectiveProductType(item) { return item.productType || batch.product_type }
+    function effectiveBrandId(item) { return item.brandId || batch.brand_id }
+
     function updateItem(id, patch) {
         setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)))
     }
@@ -162,6 +166,7 @@ export default function BulkCaptionUploadPage() {
             file,
             previewUrl: URL.createObjectURL(file),
             ageStart: '', ageEnd: '', price: '', fabric: '',
+            productType: '', gender: '', brandId: '',
             status: 'pending',
             error: '',
         }))
@@ -184,6 +189,7 @@ export default function BulkCaptionUploadPage() {
                         ageEnd: parsed.ageEnd ?? '',
                         price: parsed.price ?? '',
                         fabric: parsed.fabric || '',
+                        productType: parsed.productType || '',
                     })
                 } catch (err) {
                     updateItem(item.id, { status: 'analyzed', error: 'OCR: ' + err.message })
@@ -197,11 +203,9 @@ export default function BulkCaptionUploadPage() {
     }
 
     function validateBatch() {
-        if (!batch.product_type) return 'Product Type is required.'
         if (!batch.product_version) return 'Product Version is required.'
         if (!batch.product_season_id) return 'Product Season is required.'
         if (!batch.color) return 'Color is required.'
-        if (!batch.brand_id) return 'Brand is required.'
         if (items.length === 0) return 'Select caption images first.'
         for (const it of items) {
             const ageStart = parseInt(it.ageStart, 10)
@@ -217,6 +221,12 @@ export default function BulkCaptionUploadPage() {
             if (!fabric) {
                 return 'Some images have no fabric detected and no fallback fabric set — fill one or the other.'
             }
+            if (!effectiveProductType(it)) {
+                return 'Some images have no Product Type — pick one on that row or set a batch default.'
+            }
+            if (!effectiveBrandId(it)) {
+                return 'Some images have no Brand — pick one on that row or set a batch default.'
+            }
         }
         return ''
     }
@@ -227,7 +237,9 @@ export default function BulkCaptionUploadPage() {
         const validAge = Number.isFinite(ageStart) && Number.isFinite(ageEnd) && ageEnd > ageStart
         const validPrice = (parseFloat(it.price) || parseFloat(batch.fallback_price)) > 0
         const validFabric = Boolean(it.fabric || batch.fallback_fabric)
-        return !validAge || !validPrice || !validFabric
+        const validType = Boolean(effectiveProductType(it))
+        const validBrand = Boolean(effectiveBrandId(it))
+        return !validAge || !validPrice || !validFabric || !validType || !validBrand
     }
 
     async function startUpload() {
@@ -256,12 +268,15 @@ export default function BulkCaptionUploadPage() {
                 const ageEnd = parseInt(item.ageEnd, 10)
                 const price = parseFloat(item.price) || parseFloat(batch.fallback_price) || 0
                 const fabric = item.fabric || batch.fallback_fabric
+                const gender = effectiveGender(item)
+                const productType = effectiveProductType(item)
+                const brandId = effectiveBrandId(item)
                 const qty = parseInt(batch.quantity_per_item) || 1
                 const variants = buildYearlyVariants(ageStart, ageEnd, price, qty)
 
                 sequence += 1
                 const seq = String(sequence).padStart(3, '0')
-                const title = (batch.title_prefix.trim() || batch.product_type) + ' – ' + batch.gender + ' – ' + ageStart + '-' + ageEnd + ' Year #' + seq
+                const title = (batch.title_prefix.trim() || productType) + ' – ' + gender + ' – ' + ageStart + '-' + ageEnd + ' Year #' + seq
 
                 const payload = {
                     title,
@@ -269,10 +284,10 @@ export default function BulkCaptionUploadPage() {
                     price,
                     compare_price: 0,
                     category: batch.category,
-                    product_type: batch.product_type,
+                    product_type: productType,
                     fabric,
                     color: batch.color,
-                    gender: batch.gender,
+                    gender,
                     tags,
                     stock: variants.reduce((sum, v) => sum + v.inventory_qty, 0),
                     images: [uploadData.url],
@@ -280,7 +295,7 @@ export default function BulkCaptionUploadPage() {
                     product_version: batch.product_version,
                     product_season_id: Number(batch.product_season_id),
                     character_id: null,
-                    brand_id: Number(batch.brand_id),
+                    brand_id: Number(brandId),
                     status: batch.status,
                     is_active: batch.status === 'active',
                 }
@@ -327,7 +342,7 @@ export default function BulkCaptionUploadPage() {
                         <span className="bg-coral/10 text-coral text-xs px-2 py-1 rounded-full font-bold">{items.length} images</span>
                     )}
                 </div>
-                <p className="text-xs text-gray-400">Reads age range, price & fabric printed on each photo · one image = one product with a full size range</p>
+                <p className="text-xs text-gray-400">Reads age range, price, fabric & product type printed on each photo · one image = one product with a full size range</p>
             </div>
             <AdminPortalNav />
 
@@ -357,7 +372,7 @@ export default function BulkCaptionUploadPage() {
                 {/* Step 2: batch settings */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm">
                     <p className="font-display text-lg text-charcoal mb-1">2. Batch settings</p>
-                    <p className="text-xs text-gray-500 mb-4">Age range/price/fabric come from each photo's caption — everything else here is set once for the whole batch. Fallback price/fabric are used only if a photo's caption couldn't be read.</p>
+                    <p className="text-xs text-gray-500 mb-4">Age range/price/fabric/product type are read from each photo's caption when possible, editable per photo below. Gender, Product Type and Brand set here are just defaults — override them per photo if a caption doesn't state it or gets it wrong.</p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
@@ -366,17 +381,17 @@ export default function BulkCaptionUploadPage() {
                                    placeholder="Defaults to Product Type" className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
                         </div>
                         <div>
-                            <label className="text-xs text-gray-500 mb-1 block">Gender *</label>
+                            <label className="text-xs text-gray-500 mb-1 block">Gender (default)</label>
                             <select value={batch.gender} onChange={(e) => setBatch((p) => ({ ...p, gender: e.target.value }))}
                                     className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm">
                                 {GENDER_OPTIONS.map((g) => <option key={g} value={g}>{g}</option>)}
                             </select>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-500 mb-1 block">Product Type *</label>
+                            <label className="text-xs text-gray-500 mb-1 block">Product Type (default)</label>
                             <select value={batch.product_type} onChange={(e) => setBatch((p) => ({ ...p, product_type: e.target.value }))}
                                     className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm">
-                                <option value="">Select...</option>
+                                <option value="">None — set per photo below</option>
                                 {productTypeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
                             </select>
                         </div>
@@ -403,10 +418,10 @@ export default function BulkCaptionUploadPage() {
                             </select>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-500 mb-1 block">Brand *</label>
+                            <label className="text-xs text-gray-500 mb-1 block">Brand (default)</label>
                             <select value={batch.brand_id} onChange={(e) => setBatch((p) => ({ ...p, brand_id: e.target.value }))}
                                     className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm">
-                                <option value="">Select...</option>
+                                <option value="">None — set per photo below</option>
                                 {brandOptions.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                             </select>
                         </div>
@@ -501,6 +516,24 @@ export default function BulkCaptionUploadPage() {
                                                 className="w-full text-xs border border-gray-200 rounded px-1.5 py-1">
                                             <option value="">Fabric (fallback)</option>
                                             {fabricOptions.map((f) => <option key={f} value={f}>{f}</option>)}
+                                        </select>
+                                        <select value={item.gender} onChange={(e) => updateItem(item.id, { gender: e.target.value })}
+                                                disabled={running}
+                                                className="w-full text-xs border border-gray-200 rounded px-1.5 py-1">
+                                            <option value="">Gender ({batch.gender})</option>
+                                            {GENDER_OPTIONS.map((g) => <option key={g} value={g}>{g}</option>)}
+                                        </select>
+                                        <select value={item.productType} onChange={(e) => updateItem(item.id, { productType: e.target.value })}
+                                                disabled={running}
+                                                className="w-full text-xs border border-gray-200 rounded px-1.5 py-1">
+                                            <option value="">Product Type{batch.product_type ? ' (' + batch.product_type + ')' : ' — pick one'}</option>
+                                            {productTypeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+                                        </select>
+                                        <select value={item.brandId} onChange={(e) => updateItem(item.id, { brandId: e.target.value })}
+                                                disabled={running}
+                                                className="w-full text-xs border border-gray-200 rounded px-1.5 py-1">
+                                            <option value="">Brand{batch.brand_id ? ' (default)' : ' — pick one'}</option>
+                                            {brandOptions.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                                         </select>
                                         {item.status === 'analyzing' && <p className="text-[10px] text-blue-500">Reading caption...</p>}
                                         {item.status === 'uploading' && <p className="text-[10px] text-blue-500">Uploading...</p>}
