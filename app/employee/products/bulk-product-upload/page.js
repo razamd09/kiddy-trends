@@ -43,16 +43,24 @@ function parseFolderPath(file) {
     }
 }
 
-function buildYearlyVariants(ageStart, ageEnd, price, qty) {
+// One row per (age bracket x sub-variant) combination — a photo with a 2-6
+// Year range and 2 colors in it produces 4 age brackets x 2 colors = 8
+// variants on the one product, size and color both distinguishing each row.
+function buildVariantMatrix(ageStart, ageEnd, subVariants, qty) {
     const variants = []
+    const hasColors = subVariants.length > 1
     for (let y = ageStart; y < ageEnd; y++) {
-        variants.push({
-            option1_name: 'Size',
-            option1_value: y + '-' + (y + 1) + ' Year',
-            option2_name: '', option2_value: '',
-            option3_name: '', option3_value: '',
-            price, inventory_qty: qty, sku: '',
-        })
+        const sizeLabel = y + '-' + (y + 1) + ' Year'
+        for (const sv of subVariants) {
+            variants.push({
+                option1_name: 'Size',
+                option1_value: sizeLabel,
+                option2_name: hasColors ? 'Color' : '',
+                option2_value: hasColors ? sv.label : '',
+                option3_name: '', option3_value: '',
+                price: sv.price, inventory_qty: qty, sku: '',
+            })
+        }
     }
     return variants
 }
@@ -206,6 +214,24 @@ export default function EmployeeBulkProductUploadPage() {
         setItems((prev) => prev.filter((it) => it.id !== id))
     }
 
+    function addSubVariant(itemId) {
+        setItems((prev) => prev.map((it) => (it.id === itemId
+            ? { ...it, subVariants: [...it.subVariants, { label: '', price: it.subVariants[0]?.price || '' }] }
+            : it)))
+    }
+
+    function removeSubVariant(itemId, idx) {
+        setItems((prev) => prev.map((it) => (it.id === itemId
+            ? { ...it, subVariants: it.subVariants.filter((_, i) => i !== idx) }
+            : it)))
+    }
+
+    function updateSubVariant(itemId, idx, patch) {
+        setItems((prev) => prev.map((it) => (it.id === itemId
+            ? { ...it, subVariants: it.subVariants.map((sv, i) => (i === idx ? { ...sv, ...patch } : sv)) }
+            : it)))
+    }
+
     async function analyzeAndLoadItems(files) {
         const nextItems = files.map((file, idx) => {
             const { folderAge, folderGender } = parseFolderPath(file)
@@ -214,8 +240,9 @@ export default function EmployeeBulkProductUploadPage() {
                 file,
                 previewUrl: URL.createObjectURL(file),
                 folderAge, folderGender,
-                ageStart: '', ageEnd: '', price: '', fabric: '',
+                ageStart: '', ageEnd: '', fabric: '',
                 productType: '', gender: '', brandId: '',
+                subVariants: [{ label: '', price: '' }],
                 status: 'pending',
                 error: '',
             }
@@ -237,14 +264,22 @@ export default function EmployeeBulkProductUploadPage() {
                     const folderRange = item.folderAge ? parseAgeRange(item.folderAge) : { ageStart: null, ageEnd: null }
                     const ageStart = parsed.ageStart ?? folderRange.ageStart ?? ''
                     const ageEnd = parsed.ageEnd ?? folderRange.ageEnd ?? ''
+                    // Caption lists per-item prices (e.g. "899/- SHIRT" + "1450/-
+                    // HOODIE") -> pre-fill one sub-variant row per detected price.
+                    // Otherwise fall back to a single row with the shared price —
+                    // OCR can't tell us how many garments are actually in the photo,
+                    // so the admin adds more rows manually when there's more than one.
+                    const subVariants = parsed.multiPrices.length >= 2
+                        ? parsed.multiPrices.map((mp) => ({ label: titleCase(mp.label), price: String(mp.price) }))
+                        : [{ label: '', price: parsed.price != null ? String(parsed.price) : '' }]
                     updateItem(item.id, {
                         status: 'analyzed',
                         ageStart,
                         ageEnd,
-                        price: parsed.price ?? '',
                         fabric: parsed.fabric || '',
                         productType: parsed.productType || '',
                         gender: parsed.gender || item.folderGender || '',
+                        subVariants,
                     })
                 } catch (err) {
                     updateItem(item.id, { status: 'analyzed', error: 'OCR: ' + err.message })
@@ -279,9 +314,14 @@ export default function EmployeeBulkProductUploadPage() {
             if (!Number.isFinite(ageStart) || !Number.isFinite(ageEnd) || ageEnd <= ageStart) {
                 return 'Some images have no valid age/size detected — fill Age Start/End manually on highlighted rows.'
             }
-            const price = parseFloat(it.price) || parseFloat(batch.fallback_price)
-            if (!price || price <= 0) {
-                return 'Some images have no price detected and no fallback price set — fill one or the other.'
+            for (const sv of it.subVariants) {
+                const price = parseFloat(sv.price) || parseFloat(batch.fallback_price)
+                if (!price || price <= 0) {
+                    return 'Some images have an item with no price detected and no fallback price set — fill one or the other.'
+                }
+            }
+            if (it.subVariants.length > 1 && it.subVariants.some((sv) => !sv.label.trim())) {
+                return 'Some images have multiple items but one or more has no color/label to tell it apart — fill it in.'
             }
             const fabric = it.fabric || batch.fallback_fabric
             if (!fabric) {
@@ -301,11 +341,12 @@ export default function EmployeeBulkProductUploadPage() {
         const ageStart = parseInt(it.ageStart, 10)
         const ageEnd = parseInt(it.ageEnd, 10)
         const validAge = Number.isFinite(ageStart) && Number.isFinite(ageEnd) && ageEnd > ageStart
-        const validPrice = (parseFloat(it.price) || parseFloat(batch.fallback_price)) > 0
+        const validPrice = it.subVariants.every((sv) => (parseFloat(sv.price) || parseFloat(batch.fallback_price)) > 0)
+        const validLabels = it.subVariants.length === 1 || it.subVariants.every((sv) => sv.label.trim())
         const validFabric = Boolean(it.fabric || batch.fallback_fabric)
         const validType = Boolean(effectiveProductType(it))
         const validBrand = Boolean(effectiveBrandId(it))
-        return !validAge || !validPrice || !validFabric || !validType || !validBrand
+        return !validAge || !validPrice || !validLabels || !validFabric || !validType || !validBrand
     }
 
     async function startUpload() {
@@ -332,13 +373,17 @@ export default function EmployeeBulkProductUploadPage() {
 
                 const ageStart = parseInt(item.ageStart, 10)
                 const ageEnd = parseInt(item.ageEnd, 10)
-                const price = parseFloat(item.price) || parseFloat(batch.fallback_price) || 0
+                const resolvedSubVariants = item.subVariants.map((sv, i) => ({
+                    label: sv.label.trim() || ('Item ' + (i + 1)),
+                    price: parseFloat(sv.price) || parseFloat(batch.fallback_price) || 0,
+                }))
                 const fabric = item.fabric || batch.fallback_fabric
                 const gender = effectiveGender(item)
                 const productType = effectiveProductType(item)
                 const brandId = effectiveBrandId(item)
                 const qty = parseInt(batch.quantity_per_item) || 1
-                const variants = buildYearlyVariants(ageStart, ageEnd, price, qty)
+                const variants = buildVariantMatrix(ageStart, ageEnd, resolvedSubVariants, qty)
+                const price = resolvedSubVariants[0].price
 
                 sequence += 1
                 const seq = String(sequence).padStart(3, '0')
@@ -408,7 +453,7 @@ export default function EmployeeBulkProductUploadPage() {
                         <span className="bg-coral/10 text-coral text-xs px-2 py-1 rounded-full font-bold">{items.length} images</span>
                     )}
                 </div>
-                <p className="text-xs text-gray-400">Every photo is OCR-scanned for size, price, fabric &amp; gender · one photo = one product, full size range if a range is printed</p>
+                <p className="text-xs text-gray-400">Every photo is OCR-scanned for size, price, fabric &amp; gender · one photo = one product, with a variant per size and per item shown in the photo</p>
             </div>
             <EmployeePortalNav />
 
@@ -419,6 +464,7 @@ export default function EmployeeBulkProductUploadPage() {
                     <p className="font-display text-lg text-charcoal mb-1">1. Select photos</p>
                     <p className="text-xs text-gray-500 mb-4">
                         Every photo is read automatically for a printed caption like "1-10 YEARS · 1750/- ONLY" — a single age like "2-3 Year" makes one product, a range like "2-6 Year" makes one product with every yearly size from 2-3 up to 5-6.
+                        If a photo shows more than one item (e.g. 2-3 shirts laid out together), click "+ Another item in this photo" on that row and give each one a color/label — OCR can read a per-item price when the caption lists one for each (e.g. "899/- SHIRT" + "1450/- HOODIE"), but it can't see how many garments are in a photo or tell their colors apart, so that part needs your eyes.
                         If you organize photos in folders (age folder → Boys/Girls/Neutral subfolder), that folder path fills in anything the caption doesn't state. Free OCR isn't perfect — always check the detected values below before uploading.
                     </p>
                     <div className="flex flex-wrap gap-6">
@@ -589,9 +635,28 @@ export default function EmployeeBulkProductUploadPage() {
                                                    placeholder="To (Year)" disabled={running}
                                                    className="w-1/2 text-xs border border-gray-200 rounded px-1.5 py-1" />
                                         </div>
-                                        <input type="number" value={item.price} onChange={(e) => updateItem(item.id, { price: e.target.value })}
-                                               placeholder="Price" disabled={running}
-                                               className="w-full text-xs border border-gray-200 rounded px-1.5 py-1" />
+                                        <div className="space-y-1 rounded-lg border border-gray-100 bg-cream/60 p-1.5">
+                                            {item.subVariants.map((sv, idx) => (
+                                                <div key={idx} className="flex gap-1">
+                                                    {item.subVariants.length > 1 && (
+                                                        <input value={sv.label} onChange={(e) => updateSubVariant(item.id, idx, { label: e.target.value })}
+                                                               placeholder={'Item ' + (idx + 1) + ' color'} disabled={running}
+                                                               className="w-1/2 text-xs border border-gray-200 rounded px-1.5 py-1" />
+                                                    )}
+                                                    <input type="number" value={sv.price} onChange={(e) => updateSubVariant(item.id, idx, { price: e.target.value })}
+                                                           placeholder="Price" disabled={running}
+                                                           className={(item.subVariants.length > 1 ? 'w-1/2' : 'w-full') + ' text-xs border border-gray-200 rounded px-1.5 py-1'} />
+                                                    {item.subVariants.length > 1 && !running && (
+                                                        <button onClick={() => removeSubVariant(item.id, idx)}
+                                                                className="text-xs text-gray-300 hover:text-coral px-1">✕</button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            {!running && (
+                                                <button onClick={() => addSubVariant(item.id)}
+                                                        className="text-[10px] text-coral hover:underline">+ Another item in this photo</button>
+                                            )}
+                                        </div>
                                         <select value={item.fabric} onChange={(e) => updateItem(item.id, { fabric: e.target.value })}
                                                 disabled={running}
                                                 className="w-full text-xs border border-gray-200 rounded px-1.5 py-1">
