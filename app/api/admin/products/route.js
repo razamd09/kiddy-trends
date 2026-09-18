@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { normalizeVariants } from '../../../../lib/variantNormalization'
+import { normalizeVariants, ensureMinimumVariantStock } from '../../../../lib/variantNormalization'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -439,6 +439,13 @@ export async function POST(request) {
                 : buildShortProductHandle(body.title, body.id || Date.now())
 
             const fabricRef = await resolveFabricReference(supabase, body.fabric)
+            // A variant left with a blank/zero quantity while adding a product
+            // silently shows as sold out on the site, so new variants always get
+            // a floor of 1 here — this never runs on later edits (see PUT below).
+            const createVariants = ensureMinimumVariantStock(normalizeVariants(body.variants || []))
+            const createStock = createVariants.length > 0
+                ? createVariants.reduce((sum, v) => sum + (parseInt(v.inventory_qty, 10) || 0), 0)
+                : (parseInt(body.stock) || 0)
             const { data, error } = await supabase
                 .from('products')
                 .insert([{
@@ -446,7 +453,7 @@ export async function POST(request) {
                     description:   body.description,
                     price:         parseFloat(body.price) || 0,
                     compare_price: body.compare_price ? parseFloat(body.compare_price) : null,
-                    images:        Array.isArray(body.images) 
+                    images:        Array.isArray(body.images)
                         ? body.images.map(img => typeof img === 'string' ? img : img.src)
                         : (body.images || []),
                     category:      body.category,
@@ -456,8 +463,8 @@ export async function POST(request) {
                     color:         String(body.color || '').trim(),
                     gender:        String(body.gender || '').trim(),
                     tags:          Array.isArray(body.tags) ? body.tags : (body.tags || []),
-                    variants:      normalizeVariants(body.variants || []),
-                    stock:         parseInt(body.stock) || 0,
+                    variants:      createVariants,
+                    stock:         createStock,
                     is_active:     isActive,
                     source:        'custom',
                     product_version: body.product_version || null,
