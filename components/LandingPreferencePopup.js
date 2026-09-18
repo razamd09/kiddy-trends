@@ -20,13 +20,14 @@ const AGE_OPTIONS = [
   { label: '9-10 Year', cat: 'tweens', sub: '9-10y' },
   { label: '10-11 Year', cat: 'tweens', sub: '10-11y' },
   { label: '11-12 Year', cat: 'tweens', sub: '11-12y' },
+  { label: '12-13 Year', cat: 'tweens', sub: '12-13y' },
 ]
 
 const AGE_STAGES = [
   { cat: 'newborn', icon: '👶', title: 'Baby', range: '0–12 Months', accent: 'border-coral/25 bg-coral/5' },
   { cat: 'toddler', icon: '🧸', title: 'Toddler', range: '1–3 Years', accent: 'border-skyblue/30 bg-skyblue/10' },
   { cat: 'kids', icon: '🎒', title: 'Kids', range: '3–8 Years', accent: 'border-mint/40 bg-mint/10' },
-  { cat: 'tweens', icon: '⭐', title: 'Tweens', range: '9–12 Years', accent: 'border-sunny/50 bg-sunny/10' },
+  { cat: 'tweens', icon: '⭐', title: 'Tweens', range: '9–13 Years', accent: 'border-sunny/50 bg-sunny/10' },
 ].map((stage) => ({ ...stage, options: AGE_OPTIONS.filter((opt) => opt.cat === stage.cat) }))
 
 function getPakistanGreeting() {
