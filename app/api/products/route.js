@@ -280,6 +280,7 @@ function transformProduct(product) {
         character_id: product.character_id || null,
         character: product?.product_characters?.name || null,
         brand: product?.product_brands?.name || null,
+        campaign_tier: product.campaign_tier ?? null,
     }
 }
 

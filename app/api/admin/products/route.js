@@ -237,6 +237,14 @@ function normalizeCharacterId(value) {
     return Number.isFinite(parsed) ? Math.trunc(parsed) : null
 }
 
+// 1 (current/newest campaign) through 10 (oldest); null = not in any campaign.
+function normalizeCampaignTier(value) {
+    if (value === undefined) return undefined
+    if (value === null || value === '') return null
+    const parsed = Math.trunc(Number(value))
+    return Number.isFinite(parsed) && parsed >= 1 && parsed <= 10 ? parsed : null
+}
+
 function buildShortProductHandle(title, fallbackId = Date.now()) {
     const rawTitle = String(title || '').trim()
     const slug = rawTitle
@@ -471,6 +479,7 @@ export async function POST(request) {
                     product_season_id: normalizeProductSeasonId(body.product_season_id),
                     character_id: normalizeCharacterId(body.character_id),
                     brand_id: normalizeBrandId(body.brand_id),
+                    campaign_tier: normalizeCampaignTier(body.campaign_tier),
                     shopify_handle: generatedHandle,
                     last_action_by: actorIdentity,
                     last_action_type: 'added',
@@ -574,6 +583,10 @@ export async function PUT(request) {
 
         if (updates.brand_id !== undefined) {
             cleanUpdates.brand_id = normalizeBrandId(updates.brand_id)
+        }
+
+        if (updates.campaign_tier !== undefined) {
+            cleanUpdates.campaign_tier = normalizeCampaignTier(updates.campaign_tier)
         }
 
         if (updates.variants !== undefined) {

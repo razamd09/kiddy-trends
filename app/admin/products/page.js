@@ -73,7 +73,7 @@ export default function AdminProducts() {
     const [form, setForm] = useState({
         title: '', description: '', price: '', compare_price: '',
         category: '', product_type: '', fabric: '', color: '', gender: '', tags: '', stock: '',
-        product_version: '', product_season_id: '', character_id: '', brand_id: '', status: ''
+        product_version: '', product_season_id: '', character_id: '', brand_id: '', status: '', campaign_tier: ''
     })
     const [formImages, setFormImages] = useState([])   // [{url, rotating}]
     const [formVariants, setFormVariants] = useState([]) // [{option1_name,option1_value,option2_name,option2_value,price,stock,sku}]
@@ -513,7 +513,7 @@ export default function AdminProducts() {
     }
 
     function resetForm() {
-        setForm({ title: '', description: '', price: '', compare_price: '', category: '', product_type: '', fabric: '', color: '', gender: '', tags: '', stock: '', product_version: '', product_season_id: '', character_id: '', brand_id: '', status: '' })
+        setForm({ title: '', description: '', price: '', compare_price: '', category: '', product_type: '', fabric: '', color: '', gender: '', tags: '', stock: '', product_version: '', product_season_id: '', character_id: '', brand_id: '', status: '', campaign_tier: '' })
         setFormImages([])
         setFormVariants([])
         setEditingId(null)
@@ -560,6 +560,7 @@ export default function AdminProducts() {
             character_id: product.character_id ? String(product.character_id) : '',
             brand_id: product.brand_id ? String(product.brand_id) : '',
             status: product.is_active === false ? 'draft' : 'active',
+            campaign_tier: product.campaign_tier ? String(product.campaign_tier) : '',
         })
         setEditingId(product.id)
         setShowForm(true)
@@ -623,6 +624,7 @@ export default function AdminProducts() {
             brand_id: Number(brandId),
             status,
             is_active: status === 'active',
+            campaign_tier: form.campaign_tier ? Number(form.campaign_tier) : null,
         }
 
         const method = editingId ? 'PUT' : 'POST'
@@ -1050,6 +1052,17 @@ export default function AdminProducts() {
                                                                                 <option value="active">Active</option>
                                                                                 <option value="draft">Draft</option>
                                                                             </select>
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block font-semibold text-xs text-charcoal mb-1">Campaign Tier (optional)</label>
+                                                                            <select value={form.campaign_tier} onChange={e => setForm({...form, campaign_tier: e.target.value})}
+                                                                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm">
+                                                                                <option value="">Not in a campaign</option>
+                                                                                {Array.from({ length: 10 }, (_, i) => i + 1).map((tier) => (
+                                                                                    <option key={tier} value={tier}>{tier}{tier === 1 ? ' (current campaign)' : ''}</option>
+                                                                                ))}
+                                                                            </select>
+                                                                            <p className="text-[11px] text-gray-400 mt-1">Shows on the /campaign landing page — 1 = newest/current, sorted to the top.</p>
                                                                         </div>
                                                                         <div>
                                                                             <label className="block font-semibold text-xs text-charcoal mb-1">Product Type *</label>

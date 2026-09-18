@@ -109,6 +109,7 @@ export default function EmployeeBulkProductUploadPage() {
         quantity_per_item: '1',
         tags: '',
         status: 'draft',
+        campaign_tier: '',
     })
 
     useEffect(() => {
@@ -413,6 +414,7 @@ export default function EmployeeBulkProductUploadPage() {
                     brand_id: Number(brandId),
                     status: batch.status,
                     is_active: batch.status === 'active',
+                    campaign_tier: batch.campaign_tier ? Number(batch.campaign_tier) : null,
                 }
 
                 const productRes = await fetch('/api/admin/products', {
@@ -598,6 +600,17 @@ export default function EmployeeBulkProductUploadPage() {
                                 <option value="draft">Draft (review before going live)</option>
                                 <option value="active">Active (live immediately)</option>
                             </select>
+                        </div>
+                        <div>
+                            <label className="text-xs text-gray-500 mb-1 block">Campaign Tier (optional)</label>
+                            <select value={batch.campaign_tier} onChange={(e) => setBatch((p) => ({ ...p, campaign_tier: e.target.value }))}
+                                    className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm">
+                                <option value="">Not in a campaign</option>
+                                {Array.from({ length: 10 }, (_, i) => i + 1).map((tier) => (
+                                    <option key={tier} value={tier}>{tier}{tier === 1 ? ' (current campaign)' : ''}</option>
+                                ))}
+                            </select>
+                            <p className="text-[11px] text-gray-400 mt-1">Tags every product in this batch for the /campaign landing page.</p>
                         </div>
                     </div>
                 </div>
