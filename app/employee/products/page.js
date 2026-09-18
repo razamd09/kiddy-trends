@@ -1024,6 +1024,18 @@ export default function EmployeeProducts() {
                         </button>
                     )}
                     {!showForm && (
+                        <Link href="/employee/products/bulk-folder-upload"
+                              className="px-4 py-2 bg-indigo-600 text-white font-display text-sm rounded-full hover:bg-indigo-700">
+                            📁 Bulk Folder Upload
+                        </Link>
+                    )}
+                    {!showForm && (
+                        <Link href="/employee/products/bulk-caption-upload"
+                              className="px-4 py-2 bg-orange-500 text-white font-display text-sm rounded-full hover:bg-orange-600">
+                            🏷️ Bulk Caption Upload
+                        </Link>
+                    )}
+                    {!showForm && (
                         <Link href="/employee/products/bulk-images"
                               className="px-4 py-2 bg-purple-600 text-white font-display text-sm rounded-full hover:bg-purple-700">
                             🖼️ Bulk Images
