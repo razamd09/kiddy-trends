@@ -461,6 +461,7 @@ export default function BulkProductUploadPage() {
                     <div className="flex flex-wrap gap-6">
                         <div>
                             <p className="text-xs font-semibold text-gray-400 mb-1">Select individual photos</p>
+                            <p className="text-[10px] text-gray-400 mb-1 max-w-xs">No gender/size from a folder here — even if you browse into a "Boys" folder and select files, the browser doesn't tell us that. Use this only if the caption states everything, or you'll set Gender manually.</p>
                             <input
                                 type="file"
                                 multiple
@@ -471,6 +472,7 @@ export default function BulkProductUploadPage() {
                         </div>
                         <div>
                             <p className="text-xs font-semibold text-gray-400 mb-1">Or select a folder</p>
+                            <p className="text-[10px] text-gray-400 mb-1 max-w-xs">Click this button, then pick the FOLDER itself (e.g. "Boys") in the dialog that opens — don't select the files inside it. This is the only way the site can read the folder name.</p>
                             <input
                                 ref={folderInputRef}
                                 type="file"
@@ -618,6 +620,11 @@ export default function BulkProductUploadPage() {
                                     )}
                                     <img src={item.previewUrl} alt="" className="w-20 h-20 object-cover rounded-lg flex-shrink-0" />
                                     <div className="flex-1 space-y-1">
+                                        {(item.folderAge || item.folderGender) ? (
+                                            <p className="text-[10px] text-indigo-600 font-semibold">📁 {[item.folderAge, item.folderGender].filter(Boolean).join(' · ')}</p>
+                                        ) : (
+                                            <p className="text-[10px] text-gray-300">No folder path on this file — used the folder picker?</p>
+                                        )}
                                         <div className="flex gap-1">
                                             <input type="number" value={item.ageStart} onChange={(e) => updateItem(item.id, { ageStart: e.target.value })}
                                                    placeholder="From" disabled={running}
