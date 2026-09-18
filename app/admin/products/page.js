@@ -1008,6 +1008,9 @@ export default function AdminProducts() {
                     <span className="bg-coral/10 text-coral text-xs px-2 py-1 rounded-full font-bold">{total}</span>
                 </div>
                 <div className="flex items-center gap-3">
+                    <Link href="/admin/products/bulk-folder-upload" className="px-4 py-2 bg-indigo-600 text-white font-display text-sm rounded-full hover:bg-indigo-700">
+                        📁 Bulk Folder Upload
+                    </Link>
                     <Link href="/admin/products/bulk-images" className="px-4 py-2 bg-purple-600 text-white font-display text-sm rounded-full hover:bg-purple-700">
                         🖼️ Bulk Images
                     </Link>
