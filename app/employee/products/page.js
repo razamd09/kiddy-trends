@@ -58,7 +58,6 @@ export default function EmployeeProducts() {
     const [fabricOptions, setFabricOptions] = useState(DEFAULT_FABRIC_OPTIONS)
     const [employeeNameByCode, setEmployeeNameByCode] = useState({})
     const [bulkProcessing, setBulkProcessing] = useState(false)
-    const [recentBgRemoving, setRecentBgRemoving] = useState(false)
     const [bulkEditOpen, setBulkEditOpen] = useState(false)
     const [bulkEditRows, setBulkEditRows] = useState([])
     const [bulkEditForm, setBulkEditForm] = useState({
@@ -797,28 +796,6 @@ export default function EmployeeProducts() {
         setBulkProcessing(false)
     }
 
-    async function handleRecentBackgroundRemoval() {
-        if (!window.confirm('Remove background and set white background for all product images uploaded in last 5 days?')) return
-
-        setRecentBgRemoving(true)
-        try {
-            const res = await fetch('/api/admin/products/recent-background-removal', {
-                method: 'POST',
-                headers: getActorHeaders(true),
-                body: JSON.stringify({ days: 5 }),
-            })
-            const data = await readApiJson(res)
-            if (!res.ok || !data.success) {
-                throw new Error(data.error || 'Failed to process recent images')
-            }
-            const summary = 'Processed ' + (data.processedImages || 0) + ' image(s) across ' + (data.processedProducts || 0) + ' product(s).'
-            alert(summary)
-            fetchProducts()
-        } catch (err) {
-            alert('Recent background removal failed: ' + (err.message || 'Unknown error'))
-        }
-        setRecentBgRemoving(false)
-    }
 
     async function handleImageUpload(e) {
         const files = e.target.files
@@ -1014,25 +991,9 @@ export default function EmployeeProducts() {
                         {showForm ? '← Back' : '+ Add Product'}
                     </button>
                     {!showForm && (
-                        <button
-                            type="button"
-                            onClick={handleRecentBackgroundRemoval}
-                            disabled={recentBgRemoving || bulkProcessing}
-                            className="px-4 py-2 bg-emerald-600 text-white font-display text-sm rounded-full hover:bg-emerald-700 disabled:opacity-60"
-                        >
-                            {recentBgRemoving ? 'Removing BG...' : '⚡ Remove BG (Last 5 Days)'}
-                        </button>
-                    )}
-                    {!showForm && (
                         <Link href="/employee/products/bulk-product-upload"
                               className="px-4 py-2 bg-indigo-600 text-white font-display text-sm rounded-full hover:bg-indigo-700">
                             🚀 Bulk Product Upload
-                        </Link>
-                    )}
-                    {!showForm && (
-                        <Link href="/employee/products/bulk-images"
-                              className="px-4 py-2 bg-purple-600 text-white font-display text-sm rounded-full hover:bg-purple-700">
-                            🖼️ Bulk Images
                         </Link>
                     )}
                     <button onClick={logout} className="text-sm text-gray-400 hover:text-coral">Logout →</button>
