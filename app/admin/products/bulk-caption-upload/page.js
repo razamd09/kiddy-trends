@@ -1,8 +1,9 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminPortalNav from '@/components/AdminPortalNav'
+import { parseCaption } from '@/lib/captionParsing'
 
 const DEFAULT_CATEGORY_OPTIONS = ['Clothing', 'Bedding', 'Bags', 'Accessories', 'Footwear', 'Toys', 'Shoes', 'Other']
 const DEFAULT_PRODUCT_VERSION_OPTIONS = ['new arrivals', 'Old Packs']
@@ -14,7 +15,6 @@ const DEFAULT_COLOR_OPTIONS = [
     'Beige', 'Brown', 'Tan', 'Navy', 'Teal', 'Aqua', 'Maroon', 'Gold', 'Cream', 'Multi-color', 'Multi Color'
 ]
 const GENDER_OPTIONS = ['Girls', 'Boys', 'Neutral']
-const ANALYZE_CONCURRENCY = 3
 const UPLOAD_CONCURRENCY = 4
 
 function buildYearlyVariants(ageStart, ageEnd, price, qty) {
@@ -45,9 +45,11 @@ async function runWithConcurrency(items, limit, worker) {
 export default function BulkCaptionUploadPage() {
     const [verified, setVerified] = useState(false)
     const router = useRouter()
+    const ocrWorkerRef = useRef(null)
 
     const [items, setItems] = useState([])
     const [analyzing, setAnalyzing] = useState(false)
+    const [analyzedCount, setAnalyzedCount] = useState(0)
     const [running, setRunning] = useState(false)
     const [doneCount, setDoneCount] = useState(0)
 
@@ -89,7 +91,25 @@ export default function BulkCaptionUploadPage() {
             }
         }
         verify()
+        return () => {
+            if (ocrWorkerRef.current) {
+                ocrWorkerRef.current.then((w) => w.terminate()).catch(() => {})
+            }
+        }
     }, [])
+
+    // Loaded lazily and reused across every image in the batch — spinning up
+    // tesseract's WASM worker + language data takes a few seconds, so doing
+    // it once instead of per-image keeps the batch fast after the first photo.
+    async function getOcrWorker() {
+        if (!ocrWorkerRef.current) {
+            ocrWorkerRef.current = (async () => {
+                const { createWorker } = await import('tesseract.js')
+                return createWorker('eng')
+            })()
+        }
+        return ocrWorkerRef.current
+    }
 
     async function readJson(res) {
         const text = await res.text()
@@ -147,28 +167,32 @@ export default function BulkCaptionUploadPage() {
         }))
         setItems(nextItems)
         setDoneCount(0)
+        setAnalyzedCount(0)
         e.target.value = ''
 
         setAnalyzing(true)
-        await runWithConcurrency(nextItems, ANALYZE_CONCURRENCY, async (item) => {
-            updateItem(item.id, { status: 'analyzing' })
-            try {
-                const formData = new FormData()
-                formData.append('file', item.file)
-                const res = await fetch('/api/admin/analyze-caption', { method: 'POST', body: formData })
-                const data = await readJson(res)
-                if (!res.ok || !data.success) throw new Error(data.error || 'Caption analysis failed')
-                updateItem(item.id, {
-                    status: 'analyzed',
-                    ageStart: data.ageStart ?? '',
-                    ageEnd: data.ageEnd ?? '',
-                    price: data.price ?? '',
-                    fabric: data.fabric || '',
-                })
-            } catch (err) {
-                updateItem(item.id, { status: 'analyzed', error: 'OCR: ' + err.message })
+        try {
+            const worker = await getOcrWorker()
+            for (const item of nextItems) {
+                updateItem(item.id, { status: 'analyzing' })
+                try {
+                    const { data } = await worker.recognize(item.file)
+                    const parsed = parseCaption(data?.text || '')
+                    updateItem(item.id, {
+                        status: 'analyzed',
+                        ageStart: parsed.ageStart ?? '',
+                        ageEnd: parsed.ageEnd ?? '',
+                        price: parsed.price ?? '',
+                        fabric: parsed.fabric || '',
+                    })
+                } catch (err) {
+                    updateItem(item.id, { status: 'analyzed', error: 'OCR: ' + err.message })
+                }
+                setAnalyzedCount((c) => c + 1)
             }
-        })
+        } catch (err) {
+            alert('Could not start caption reader: ' + err.message)
+        }
         setAnalyzing(false)
     }
 
@@ -323,7 +347,11 @@ export default function BulkCaptionUploadPage() {
                         onChange={handleFileSelect}
                         className="block text-sm text-charcoal file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-coral file:text-white file:font-display hover:file:bg-opacity-90"
                     />
-                    {analyzing && <p className="text-xs text-blue-500 mt-3">Reading captions...</p>}
+                    {analyzing && (
+                        <p className="text-xs text-blue-500 mt-3">
+                            Reading captions in your browser ({analyzedCount}/{items.length})... first photo takes a few extra seconds to load the reader.
+                        </p>
+                    )}
                 </div>
 
                 {/* Step 2: batch settings */}
