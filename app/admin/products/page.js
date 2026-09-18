@@ -741,6 +741,7 @@ export default function AdminProducts() {
                 brand_id: product.brand_id ? String(product.brand_id) : '',
                 color: product.color || '',
                 is_active: product.is_active !== false,
+                campaign_tier: product.campaign_tier ? String(product.campaign_tier) : '',
             }))
 
         setBulkEditRows(nextRows)
@@ -768,6 +769,7 @@ export default function AdminProducts() {
                     brand_id: row.brand_id ? Number(row.brand_id) : null,
                     color: row.color,
                     is_active: row.is_active,
+                    campaign_tier: row.campaign_tier ? Number(row.campaign_tier) : null,
                 }
 
                 Object.keys(payload).forEach((key) => {
@@ -1826,6 +1828,7 @@ export default function AdminProducts() {
                                             <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Brand</th>
                                             <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Color</th>
                                             <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Status</th>
+                                            <th className="border-b border-gray-200 px-3 py-2 font-semibold text-charcoal">Campaign Tier</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -1942,6 +1945,18 @@ export default function AdminProducts() {
                                                         >
                                                             <option value="active">Active</option>
                                                             <option value="draft">Draft</option>
+                                                        </select>
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <select
+                                                            value={row.campaign_tier}
+                                                            onChange={(e) => updateBulkEditRow(row.id, 'campaign_tier', e.target.value)}
+                                                            className="w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-charcoal focus:border-coral focus:outline-none"
+                                                        >
+                                                            <option value="">Not in a campaign</option>
+                                                            {Array.from({ length: 10 }, (_, i) => i + 1).map((tier) => (
+                                                                <option key={tier} value={tier}>{tier}{tier === 1 ? ' (current)' : ''}</option>
+                                                            ))}
                                                         </select>
                                                     </td>
                                                 </tr>
