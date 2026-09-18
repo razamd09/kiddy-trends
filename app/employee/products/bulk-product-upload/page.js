@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import EmployeePortalNav from '@/components/EmployeePortalNav'
+import { parseCaption, parseAgeRange } from '@/lib/captionParsing'
 
 const DEFAULT_CATEGORY_OPTIONS = ['Clothing', 'Bedding', 'Bags', 'Accessories', 'Footwear', 'Toys', 'Shoes', 'Other']
 const DEFAULT_PRODUCT_VERSION_OPTIONS = ['new arrivals', 'Old Packs']
@@ -16,30 +17,44 @@ const DEFAULT_COLOR_OPTIONS = [
 const GENDER_OPTIONS = ['Girls', 'Boys', 'Neutral']
 const UPLOAD_CONCURRENCY = 4
 
-function detectGender(folderName) {
+function detectFolderGender(folderName) {
     const s = String(folderName || '').toLowerCase()
     if (s.includes('girl')) return 'Girls'
     if (s.includes('boy')) return 'Boys'
-    return 'Neutral'
+    return ''
 }
 
 function titleCase(text) {
     return String(text || '').trim().replace(/\s+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-// Takes each image's folder path and reads gender from its immediate parent
-// folder and size/age from the folder above that, so the same picker works
-// whether you select an age folder directly or a parent containing many age
-// folders — no reconfiguration needed between batches.
-function parseFile(file) {
-    const relPath = file.webkitRelativePath || file.name
+// When a folder structure is used (age folder > gender subfolder > images),
+// read gender from the image's immediate parent folder and size from the
+// folder above that — same convention as a flat picker with no folders at all.
+function parseFolderPath(file) {
+    const relPath = file.webkitRelativePath || ''
+    if (!relPath) return { folderAge: '', folderGender: '' }
     const parts = relPath.split('/').filter(Boolean)
     const genderFolder = parts.length >= 2 ? parts[parts.length - 2] : ''
     const ageFolder = parts.length >= 3 ? parts[parts.length - 3] : ''
     return {
-        age: titleCase(ageFolder),
-        gender: genderFolder ? detectGender(genderFolder) : 'Neutral',
+        folderAge: titleCase(ageFolder),
+        folderGender: genderFolder ? detectFolderGender(genderFolder) : '',
     }
+}
+
+function buildYearlyVariants(ageStart, ageEnd, price, qty) {
+    const variants = []
+    for (let y = ageStart; y < ageEnd; y++) {
+        variants.push({
+            option1_name: 'Size',
+            option1_value: y + '-' + (y + 1) + ' Year',
+            option2_name: '', option2_value: '',
+            option3_name: '', option3_value: '',
+            price, inventory_qty: qty, sku: '',
+        })
+    }
+    return variants
 }
 
 async function runWithConcurrency(items, limit, worker) {
@@ -53,12 +68,15 @@ async function runWithConcurrency(items, limit, worker) {
     await Promise.all(Array.from({ length: Math.min(limit, items.length) }, next))
 }
 
-export default function EmployeeBulkFolderUploadPage() {
+export default function EmployeeBulkProductUploadPage() {
     const [verified, setVerified] = useState(false)
     const router = useRouter()
+    const ocrWorkerRef = useRef(null)
     const folderInputRef = useRef(null)
 
     const [items, setItems] = useState([])
+    const [analyzing, setAnalyzing] = useState(false)
+    const [analyzedCount, setAnalyzedCount] = useState(0)
     const [running, setRunning] = useState(false)
     const [doneCount, setDoneCount] = useState(0)
 
@@ -71,15 +89,15 @@ export default function EmployeeBulkFolderUploadPage() {
 
     const [batch, setBatch] = useState({
         title_prefix: '',
+        gender: 'Neutral',
         product_type: '',
-        product_version: 'Old Packs',
+        product_version: 'new arrivals',
         category: 'Clothing',
-        fabric: '',
         color: '',
         brand_id: '',
         product_season_id: '',
-        price: '',
-        compare_price: '',
+        fallback_price: '',
+        fallback_fabric: '',
         quantity_per_item: '1',
         tags: '',
         status: 'draft',
@@ -113,6 +131,11 @@ export default function EmployeeBulkFolderUploadPage() {
             }
         }
         verify()
+        return () => {
+            if (ocrWorkerRef.current) {
+                ocrWorkerRef.current.then((w) => w.terminate()).catch(() => {})
+            }
+        }
     }, [])
 
     useEffect(() => {
@@ -121,6 +144,19 @@ export default function EmployeeBulkFolderUploadPage() {
             folderInputRef.current.setAttribute('directory', '')
         }
     }, [])
+
+    // Loaded lazily and reused across every image in the batch — spinning up
+    // tesseract's WASM worker + language data takes a few seconds, so doing
+    // it once instead of per-image keeps the batch fast after the first photo.
+    async function getOcrWorker() {
+        if (!ocrWorkerRef.current) {
+            ocrWorkerRef.current = (async () => {
+                const { createWorker } = await import('tesseract.js')
+                return createWorker('eng')
+            })()
+        }
+        return ocrWorkerRef.current
+    }
 
     async function readJson(res) {
         const text = await res.text()
@@ -158,23 +194,9 @@ export default function EmployeeBulkFolderUploadPage() {
         setBrandOptions(Array.isArray(brandsRes?.brands) ? brandsRes.brands : [])
     }
 
-    function handleFolderSelect(e) {
-        const files = Array.from(e.target.files || []).filter((f) => f.type.startsWith('image/'))
-        const nextItems = files.map((file, idx) => {
-            const parsed = parseFile(file)
-            return {
-                id: String(Date.now()) + '_' + idx,
-                file,
-                previewUrl: URL.createObjectURL(file),
-                age: parsed.age,
-                gender: parsed.gender,
-                status: 'pending',
-                error: '',
-            }
-        })
-        setItems(nextItems)
-        setDoneCount(0)
-    }
+    function effectiveGender(item) { return item.gender || batch.gender }
+    function effectiveProductType(item) { return item.productType || batch.product_type }
+    function effectiveBrandId(item) { return item.brandId || batch.brand_id }
 
     function updateItem(id, patch) {
         setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)))
@@ -184,17 +206,106 @@ export default function EmployeeBulkFolderUploadPage() {
         setItems((prev) => prev.filter((it) => it.id !== id))
     }
 
+    async function analyzeAndLoadItems(files) {
+        const nextItems = files.map((file, idx) => {
+            const { folderAge, folderGender } = parseFolderPath(file)
+            return {
+                id: String(Date.now()) + '_' + idx,
+                file,
+                previewUrl: URL.createObjectURL(file),
+                folderAge, folderGender,
+                ageStart: '', ageEnd: '', price: '', fabric: '',
+                productType: '', gender: '', brandId: '',
+                status: 'pending',
+                error: '',
+            }
+        })
+        setItems(nextItems)
+        setDoneCount(0)
+        setAnalyzedCount(0)
+
+        setAnalyzing(true)
+        try {
+            const worker = await getOcrWorker()
+            for (const item of nextItems) {
+                updateItem(item.id, { status: 'analyzing' })
+                try {
+                    const { data } = await worker.recognize(item.file)
+                    const parsed = parseCaption(data?.text || '')
+                    // OCR is the primary source (it's what's actually printed on this
+                    // exact photo); the folder path only fills in what OCR missed.
+                    const folderRange = item.folderAge ? parseAgeRange(item.folderAge) : { ageStart: null, ageEnd: null }
+                    const ageStart = parsed.ageStart ?? folderRange.ageStart ?? ''
+                    const ageEnd = parsed.ageEnd ?? folderRange.ageEnd ?? ''
+                    updateItem(item.id, {
+                        status: 'analyzed',
+                        ageStart,
+                        ageEnd,
+                        price: parsed.price ?? '',
+                        fabric: parsed.fabric || '',
+                        productType: parsed.productType || '',
+                        gender: parsed.gender || item.folderGender || '',
+                    })
+                } catch (err) {
+                    updateItem(item.id, { status: 'analyzed', error: 'OCR: ' + err.message })
+                }
+                setAnalyzedCount((c) => c + 1)
+            }
+        } catch (err) {
+            alert('Could not start caption reader: ' + err.message)
+        }
+        setAnalyzing(false)
+    }
+
+    async function handleFileSelect(e) {
+        const files = Array.from(e.target.files || []).filter((f) => f.type.startsWith('image/'))
+        e.target.value = ''
+        await analyzeAndLoadItems(files)
+    }
+
+    async function handleFolderSelect(e) {
+        const files = Array.from(e.target.files || []).filter((f) => f.type.startsWith('image/'))
+        await analyzeAndLoadItems(files)
+    }
+
     function validateBatch() {
-        if (!batch.product_type) return 'Product Type is required.'
         if (!batch.product_version) return 'Product Version is required.'
         if (!batch.product_season_id) return 'Product Season is required.'
-        if (!batch.fabric) return 'Fabric is required.'
         if (!batch.color) return 'Color is required.'
-        if (!batch.brand_id) return 'Brand is required.'
-        if (!batch.price || parseFloat(batch.price) <= 0) return 'Price is required.'
-        if (items.length === 0) return 'Select a folder with images first.'
-        if (items.some((it) => !it.age)) return 'Some images have no detected size/age — set it manually on those rows (highlighted) before starting.'
+        if (items.length === 0) return 'Select images or a folder first.'
+        for (const it of items) {
+            const ageStart = parseInt(it.ageStart, 10)
+            const ageEnd = parseInt(it.ageEnd, 10)
+            if (!Number.isFinite(ageStart) || !Number.isFinite(ageEnd) || ageEnd <= ageStart) {
+                return 'Some images have no valid age/size detected — fill Age Start/End manually on highlighted rows.'
+            }
+            const price = parseFloat(it.price) || parseFloat(batch.fallback_price)
+            if (!price || price <= 0) {
+                return 'Some images have no price detected and no fallback price set — fill one or the other.'
+            }
+            const fabric = it.fabric || batch.fallback_fabric
+            if (!fabric) {
+                return 'Some images have no fabric detected and no fallback fabric set — fill one or the other.'
+            }
+            if (!effectiveProductType(it)) {
+                return 'Some images have no Product Type — pick one on that row or set a batch default.'
+            }
+            if (!effectiveBrandId(it)) {
+                return 'Some images have no Brand — pick one on that row or set a batch default.'
+            }
+        }
         return ''
+    }
+
+    function rowIsIncomplete(it) {
+        const ageStart = parseInt(it.ageStart, 10)
+        const ageEnd = parseInt(it.ageEnd, 10)
+        const validAge = Number.isFinite(ageStart) && Number.isFinite(ageEnd) && ageEnd > ageStart
+        const validPrice = (parseFloat(it.price) || parseFloat(batch.fallback_price)) > 0
+        const validFabric = Boolean(it.fabric || batch.fallback_fabric)
+        const validType = Boolean(effectiveProductType(it))
+        const validBrand = Boolean(effectiveBrandId(it))
+        return !validAge || !validPrice || !validFabric || !validType || !validBrand
     }
 
     async function startUpload() {
@@ -219,38 +330,38 @@ export default function EmployeeBulkFolderUploadPage() {
                     throw new Error(uploadData.error || 'Image upload failed')
                 }
 
+                const ageStart = parseInt(item.ageStart, 10)
+                const ageEnd = parseInt(item.ageEnd, 10)
+                const price = parseFloat(item.price) || parseFloat(batch.fallback_price) || 0
+                const fabric = item.fabric || batch.fallback_fabric
+                const gender = effectiveGender(item)
+                const productType = effectiveProductType(item)
+                const brandId = effectiveBrandId(item)
+                const qty = parseInt(batch.quantity_per_item) || 1
+                const variants = buildYearlyVariants(ageStart, ageEnd, price, qty)
+
                 sequence += 1
                 const seq = String(sequence).padStart(3, '0')
-                const title = (batch.title_prefix.trim() || batch.product_type) + ' – ' + item.gender + ' – ' + item.age + ' #' + seq
+                const title = (batch.title_prefix.trim() || productType) + ' – ' + gender + ' – ' + ageStart + '-' + ageEnd + ' Year #' + seq
 
                 const payload = {
                     title,
                     description: '',
-                    price: parseFloat(batch.price) || 0,
-                    compare_price: parseFloat(batch.compare_price) || 0,
+                    price,
+                    compare_price: 0,
                     category: batch.category,
-                    product_type: batch.product_type,
-                    fabric: batch.fabric,
+                    product_type: productType,
+                    fabric,
                     color: batch.color,
-                    gender: item.gender,
+                    gender,
                     tags,
-                    stock: parseInt(batch.quantity_per_item) || 1,
+                    stock: variants.reduce((sum, v) => sum + v.inventory_qty, 0),
                     images: [uploadData.url],
-                    variants: [{
-                        option1_name: 'Size',
-                        option1_value: item.age,
-                        option2_name: '',
-                        option2_value: '',
-                        option3_name: '',
-                        option3_value: '',
-                        price: parseFloat(batch.price) || 0,
-                        inventory_qty: parseInt(batch.quantity_per_item) || 1,
-                        sku: '',
-                    }],
+                    variants,
                     product_version: batch.product_version,
                     product_season_id: Number(batch.product_season_id),
                     character_id: null,
-                    brand_id: Number(batch.brand_id),
+                    brand_id: Number(brandId),
                     status: batch.status,
                     is_active: batch.status === 'active',
                 }
@@ -292,37 +403,57 @@ export default function EmployeeBulkFolderUploadPage() {
             <div className="bg-white shadow-sm px-6 py-4 flex items-center justify-between sticky top-0 z-10">
                 <div className="flex items-center gap-3">
                     <Link href="/employee/products" className="text-gray-400 hover:text-coral text-sm">← Products</Link>
-                    <h1 className="font-display text-xl text-charcoal">Bulk Folder Upload</h1>
+                    <h1 className="font-display text-xl text-charcoal">Bulk Product Upload</h1>
                     {items.length > 0 && (
                         <span className="bg-coral/10 text-coral text-xs px-2 py-1 rounded-full font-bold">{items.length} images</span>
                     )}
                 </div>
-                <p className="text-xs text-gray-400">Select an age folder (with Boys/Girls/Neutral subfolders) · one image = one product</p>
+                <p className="text-xs text-gray-400">Every photo is OCR-scanned for size, price, fabric &amp; gender · one photo = one product, full size range if a range is printed</p>
             </div>
             <EmployeePortalNav />
 
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
-                {/* Step 1: folder picker */}
+                {/* Step 1: image picker */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm">
-                    <p className="font-display text-lg text-charcoal mb-1">1. Select folder</p>
+                    <p className="font-display text-lg text-charcoal mb-1">1. Select photos</p>
                     <p className="text-xs text-gray-500 mb-4">
-                        Pick the folder for one age/size (e.g. "3-4 Year"), containing subfolders like "Boys", "Girls", "Neutral".
-                        You can also select a parent folder containing several age folders — each image's size and gender are read from its own folder path.
+                        Every photo is read automatically for a printed caption like "1-10 YEARS · 1750/- ONLY" — a single age like "2-3 Year" makes one product, a range like "2-6 Year" makes one product with every yearly size from 2-3 up to 5-6.
+                        If you organize photos in folders (age folder → Boys/Girls/Neutral subfolder), that folder path fills in anything the caption doesn't state. Free OCR isn't perfect — always check the detected values below before uploading.
                     </p>
-                    <input
-                        ref={folderInputRef}
-                        type="file"
-                        multiple
-                        onChange={handleFolderSelect}
-                        className="block text-sm text-charcoal file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-coral file:text-white file:font-display hover:file:bg-opacity-90"
-                    />
+                    <div className="flex flex-wrap gap-6">
+                        <div>
+                            <p className="text-xs font-semibold text-gray-400 mb-1">Select individual photos</p>
+                            <input
+                                type="file"
+                                multiple
+                                accept="image/*"
+                                onChange={handleFileSelect}
+                                className="block text-sm text-charcoal file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-coral file:text-white file:font-display hover:file:bg-opacity-90"
+                            />
+                        </div>
+                        <div>
+                            <p className="text-xs font-semibold text-gray-400 mb-1">Or select a folder</p>
+                            <input
+                                ref={folderInputRef}
+                                type="file"
+                                multiple
+                                onChange={handleFolderSelect}
+                                className="block text-sm text-charcoal file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-indigo-600 file:text-white file:font-display hover:file:bg-indigo-700"
+                            />
+                        </div>
+                    </div>
+                    {analyzing && (
+                        <p className="text-xs text-blue-500 mt-3">
+                            Reading captions in your browser ({analyzedCount}/{items.length})... first photo takes a few extra seconds to load the reader.
+                        </p>
+                    )}
                 </div>
 
                 {/* Step 2: batch settings */}
                 <div className="bg-white rounded-2xl p-6 shadow-sm">
-                    <p className="font-display text-lg text-charcoal mb-1">2. Batch settings (applied to every product in this run)</p>
-                    <p className="text-xs text-gray-500 mb-4">Size and gender come from the folders — everything else here can't be guessed from a photo, so set it once for the whole batch.</p>
+                    <p className="font-display text-lg text-charcoal mb-1">2. Batch settings</p>
+                    <p className="text-xs text-gray-500 mb-4">Size/price/fabric/product type/gender are read per photo automatically, editable below. Gender, Product Type and Brand set here are just defaults — override them per photo if a caption doesn't state it or gets it wrong.</p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
@@ -331,10 +462,17 @@ export default function EmployeeBulkFolderUploadPage() {
                                    placeholder="Defaults to Product Type" className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
                         </div>
                         <div>
-                            <label className="text-xs text-gray-500 mb-1 block">Product Type *</label>
+                            <label className="text-xs text-gray-500 mb-1 block">Gender (default)</label>
+                            <select value={batch.gender} onChange={(e) => setBatch((p) => ({ ...p, gender: e.target.value }))}
+                                    className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm">
+                                {GENDER_OPTIONS.map((g) => <option key={g} value={g}>{g}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-xs text-gray-500 mb-1 block">Product Type (default)</label>
                             <select value={batch.product_type} onChange={(e) => setBatch((p) => ({ ...p, product_type: e.target.value }))}
                                     className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm">
-                                <option value="">Select...</option>
+                                <option value="">None — set per photo below</option>
                                 {productTypeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
                             </select>
                         </div>
@@ -353,14 +491,6 @@ export default function EmployeeBulkFolderUploadPage() {
                             </select>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-500 mb-1 block">Fabric *</label>
-                            <select value={batch.fabric} onChange={(e) => setBatch((p) => ({ ...p, fabric: e.target.value }))}
-                                    className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm">
-                                <option value="">Select...</option>
-                                {fabricOptions.map((f) => <option key={f} value={f}>{f}</option>)}
-                            </select>
-                        </div>
-                        <div>
                             <label className="text-xs text-gray-500 mb-1 block">Color *</label>
                             <select value={batch.color} onChange={(e) => setBatch((p) => ({ ...p, color: e.target.value }))}
                                     className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm">
@@ -369,10 +499,10 @@ export default function EmployeeBulkFolderUploadPage() {
                             </select>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-500 mb-1 block">Brand *</label>
+                            <label className="text-xs text-gray-500 mb-1 block">Brand (default)</label>
                             <select value={batch.brand_id} onChange={(e) => setBatch((p) => ({ ...p, brand_id: e.target.value }))}
                                     className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm">
-                                <option value="">Select...</option>
+                                <option value="">None — set per photo below</option>
                                 {brandOptions.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                             </select>
                         </div>
@@ -385,17 +515,20 @@ export default function EmployeeBulkFolderUploadPage() {
                             </select>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-500 mb-1 block">Price (PKR) *</label>
-                            <input type="number" value={batch.price} onChange={(e) => setBatch((p) => ({ ...p, price: e.target.value }))}
+                            <label className="text-xs text-gray-500 mb-1 block">Fallback Price (PKR)</label>
+                            <input type="number" value={batch.fallback_price} onChange={(e) => setBatch((p) => ({ ...p, fallback_price: e.target.value }))}
                                    className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
                         </div>
                         <div>
-                            <label className="text-xs text-gray-500 mb-1 block">Compare-at Price (optional)</label>
-                            <input type="number" value={batch.compare_price} onChange={(e) => setBatch((p) => ({ ...p, compare_price: e.target.value }))}
-                                   className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
+                            <label className="text-xs text-gray-500 mb-1 block">Fallback Fabric</label>
+                            <select value={batch.fallback_fabric} onChange={(e) => setBatch((p) => ({ ...p, fallback_fabric: e.target.value }))}
+                                    className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm">
+                                <option value="">None</option>
+                                {fabricOptions.map((f) => <option key={f} value={f}>{f}</option>)}
+                            </select>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-500 mb-1 block">Quantity per item</label>
+                            <label className="text-xs text-gray-500 mb-1 block">Quantity per size</label>
                             <input type="number" min="1" value={batch.quantity_per_item} onChange={(e) => setBatch((p) => ({ ...p, quantity_per_item: e.target.value }))}
                                    className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
                         </div>
@@ -420,7 +553,7 @@ export default function EmployeeBulkFolderUploadPage() {
                     <div className="bg-white rounded-2xl p-6 shadow-sm">
                         <div className="flex items-center justify-between mb-4">
                             <p className="font-display text-lg text-charcoal">3. Review & Upload ({items.length} images)</p>
-                            <button onClick={startUpload} disabled={running}
+                            <button onClick={startUpload} disabled={running || analyzing}
                                     className="px-6 py-2.5 bg-coral text-white font-display text-sm rounded-full hover:bg-opacity-90 disabled:opacity-50">
                                 {running ? 'Uploading ' + doneCount + '/' + items.length + '...' : 'Start Upload'}
                             </button>
@@ -439,25 +572,56 @@ export default function EmployeeBulkFolderUploadPage() {
                             </p>
                         )}
 
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 max-h-[600px] overflow-y-auto">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[700px] overflow-y-auto">
                             {items.map((item) => (
-                                <div key={item.id} className={'rounded-xl border-2 p-2 relative ' + (!item.age ? 'border-orange-300 bg-orange-50' : 'border-gray-100')}>
-                                    {item.status === 'pending' && !running && (
+                                <div key={item.id} className={'rounded-xl border-2 p-3 relative flex gap-3 ' + (rowIsIncomplete(item) && item.status !== 'uploading' ? 'border-orange-300 bg-orange-50' : 'border-gray-100')}>
+                                    {(item.status === 'pending' || item.status === 'analyzed') && !running && (
                                         <button onClick={() => removeItem(item.id)}
                                                 className="absolute top-1 right-1 w-5 h-5 bg-white rounded-full text-xs text-gray-400 hover:text-coral shadow z-10">✕</button>
                                     )}
-                                    <img src={item.previewUrl} alt="" className="w-full aspect-square object-cover rounded-lg mb-2" />
-                                    <input value={item.age} onChange={(e) => updateItem(item.id, { age: e.target.value })}
-                                           placeholder="Size/Age" disabled={running}
-                                           className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 mb-1" />
-                                    <select value={item.gender} onChange={(e) => updateItem(item.id, { gender: e.target.value })}
-                                            disabled={running}
-                                            className="w-full text-xs border border-gray-200 rounded px-1.5 py-1">
-                                        {GENDER_OPTIONS.map((g) => <option key={g} value={g}>{g}</option>)}
-                                    </select>
-                                    {item.status === 'uploading' && <p className="text-[10px] text-blue-500 mt-1">Uploading...</p>}
-                                    {item.status === 'done' && <p className="text-[10px] text-green-600 mt-1">✓ Created</p>}
-                                    {item.status === 'failed' && <p className="text-[10px] text-red-500 mt-1" title={item.error}>✕ {item.error}</p>}
+                                    <img src={item.previewUrl} alt="" className="w-20 h-20 object-cover rounded-lg flex-shrink-0" />
+                                    <div className="flex-1 space-y-1">
+                                        <div className="flex gap-1">
+                                            <input type="number" value={item.ageStart} onChange={(e) => updateItem(item.id, { ageStart: e.target.value })}
+                                                   placeholder="From" disabled={running}
+                                                   className="w-1/2 text-xs border border-gray-200 rounded px-1.5 py-1" />
+                                            <input type="number" value={item.ageEnd} onChange={(e) => updateItem(item.id, { ageEnd: e.target.value })}
+                                                   placeholder="To (Year)" disabled={running}
+                                                   className="w-1/2 text-xs border border-gray-200 rounded px-1.5 py-1" />
+                                        </div>
+                                        <input type="number" value={item.price} onChange={(e) => updateItem(item.id, { price: e.target.value })}
+                                               placeholder="Price" disabled={running}
+                                               className="w-full text-xs border border-gray-200 rounded px-1.5 py-1" />
+                                        <select value={item.fabric} onChange={(e) => updateItem(item.id, { fabric: e.target.value })}
+                                                disabled={running}
+                                                className="w-full text-xs border border-gray-200 rounded px-1.5 py-1">
+                                            <option value="">Fabric (fallback)</option>
+                                            {fabricOptions.map((f) => <option key={f} value={f}>{f}</option>)}
+                                        </select>
+                                        <select value={item.gender} onChange={(e) => updateItem(item.id, { gender: e.target.value })}
+                                                disabled={running}
+                                                className="w-full text-xs border border-gray-200 rounded px-1.5 py-1">
+                                            <option value="">Gender ({batch.gender})</option>
+                                            {GENDER_OPTIONS.map((g) => <option key={g} value={g}>{g}</option>)}
+                                        </select>
+                                        <select value={item.productType} onChange={(e) => updateItem(item.id, { productType: e.target.value })}
+                                                disabled={running}
+                                                className="w-full text-xs border border-gray-200 rounded px-1.5 py-1">
+                                            <option value="">Product Type{batch.product_type ? ' (' + batch.product_type + ')' : ' — pick one'}</option>
+                                            {productTypeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+                                        </select>
+                                        <select value={item.brandId} onChange={(e) => updateItem(item.id, { brandId: e.target.value })}
+                                                disabled={running}
+                                                className="w-full text-xs border border-gray-200 rounded px-1.5 py-1">
+                                            <option value="">Brand{batch.brand_id ? ' (default)' : ' — pick one'}</option>
+                                            {brandOptions.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                        </select>
+                                        {item.status === 'analyzing' && <p className="text-[10px] text-blue-500">Reading caption...</p>}
+                                        {item.status === 'uploading' && <p className="text-[10px] text-blue-500">Uploading...</p>}
+                                        {item.status === 'done' && <p className="text-[10px] text-green-600">✓ Created</p>}
+                                        {item.status === 'failed' && <p className="text-[10px] text-red-500" title={item.error}>✕ {item.error}</p>}
+                                        {item.error && item.status === 'analyzed' && <p className="text-[10px] text-orange-500" title={item.error}>⚠ {item.error}</p>}
+                                    </div>
                                 </div>
                             ))}
                         </div>
