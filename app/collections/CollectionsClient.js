@@ -36,6 +36,7 @@ const categories = [
     id: 'tweens', label: 'Tweens', emoji: '⭐', color: 'bg-coral/20',
     subFilters: [
       { id: '9-10y',  label: '9–10 Year',  keywords: ['9-10','9-10 year','9 to 10','9yr','10yr'] },
+      { id: '10-11y', label: '10–11 Year', keywords: ['10-11','10-11 year','10 to 11','10yr','11yr'] },
       { id: '11-12y', label: '11–12 Year', keywords: ['11-12','11-12 year','11 to 12','11yr','12yr'] },
     ]
   },

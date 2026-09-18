@@ -18,6 +18,7 @@ const AGE_OPTIONS = [
   { label: '6-7 Year', cat: 'kids', sub: '6-7y' },
   { label: '7-8 Year', cat: 'kids', sub: '7-8y' },
   { label: '9-10 Year', cat: 'tweens', sub: '9-10y' },
+  { label: '10-11 Year', cat: 'tweens', sub: '10-11y' },
   { label: '11-12 Year', cat: 'tweens', sub: '11-12y' },
 ]
 
