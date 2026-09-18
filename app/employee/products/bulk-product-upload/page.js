@@ -485,11 +485,13 @@ export default function EmployeeBulkProductUploadPage() {
                         </div>
                         <div>
                             <p className="text-xs font-semibold text-gray-400 mb-1">Or select a folder</p>
-                            <p className="text-[10px] text-gray-400 mb-1 max-w-xs">Click this button, then pick the FOLDER itself (e.g. "Boys") in the dialog that opens — don't select the files inside it. This is the only way the site can read the folder name.</p>
+                            <p className="text-[10px] text-gray-400 mb-1 max-w-xs">Click this button, then in the dialog SINGLE-CLICK the folder (e.g. "Boys") to highlight it and click Open — don't double-click into it. This is the only way the site can read the folder name.</p>
                             <input
                                 ref={folderInputRef}
                                 type="file"
                                 multiple
+                                webkitdirectory=""
+                                directory=""
                                 onChange={handleFolderSelect}
                                 className="block text-sm text-charcoal file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:bg-indigo-600 file:text-white file:font-display hover:file:bg-indigo-700"
                             />
