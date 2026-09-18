@@ -278,7 +278,11 @@ export default function EmployeeBulkProductUploadPage() {
                         ageEnd,
                         fabric: parsed.fabric || '',
                         productType: parsed.productType || '',
-                        gender: parsed.gender || item.folderGender || '',
+                        // A deliberately-organized Boys/Girls folder is more
+                        // trustworthy than OCR gender, which can false-positive
+                        // on decorative print text elsewhere in the photo (e.g.
+                        // "wonderful girl" printed on the garment design itself).
+                        gender: item.folderGender || parsed.gender || '',
                         subVariants,
                     })
                 } catch (err) {
