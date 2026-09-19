@@ -2,8 +2,6 @@
 import { useEffect, useState } from 'react'
 import ProductCard from '../../components/ProductCard'
 
-const ITEMS_PER_PAGE = 40
-
 function getCreatedAtValue(product) {
   const value = new Date(product?.created_at || 0).getTime()
   return Number.isFinite(value) ? value : 0
@@ -22,6 +20,10 @@ function isWinter(product) {
   return String(product?.product_season || '').trim().toLowerCase() === 'winter'
 }
 
+function isOldPack(product) {
+  return String(product?.product_version || '').trim().toLowerCase().includes('old pack')
+}
+
 // Cache products in module scope so they persist between renders/visits,
 // same convention as CollectionsClient.
 let cachedProducts = []
@@ -31,7 +33,7 @@ const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
 export default function CampaignClient({ initialProducts = [] }) {
   const [products, setProducts] = useState(cachedProducts.length > 0 ? cachedProducts : initialProducts)
   const [loading, setLoading] = useState(cachedProducts.length === 0 && initialProducts.length === 0)
-  const [page, setPage] = useState(1)
+  const [showOldPacks, setShowOldPacks] = useState(false)
 
   useEffect(() => {
     if (cachedProducts.length > 0 && Date.now() - cacheTime < CACHE_DURATION) {
@@ -71,12 +73,17 @@ export default function CampaignClient({ initialProducts = [] }) {
     })
 
   const campaignIds = new Set(campaignProducts.map((p) => p.id))
-  const restProducts = products
-    .filter((p) => !campaignIds.has(p.id) && isNewArrival(p) && isWinter(p))
-    .sort((a, b) => getCreatedAtValue(b) - getCreatedAtValue(a))
+  const byCreatedDesc = (a, b) => getCreatedAtValue(b) - getCreatedAtValue(a)
 
-  const paginatedRest = restProducts.slice(0, page * ITEMS_PER_PAGE)
-  const hasMore = paginatedRest.length < restProducts.length
+  const newArrivalsWinter = products
+    .filter((p) => !campaignIds.has(p.id) && isNewArrival(p) && isWinter(p))
+    .sort(byCreatedDesc)
+
+  // Old Packs/Winter only reveal after "Load More Products" is clicked —
+  // New Arrivals always shows first.
+  const oldPacksWinter = products
+    .filter((p) => !campaignIds.has(p.id) && isOldPack(p) && isWinter(p))
+    .sort(byCreatedDesc)
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -123,19 +130,28 @@ export default function CampaignClient({ initialProducts = [] }) {
             </div>
           )}
 
-          {/* Everything else */}
+          {/* New Arrivals, Winter */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-            {paginatedRest.map((product) => (
+            {newArrivalsWinter.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>
 
-          {hasMore && (
+          {!showOldPacks && oldPacksWinter.length > 0 && (
             <div className="text-center mt-10">
-              <button onClick={() => setPage((p) => p + 1)}
+              <button onClick={() => setShowOldPacks(true)}
                 className="bg-coral text-white font-display text-base px-10 py-3 rounded-full hover:bg-opacity-90 transition-all hover:scale-105 shadow-md">
-                Load More Products ({restProducts.length - paginatedRest.length} remaining)
+                Load More Products ({oldPacksWinter.length} more)
               </button>
+            </div>
+          )}
+
+          {/* Old Packs, Winter — revealed after Load More */}
+          {showOldPacks && oldPacksWinter.length > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5 mt-8">
+              {oldPacksWinter.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
             </div>
           )}
         </>
