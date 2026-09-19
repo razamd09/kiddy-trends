@@ -5,6 +5,18 @@ import Link from 'next/link'
 import AdminPortalNav from '@/components/AdminPortalNav'
 
 const CAMPAIGNS = [1, 2, 3]
+const POOL_LIMIT = 70
+
+function isNewArrival(product) {
+    return String(product?.product_version || '').trim().toLowerCase().includes('new arrival')
+}
+
+function firstImage(product) {
+    const images = product?.images
+    if (!Array.isArray(images) || images.length === 0) return null
+    const first = images[0]
+    return typeof first === 'string' ? first : (first?.src || null)
+}
 
 export default function AdminCampaignsPage() {
     const [verified, setVerified] = useState(false)
@@ -14,10 +26,9 @@ export default function AdminCampaignsPage() {
     const [itemsByCampaign, setItemsByCampaign] = useState({ 1: [], 2: [], 3: [] })
     const [loading, setLoading] = useState(false)
     const [saving, setSaving] = useState(false)
-    const [search, setSearch] = useState('')
-    const [searchResults, setSearchResults] = useState([])
-    const [searching, setSearching] = useState(false)
-    const dragIndexRef = useRef(null)
+    const [pool, setPool] = useState([])
+    const [poolLoading, setPoolLoading] = useState(true)
+    const dragRef = useRef(null)
 
     useEffect(() => {
         async function verify() {
@@ -28,6 +39,7 @@ export default function AdminCampaignsPage() {
                 const data = await res.json()
                 if (!data.valid) { localStorage.removeItem('admin_token'); router.push('/admin'); return }
                 setVerified(true)
+                fetchPool()
             } catch {
                 router.push('/admin')
             }
@@ -47,6 +59,22 @@ export default function AdminCampaignsPage() {
 
     function token() {
         return localStorage.getItem('admin_token') || ''
+    }
+
+    // A larger batch fetched newest-first, then filtered down to New
+    // Arrivals client-side — the shared products API doesn't have a
+    // product_version filter param, and this keeps the admin route untouched.
+    async function fetchPool() {
+        setPoolLoading(true)
+        try {
+            const res = await fetch('/api/admin/products?limit=200&sortBy=created_at&sortDir=desc', { headers: { 'x-admin-token': token() } })
+            const data = await readJson(res)
+            const all = Array.isArray(data.products) ? data.products : []
+            setPool(all.filter(isNewArrival).slice(0, POOL_LIMIT))
+        } catch {
+            setPool([])
+        }
+        setPoolLoading(false)
     }
 
     async function fetchCampaign(campaignNumber) {
@@ -73,46 +101,21 @@ export default function AdminCampaignsPage() {
         setSaving(false)
     }
 
-    function handleDragStart(index) {
-        dragIndexRef.current = index
-    }
+    async function addProductAtPosition(product, position) {
+        const current = itemsByCampaign[activeCampaign] || []
+        if (current.some((it) => it.productId === product.id)) return
 
-    function handleDragOver(e) {
-        e.preventDefault()
-    }
-
-    function handleDrop(index) {
-        const fromIndex = dragIndexRef.current
-        dragIndexRef.current = null
-        if (fromIndex === null || fromIndex === index) return
-
-        setItemsByCampaign((prev) => {
-            const current = [...(prev[activeCampaign] || [])]
-            const [moved] = current.splice(fromIndex, 1)
-            current.splice(index, 0, moved)
-            persistOrder(activeCampaign, current)
-            return { ...prev, [activeCampaign]: current }
-        })
-    }
-
-    async function handleSearch(e) {
-        e.preventDefault()
-        const term = search.trim()
-        if (!term) { setSearchResults([]); return }
-        setSearching(true)
-        try {
-            const res = await fetch('/api/admin/products?search=' + encodeURIComponent(term) + '&limit=10', { headers: { 'x-admin-token': token() } })
-            const data = await readJson(res)
-            setSearchResults(Array.isArray(data.products) ? data.products : [])
-        } catch {
-            setSearchResults([])
+        const newItem = {
+            productId: product.id,
+            title: product.title,
+            image: firstImage(product),
+            price: product.price,
+            isActive: product.is_active !== false,
         }
-        setSearching(false)
-    }
+        const next = [...current]
+        next.splice(Math.max(0, Math.min(position, next.length)), 0, newItem)
+        setItemsByCampaign((prev) => ({ ...prev, [activeCampaign]: next }))
 
-    async function addProduct(product) {
-        const currentItems = itemsByCampaign[activeCampaign] || []
-        if (currentItems.some((it) => it.productId === product.id)) return
         try {
             const res = await fetch('/api/admin/campaign-slots', {
                 method: 'POST',
@@ -120,10 +123,69 @@ export default function AdminCampaignsPage() {
                 body: JSON.stringify({ campaign_number: activeCampaign, product_id: product.id }),
             })
             const data = await readJson(res)
-            if (!res.ok || !data.success) { alert(data.error || 'Failed to add product'); return }
-            fetchCampaign(activeCampaign)
+            if (!res.ok || !data.success) {
+                alert(data.error || 'Failed to add product')
+                fetchCampaign(activeCampaign)
+                return
+            }
+            await persistOrder(activeCampaign, next)
         } catch (err) {
             alert(err.message)
+            fetchCampaign(activeCampaign)
+        }
+    }
+
+    function handlePoolDragStart(product) {
+        dragRef.current = { type: 'pool', product }
+    }
+
+    function handleExistingDragStart(index) {
+        dragRef.current = { type: 'existing', index }
+    }
+
+    function handleDragOver(e) {
+        e.preventDefault()
+    }
+
+    function handleDropOnRow(targetIndex) {
+        const drag = dragRef.current
+        dragRef.current = null
+        if (!drag) return
+
+        if (drag.type === 'pool') {
+            addProductAtPosition(drag.product, targetIndex)
+            return
+        }
+
+        if (drag.type === 'existing' && drag.index !== targetIndex) {
+            setItemsByCampaign((prev) => {
+                const current = [...(prev[activeCampaign] || [])]
+                const [moved] = current.splice(drag.index, 1)
+                current.splice(targetIndex, 0, moved)
+                persistOrder(activeCampaign, current)
+                return { ...prev, [activeCampaign]: current }
+            })
+        }
+    }
+
+    function handleDropAtEnd() {
+        const drag = dragRef.current
+        dragRef.current = null
+        if (!drag) return
+
+        const current = itemsByCampaign[activeCampaign] || []
+        if (drag.type === 'pool') {
+            addProductAtPosition(drag.product, current.length)
+            return
+        }
+        if (drag.type === 'existing') {
+            setItemsByCampaign((prev) => {
+                const list = [...(prev[activeCampaign] || [])]
+                const [moved] = list.splice(drag.index, 1)
+                list.push(moved)
+                persistOrder(activeCampaign, list)
+                return { ...prev, [activeCampaign]: list }
+            })
         }
     }
 
@@ -147,6 +209,7 @@ export default function AdminCampaignsPage() {
     }
 
     const currentItems = itemsByCampaign[activeCampaign] || []
+    const pinnedIds = new Set(currentItems.map((it) => it.productId))
 
     return (
         <div className="min-h-screen bg-cream">
@@ -160,7 +223,7 @@ export default function AdminCampaignsPage() {
             </div>
             <AdminPortalNav />
 
-            <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="flex gap-2 mb-6">
                     {CAMPAIGNS.map((num) => (
                         <button key={num} onClick={() => setActiveCampaign(num)}
@@ -171,30 +234,27 @@ export default function AdminCampaignsPage() {
                 </div>
 
                 <div className="bg-white rounded-2xl p-6 shadow-sm mb-6">
-                    <p className="font-display text-lg text-charcoal mb-1">Add a product to Campaign {activeCampaign}</p>
-                    <p className="text-xs text-gray-500 mb-4">Search by title, then click to pin it to the end of the list — drag it into position afterwards.</p>
-                    <form onSubmit={handleSearch} className="flex gap-2">
-                        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search product title..."
-                               className="flex-1 border-2 border-gray-100 rounded-xl px-4 py-2 text-sm" />
-                        <button type="submit" disabled={searching}
-                                className="px-6 py-2 bg-charcoal text-white font-display text-sm rounded-full hover:bg-opacity-90 disabled:opacity-50">
-                            {searching ? 'Searching...' : 'Search'}
-                        </button>
-                    </form>
-                    {searchResults.length > 0 && (
-                        <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-                            {searchResults.map((product) => {
-                                const alreadyIn = currentItems.some((it) => it.productId === product.id)
-                                const image = Array.isArray(product.images) && product.images.length > 0
-                                    ? (typeof product.images[0] === 'string' ? product.images[0] : product.images[0]?.src)
-                                    : null
+                    <p className="font-display text-lg text-charcoal mb-1">New Arrivals (drag into position below)</p>
+                    <p className="text-xs text-gray-500 mb-4">Newest first · drag any card down into the "Campaign {activeCampaign} — display order" list to pin it exactly where you drop it.</p>
+
+                    {poolLoading && <p className="text-sm text-gray-400">Loading...</p>}
+                    {!poolLoading && pool.length === 0 && <p className="text-sm text-gray-400">No New Arrivals products found.</p>}
+                    {!poolLoading && pool.length > 0 && (
+                        <div className="flex gap-3 overflow-x-auto pb-2">
+                            {pool.map((product) => {
+                                const alreadyIn = pinnedIds.has(product.id)
+                                const image = firstImage(product)
                                 return (
-                                    <button key={product.id} onClick={() => addProduct(product)} disabled={alreadyIn}
-                                            className={'text-left border-2 rounded-xl p-2 transition-colors ' + (alreadyIn ? 'border-gray-100 opacity-50 cursor-not-allowed' : 'border-gray-100 hover:border-coral/40')}>
-                                        {image && <img src={'/api/image?src=' + encodeURIComponent(image)} alt="" className="w-full aspect-square object-cover rounded-lg mb-1" />}
+                                    <div key={product.id}
+                                         draggable={!alreadyIn}
+                                         onDragStart={() => handlePoolDragStart(product)}
+                                         className={'flex-shrink-0 w-36 border-2 rounded-xl p-2 select-none ' + (alreadyIn ? 'border-gray-100 opacity-40 cursor-not-allowed' : 'border-gray-100 hover:border-coral/40 cursor-grab active:cursor-grabbing')}>
+                                        {image && (
+                                            <img src={'/api/image?src=' + encodeURIComponent(image)} alt="" className="w-full aspect-square object-cover rounded-lg mb-1 pointer-events-none" />
+                                        )}
                                         <p className="text-xs text-charcoal line-clamp-2">{product.title}</p>
-                                        <p className="text-[10px] text-coral font-semibold">{alreadyIn ? 'Already pinned' : '+ Add'}</p>
-                                    </button>
+                                        <p className="text-[10px] text-gray-400">{alreadyIn ? 'Already pinned' : 'Drag to pin'}</p>
+                                    </div>
                                 )
                             })}
                         </div>
@@ -203,20 +263,22 @@ export default function AdminCampaignsPage() {
 
                 <div className="bg-white rounded-2xl p-6 shadow-sm">
                     <p className="font-display text-lg text-charcoal mb-1">Campaign {activeCampaign} — display order</p>
-                    <p className="text-xs text-gray-500 mb-4">Drag rows to reorder. This is exactly the order shown at the top of /campaign{activeCampaign}.</p>
+                    <p className="text-xs text-gray-500 mb-4">Drag rows to reorder, or drop a New Arrivals card from above. This is exactly the order shown at the top of /campaign{activeCampaign}.</p>
 
                     {loading && <p className="text-sm text-gray-400">Loading...</p>}
-                    {!loading && currentItems.length === 0 && (
-                        <p className="text-sm text-gray-400">No products pinned to this campaign yet — search above to add some.</p>
-                    )}
-                    {!loading && currentItems.length > 0 && (
-                        <div className="space-y-2">
+                    {!loading && (
+                        <div className="space-y-2" onDragOver={handleDragOver} onDrop={handleDropAtEnd}>
+                            {currentItems.length === 0 && (
+                                <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center text-sm text-gray-400">
+                                    Drop a product here to pin it to Campaign {activeCampaign}
+                                </div>
+                            )}
                             {currentItems.map((item, index) => (
                                 <div key={item.productId}
                                      draggable
-                                     onDragStart={() => handleDragStart(index)}
+                                     onDragStart={() => handleExistingDragStart(index)}
                                      onDragOver={handleDragOver}
-                                     onDrop={() => handleDrop(index)}
+                                     onDrop={(e) => { e.stopPropagation(); handleDropOnRow(index) }}
                                      className="flex items-center gap-3 border-2 border-gray-100 rounded-xl p-2 cursor-move hover:border-coral/40 bg-white">
                                     <span className="text-gray-300 text-lg px-1">⠿</span>
                                     <span className="w-6 text-xs text-gray-400 font-bold">{index + 1}</span>
