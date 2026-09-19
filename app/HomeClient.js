@@ -290,34 +290,10 @@ export default function Home({ initialProducts = [], initialInstagramPosts = [] 
           </div>
         </section>
 
-        {/* TIKTOK VIDEOS */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 bg-gray-50 rounded-3xl">
-          <div className="text-center mb-10">
-            <h2 className="section-title mb-3">Watch Us on TikTok</h2>
-            <p className="text-gray-500 text-lg">See our latest collections in action</p>
-            <a href="https://www.tiktok.com/@kiddy.trends?is_from_webapp=1&sender_device=pc" target="_blank" rel="noopener noreferrer"
-               className="inline-block mt-3 border border-charcoal/20 text-charcoal font-display text-sm px-5 py-2 rounded-full hover:border-coral hover:text-coral transition-colors">
-              Follow @kiddy.trends {'->'}
-            </a>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {['7649019831047458056','7647926799875214600','7649698031213858055','7647962725112352018'].map(id => (
-                <div key={id} className="rounded-xl overflow-hidden border border-gray-200 bg-white">
-                  <LazyMount minHeight={560}>
-                    <iframe src={'https://www.tiktok.com/embed/v2/' + id} className="w-full"
-                            style={{height:'560px',border:'none'}} allowFullScreen allow="encrypted-media"
-                            loading="lazy" title={'TikTok video ' + id} />
-                  </LazyMount>
-                </div>
-            ))}
-          </div>
-        </section>
-
         {/* INSTAGRAM */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
           <div className="text-center mb-8">
-            <h2 className="section-title mb-2">Follow Us on Instagram</h2>
-            <p className="text-gray-500 mb-1">See our latest collections & happy customers</p>
+            <h2 className="section-title mb-2">Check Live Products on<br /><span className="text-coral">Instagram</span></h2>
             <a href="https://instagram.com/trendykids.2020" target="_blank" rel="noopener noreferrer"
                className="text-coral font-bold hover:underline">@trendykids.2020</a>
           </div>
@@ -356,6 +332,29 @@ export default function Home({ initialProducts = [], initialInstagramPosts = [] 
                className="inline-flex items-center gap-2 border border-gray-300 text-charcoal font-display px-8 py-3 rounded-full hover:border-coral hover:text-coral transition-colors">
               Follow @trendykids.2020
             </a>
+          </div>
+        </section>
+
+        {/* TIKTOK VIDEOS */}
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 bg-gray-50 rounded-3xl">
+          <div className="text-center mb-10">
+            <h2 className="section-title mb-3">Watch Us on TikTok</h2>
+            <p className="text-gray-500 text-lg">See our latest collections in action</p>
+            <a href="https://www.tiktok.com/@kiddy.trends?is_from_webapp=1&sender_device=pc" target="_blank" rel="noopener noreferrer"
+               className="inline-block mt-3 border border-charcoal/20 text-charcoal font-display text-sm px-5 py-2 rounded-full hover:border-coral hover:text-coral transition-colors">
+              Follow @kiddy.trends {'->'}
+            </a>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {['7649019831047458056','7647926799875214600','7649698031213858055','7647962725112352018'].map(id => (
+                <div key={id} className="rounded-xl overflow-hidden border border-gray-200 bg-white">
+                  <LazyMount minHeight={560}>
+                    <iframe src={'https://www.tiktok.com/embed/v2/' + id} className="w-full"
+                            style={{height:'560px',border:'none'}} allowFullScreen allow="encrypted-media"
+                            loading="lazy" title={'TikTok video ' + id} />
+                  </LazyMount>
+                </div>
+            ))}
           </div>
         </section>
 
