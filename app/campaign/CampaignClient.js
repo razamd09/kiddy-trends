@@ -18,6 +18,10 @@ function isNewArrival(product) {
   return String(product?.product_version || '').trim().toLowerCase().includes('new arrival')
 }
 
+function isWinter(product) {
+  return String(product?.product_season || '').trim().toLowerCase() === 'winter'
+}
+
 // Cache products in module scope so they persist between renders/visits,
 // same convention as CollectionsClient.
 let cachedProducts = []
@@ -68,7 +72,7 @@ export default function CampaignClient({ initialProducts = [] }) {
 
   const campaignIds = new Set(campaignProducts.map((p) => p.id))
   const restProducts = products
-    .filter((p) => !campaignIds.has(p.id) && isNewArrival(p))
+    .filter((p) => !campaignIds.has(p.id) && isNewArrival(p) && isWinter(p))
     .sort((a, b) => getCreatedAtValue(b) - getCreatedAtValue(a))
 
   const paginatedRest = restProducts.slice(0, page * ITEMS_PER_PAGE)
