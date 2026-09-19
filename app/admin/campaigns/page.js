@@ -5,7 +5,7 @@ import Link from 'next/link'
 import AdminPortalNav from '@/components/AdminPortalNav'
 
 const CAMPAIGNS = [1, 2, 3]
-const POOL_LIMIT = 70
+const POOL_LIMIT = 150
 
 function isNewArrival(product) {
     return String(product?.product_version || '').trim().toLowerCase().includes('new arrival')
@@ -24,6 +24,8 @@ export default function AdminCampaignsPage() {
     const [activeCampaign, setActiveCampaign] = useState(1)
 
     const [itemsByCampaign, setItemsByCampaign] = useState({ 1: [], 2: [], 3: [] })
+    const [loadedCampaigns, setLoadedCampaigns] = useState({})
+    const [dirtyCampaigns, setDirtyCampaigns] = useState({})
     const [loading, setLoading] = useState(false)
     const [saving, setSaving] = useState(false)
     const [pool, setPool] = useState([])
@@ -47,8 +49,11 @@ export default function AdminCampaignsPage() {
         verify()
     }, [])
 
+    // Only fetch a campaign the first time its tab is opened — refetching on
+    // every tab switch would silently overwrite a drag-reorder that hasn't
+    // been saved with "Apply Changes" yet.
     useEffect(() => {
-        if (verified) fetchCampaign(activeCampaign)
+        if (verified && !loadedCampaigns[activeCampaign]) fetchCampaign(activeCampaign)
     }, [verified, activeCampaign])
 
     async function readJson(res) {
@@ -67,7 +72,7 @@ export default function AdminCampaignsPage() {
     async function fetchPool() {
         setPoolLoading(true)
         try {
-            const res = await fetch('/api/admin/products?limit=200&sortBy=created_at&sortDir=desc', { headers: { 'x-admin-token': token() } })
+            const res = await fetch('/api/admin/products?limit=300&sortBy=created_at&sortDir=desc', { headers: { 'x-admin-token': token() } })
             const data = await readJson(res)
             const all = Array.isArray(data.products) ? data.products : []
             setPool(all.filter(isNewArrival).slice(0, POOL_LIMIT))
@@ -86,6 +91,7 @@ export default function AdminCampaignsPage() {
         } catch {
             setItemsByCampaign((prev) => ({ ...prev, [campaignNumber]: [] }))
         }
+        setLoadedCampaigns((prev) => ({ ...prev, [campaignNumber]: true }))
         setLoading(false)
     }
 
@@ -97,8 +103,17 @@ export default function AdminCampaignsPage() {
                 headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
                 body: JSON.stringify({ campaign_number: campaignNumber, product_ids: items.map((it) => it.productId) }),
             })
+            setDirtyCampaigns((prev) => ({ ...prev, [campaignNumber]: false }))
         } catch {}
         setSaving(false)
+    }
+
+    function markDirty(campaignNumber) {
+        setDirtyCampaigns((prev) => ({ ...prev, [campaignNumber]: true }))
+    }
+
+    function applyChanges() {
+        persistOrder(activeCampaign, itemsByCampaign[activeCampaign] || [])
     }
 
     async function addProductAtPosition(product, position) {
@@ -128,7 +143,9 @@ export default function AdminCampaignsPage() {
                 fetchCampaign(activeCampaign)
                 return
             }
-            await persistOrder(activeCampaign, next)
+            // Slot is created server-side (appended at the end); the exact
+            // drop position is only local until "Apply Changes" persists it.
+            markDirty(activeCampaign)
         } catch (err) {
             alert(err.message)
             fetchCampaign(activeCampaign)
@@ -162,9 +179,9 @@ export default function AdminCampaignsPage() {
                 const current = [...(prev[activeCampaign] || [])]
                 const [moved] = current.splice(drag.index, 1)
                 current.splice(targetIndex, 0, moved)
-                persistOrder(activeCampaign, current)
                 return { ...prev, [activeCampaign]: current }
             })
+            markDirty(activeCampaign)
         }
     }
 
@@ -183,9 +200,9 @@ export default function AdminCampaignsPage() {
                 const list = [...(prev[activeCampaign] || [])]
                 const [moved] = list.splice(drag.index, 1)
                 list.push(moved)
-                persistOrder(activeCampaign, list)
                 return { ...prev, [activeCampaign]: list }
             })
+            markDirty(activeCampaign)
         }
     }
 
@@ -262,8 +279,17 @@ export default function AdminCampaignsPage() {
                 </div>
 
                 <div className="bg-white rounded-2xl p-6 shadow-sm">
-                    <p className="font-display text-lg text-charcoal mb-1">Campaign {activeCampaign} — display order</p>
-                    <p className="text-xs text-gray-500 mb-4">Drag rows to reorder, or drop a New Arrivals card from above. This is exactly the order shown at the top of /campaign{activeCampaign}.</p>
+                    <div className="flex items-start justify-between gap-4 mb-1">
+                        <p className="font-display text-lg text-charcoal">Campaign {activeCampaign} — display order</p>
+                        <button onClick={applyChanges} disabled={saving || !dirtyCampaigns[activeCampaign]}
+                                className="flex-shrink-0 px-5 py-2 bg-coral text-white font-display text-sm rounded-full hover:bg-opacity-90 disabled:opacity-40 disabled:cursor-not-allowed">
+                            {saving ? 'Applying...' : dirtyCampaigns[activeCampaign] ? 'Apply Changes' : 'Applied'}
+                        </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-4">
+                        Drag rows to reorder, or drop a New Arrivals card from above — reordering is instant on screen but only goes live on /campaign{activeCampaign} once you click "Apply Changes".
+                        {dirtyCampaigns[activeCampaign] && !saving && <span className="text-orange-500 font-semibold"> Unsaved changes.</span>}
+                    </p>
 
                     {loading && <p className="text-sm text-gray-400">Loading...</p>}
                     {!loading && (
