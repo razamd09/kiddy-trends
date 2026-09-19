@@ -237,34 +237,6 @@ export default function Home({ initialProducts = [], initialInstagramPosts = [] 
           )}
         </section>
 
-        {/* NEW SEASON LIFESTYLE BANNER */}
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="rounded-3xl overflow-hidden relative h-[220px] md:h-[320px]">
-            <Image
-              src="/kids-running-outfits.jpg"
-              alt="Kids playing outdoors in Kiddy Trends floral outfits, three colorways"
-              fill
-              sizes="100vw"
-              className="object-cover"
-              quality={80}
-            />
-            <div
-              className="absolute inset-0 flex items-center"
-              style={{ background: 'linear-gradient(90deg, rgba(31,58,82,0.55) 0%, transparent 55%)' }}
-            >
-              <div className="pl-8 md:pl-12">
-                <p className="font-display text-2xl md:text-3xl text-white mb-3">New season, new looks</p>
-                <Link
-                  href="/collections?sort=new"
-                  className="inline-block bg-white text-charcoal font-display text-sm px-6 py-2.5 rounded-full hover:opacity-90"
-                >
-                  Shop new arrivals
-                </Link>
-              </div>
-            </div>
-          </div>
-        </section>
-
         {/* INSTAGRAM */}
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10">
           <div className="text-center mb-8">
