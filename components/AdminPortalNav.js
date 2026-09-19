@@ -39,6 +39,7 @@ const menus = [
       { href: '/admin/newsletter', label: 'Newsletter' },
       { href: '/admin/discount-codes', label: 'Discount Codes' },
       { href: '/admin/analytics', label: 'Analytics' },
+      { href: '/admin/campaigns', label: 'Campaigns' },
     ],
   },
   { label: 'Shipping Rates', href: '/admin/shipping-rates' },
