@@ -146,31 +146,6 @@ export default function Home({ initialProducts = [], initialInstagramPosts = [] 
         {/* HERO */}
         <HomeHeroSlider />
 
-        {/* SHOP BY COLLECTION */}
-        <section className="w-full pt-12">
-          <h2 className="section-title text-center mb-6">Shop by Collection</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-1 overflow-hidden bg-white shadow-sm">
-            {collectionTiles.map((tile) => (
-              <Link
-                key={tile.label}
-                href={tile.href}
-                className="group relative block h-[320px] overflow-hidden bg-cream md:h-[440px]"
-              >
-                <Image
-                  src={tile.image}
-                  alt={tile.label + ' collection'}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 960px"
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
-                  loading="lazy"
-                  fetchPriority="low"
-                  quality={80}
-                />
-              </Link>
-            ))}
-          </div>
-        </section>
-
         {/* SHOP BY CATEGORY */}
         <section id="shop-by-category" className="bg-white py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
