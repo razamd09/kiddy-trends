@@ -207,6 +207,7 @@ export default function EmployeeBulkProductUploadPage() {
     function effectiveGender(item) { return item.gender || batch.gender }
     function effectiveProductType(item) { return item.productType || batch.product_type }
     function effectiveBrandId(item) { return item.brandId || batch.brand_id }
+    function effectiveColor(item) { return item.color || batch.color }
 
     function updateItem(id, patch) {
         setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)))
@@ -243,7 +244,7 @@ export default function EmployeeBulkProductUploadPage() {
                 previewUrl: URL.createObjectURL(file),
                 folderAge, folderGender,
                 ageStart: '', ageEnd: '', fabric: '',
-                productType: '', gender: '', brandId: '',
+                productType: '', gender: '', brandId: '', color: '',
                 subVariants: [{ label: '', price: '' }],
                 status: 'pending',
                 error: '',
@@ -312,7 +313,6 @@ export default function EmployeeBulkProductUploadPage() {
     function validateBatch() {
         if (!batch.product_version) return 'Product Version is required.'
         if (!batch.product_season_id) return 'Product Season is required.'
-        if (!batch.color) return 'Color is required.'
         if (items.length === 0) return 'Select images or a folder first.'
         for (const it of items) {
             const ageStart = parseInt(it.ageStart, 10)
@@ -339,6 +339,9 @@ export default function EmployeeBulkProductUploadPage() {
             if (!effectiveBrandId(it)) {
                 return 'Some images have no Brand — pick one on that row or set a batch default.'
             }
+            if (!effectiveColor(it)) {
+                return 'Some images have no Color — pick one on that row or set a batch default.'
+            }
         }
         return ''
     }
@@ -352,7 +355,8 @@ export default function EmployeeBulkProductUploadPage() {
         const validFabric = Boolean(it.fabric || batch.fallback_fabric)
         const validType = Boolean(effectiveProductType(it))
         const validBrand = Boolean(effectiveBrandId(it))
-        return !validAge || !validPrice || !validLabels || !validFabric || !validType || !validBrand
+        const validColor = Boolean(effectiveColor(it))
+        return !validAge || !validPrice || !validLabels || !validFabric || !validType || !validBrand || !validColor
     }
 
     async function startUpload() {
@@ -387,6 +391,7 @@ export default function EmployeeBulkProductUploadPage() {
                 const gender = effectiveGender(item)
                 const productType = effectiveProductType(item)
                 const brandId = effectiveBrandId(item)
+                const color = effectiveColor(item)
                 const qty = parseInt(batch.quantity_per_item) || 1
                 const variants = buildVariantMatrix(ageStart, ageEnd, resolvedSubVariants, qty)
                 const price = resolvedSubVariants[0].price
@@ -403,7 +408,7 @@ export default function EmployeeBulkProductUploadPage() {
                     category: batch.category,
                     product_type: productType,
                     fabric,
-                    color: batch.color,
+                    color,
                     gender,
                     tags,
                     stock: variants.reduce((sum, v) => sum + v.inventory_qty, 0),
@@ -548,10 +553,10 @@ export default function EmployeeBulkProductUploadPage() {
                             </select>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-500 mb-1 block">Color *</label>
+                            <label className="text-xs text-gray-500 mb-1 block">Color (default)</label>
                             <select value={batch.color} onChange={(e) => setBatch((p) => ({ ...p, color: e.target.value }))}
                                     className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm">
-                                <option value="">Select...</option>
+                                <option value="">None — set per photo below</option>
                                 {DEFAULT_COLOR_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
                             </select>
                         </div>
@@ -707,6 +712,12 @@ export default function EmployeeBulkProductUploadPage() {
                                                 className="w-full text-xs border border-gray-200 rounded px-1.5 py-1">
                                             <option value="">Brand{batch.brand_id ? ' (default)' : ' — pick one'}</option>
                                             {brandOptions.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                        </select>
+                                        <select value={item.color} onChange={(e) => updateItem(item.id, { color: e.target.value })}
+                                                disabled={running}
+                                                className="w-full text-xs border border-gray-200 rounded px-1.5 py-1">
+                                            <option value="">Color{batch.color ? ' (' + batch.color + ')' : ' — pick one'}</option>
+                                            {DEFAULT_COLOR_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
                                         </select>
                                         {item.status === 'analyzing' && <p className="text-[10px] text-blue-500">Reading caption...</p>}
                                         {item.status === 'uploading' && <p className="text-[10px] text-blue-500">Uploading...</p>}
