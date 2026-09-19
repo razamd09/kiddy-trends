@@ -18,6 +18,39 @@ const DEFAULT_COLOR_OPTIONS = [
 const GENDER_OPTIONS = ['Girls', 'Boys', 'Neutral']
 const UPLOAD_CONCURRENCY = 4
 
+// Full selectable size range, 0 months through 10 years, in display order.
+// "From"/"To" pick two points in this list; every bracket in between
+// (inclusive) becomes its own variant — no arithmetic needed at upload time.
+const SIZE_BRACKETS = [
+    '0-3M', '3-6M', '6-9M', '9-12M', '12-18M', '18-24M',
+    '2-3 Year', '3-4 Year', '4-5 Year', '5-6 Year',
+    '6-7 Year', '7-8 Year', '8-9 Year', '9-10 Year',
+]
+
+// OCR/folder detection only ever finds whole-year ranges (captions say
+// "7-8 YEARS", never "6-9 Months") — map that onto the closest matching
+// brackets here so auto-fill still lands somewhere sensible; the admin can
+// always correct it via the dropdowns afterward.
+function yearRangeToBracketRange(startYear, endYear) {
+    if (!Number.isFinite(startYear) || !Number.isFinite(endYear) || endYear <= startYear) {
+        return { from: '', to: '' }
+    }
+    const fromLabel = startYear <= 1 ? '12-18M' : (startYear + '-' + (startYear + 1) + ' Year')
+    const toLabel = (endYear - 1) + '-' + endYear + ' Year'
+    let fromIndex = SIZE_BRACKETS.indexOf(fromLabel)
+    let toIndex = SIZE_BRACKETS.indexOf(toLabel)
+    if (fromIndex === -1) fromIndex = 0
+    if (toIndex === -1) toIndex = SIZE_BRACKETS.length - 1
+    if (toIndex < fromIndex) toIndex = fromIndex
+    return { from: SIZE_BRACKETS[fromIndex], to: SIZE_BRACKETS[toIndex] }
+}
+
+function isValidBracketRange(from, to) {
+    const fromIndex = SIZE_BRACKETS.indexOf(from)
+    const toIndex = SIZE_BRACKETS.indexOf(to)
+    return fromIndex !== -1 && toIndex !== -1 && toIndex >= fromIndex
+}
+
 function detectFolderGender(folderName) {
     const s = String(folderName || '').toLowerCase()
     if (s.includes('girl')) return 'Girls'
@@ -44,14 +77,18 @@ function parseFolderPath(file) {
     }
 }
 
-// One row per (age bracket x sub-variant) combination — a photo with a 2-6
-// Year range and 2 colors in it produces 4 age brackets x 2 colors = 8
-// variants on the one product, size and color both distinguishing each row.
-function buildVariantMatrix(ageStart, ageEnd, subVariants, qty) {
+// One row per (age bracket x sub-variant) combination — a photo spanning
+// "3-6M" to "3-4 Year" and 2 colors in it produces every bracket in between
+// x 2 colors, size and color both distinguishing each row.
+function buildVariantMatrix(fromBracket, toBracket, subVariants, qty) {
+    const fromIndex = SIZE_BRACKETS.indexOf(fromBracket)
+    const toIndex = SIZE_BRACKETS.indexOf(toBracket)
+    if (fromIndex === -1 || toIndex === -1 || toIndex < fromIndex) return []
+
     const variants = []
     const hasColors = subVariants.length > 1
-    for (let y = ageStart; y < ageEnd; y++) {
-        const sizeLabel = y + '-' + (y + 1) + ' Year'
+    for (let i = fromIndex; i <= toIndex; i++) {
+        const sizeLabel = SIZE_BRACKETS[i]
         for (const sv of subVariants) {
             variants.push({
                 option1_name: 'Size',
@@ -252,8 +289,9 @@ export default function BulkProductUploadPage() {
                     // OCR is the primary source (it's what's actually printed on this
                     // exact photo); the folder path only fills in what OCR missed.
                     const folderRange = item.folderAge ? parseAgeRange(item.folderAge) : { ageStart: null, ageEnd: null }
-                    const ageStart = parsed.ageStart ?? folderRange.ageStart ?? ''
-                    const ageEnd = parsed.ageEnd ?? folderRange.ageEnd ?? ''
+                    const detectedStartYear = parsed.ageStart ?? folderRange.ageStart ?? null
+                    const detectedEndYear = parsed.ageEnd ?? folderRange.ageEnd ?? null
+                    const { from: ageStart, to: ageEnd } = yearRangeToBracketRange(detectedStartYear, detectedEndYear)
                     // Caption lists per-item prices (e.g. "899/- SHIRT" + "1450/-
                     // HOODIE") -> pre-fill one sub-variant row per detected price.
                     // Otherwise fall back to a single row with the shared price —
@@ -302,10 +340,8 @@ export default function BulkProductUploadPage() {
         if (!batch.product_season_id) return 'Product Season is required.'
         if (items.length === 0) return 'Select images or a folder first.'
         for (const it of items) {
-            const ageStart = parseInt(it.ageStart, 10)
-            const ageEnd = parseInt(it.ageEnd, 10)
-            if (!Number.isFinite(ageStart) || !Number.isFinite(ageEnd) || ageEnd <= ageStart) {
-                return 'Some images have no valid age/size detected — fill Age Start/End manually on highlighted rows.'
+            if (!isValidBracketRange(it.ageStart, it.ageEnd)) {
+                return 'Some images have no valid age/size detected — fill From/To manually on highlighted rows.'
             }
             for (const sv of it.subVariants) {
                 const price = parseFloat(sv.price) || parseFloat(batch.fallback_price)
@@ -334,9 +370,7 @@ export default function BulkProductUploadPage() {
     }
 
     function rowIsIncomplete(it) {
-        const ageStart = parseInt(it.ageStart, 10)
-        const ageEnd = parseInt(it.ageEnd, 10)
-        const validAge = Number.isFinite(ageStart) && Number.isFinite(ageEnd) && ageEnd > ageStart
+        const validAge = isValidBracketRange(it.ageStart, it.ageEnd)
         const validPrice = it.subVariants.every((sv) => (parseFloat(sv.price) || parseFloat(batch.fallback_price)) > 0)
         const validLabels = it.subVariants.length === 1 || it.subVariants.every((sv) => sv.label.trim())
         const validFabric = Boolean(it.fabric || batch.fallback_fabric)
@@ -368,8 +402,6 @@ export default function BulkProductUploadPage() {
                     throw new Error(uploadData.error || 'Image upload failed')
                 }
 
-                const ageStart = parseInt(item.ageStart, 10)
-                const ageEnd = parseInt(item.ageEnd, 10)
                 const resolvedSubVariants = item.subVariants.map((sv, i) => ({
                     label: sv.label.trim() || ('Item ' + (i + 1)),
                     price: parseFloat(sv.price) || parseFloat(batch.fallback_price) || 0,
@@ -380,12 +412,13 @@ export default function BulkProductUploadPage() {
                 const brandId = effectiveBrandId(item)
                 const color = effectiveColor(item)
                 const qty = parseInt(batch.quantity_per_item) || 1
-                const variants = buildVariantMatrix(ageStart, ageEnd, resolvedSubVariants, qty)
+                const variants = buildVariantMatrix(item.ageStart, item.ageEnd, resolvedSubVariants, qty)
                 const price = resolvedSubVariants[0].price
 
                 sequence += 1
                 const seq = String(sequence).padStart(3, '0')
-                const title = (batch.title_prefix.trim() || productType) + ' – ' + gender + ' – ' + ageStart + '-' + ageEnd + ' Year #' + seq
+                const ageLabel = item.ageStart === item.ageEnd ? item.ageStart : (item.ageStart + ' to ' + item.ageEnd)
+                const title = (batch.title_prefix.trim() || productType) + ' – ' + gender + ' – ' + ageLabel + ' #' + seq
 
                 const payload = {
                     title,
@@ -647,12 +680,18 @@ export default function BulkProductUploadPage() {
                                             <p className="text-[10px] text-gray-300">No folder path on this file — used the folder picker?</p>
                                         )}
                                         <div className="flex gap-1">
-                                            <input type="number" value={item.ageStart} onChange={(e) => updateItem(item.id, { ageStart: e.target.value })}
-                                                   placeholder="From" disabled={running}
-                                                   className="w-1/2 text-xs border border-gray-200 rounded px-1.5 py-1" />
-                                            <input type="number" value={item.ageEnd} onChange={(e) => updateItem(item.id, { ageEnd: e.target.value })}
-                                                   placeholder="To (Year)" disabled={running}
-                                                   className="w-1/2 text-xs border border-gray-200 rounded px-1.5 py-1" />
+                                            <select value={item.ageStart} onChange={(e) => updateItem(item.id, { ageStart: e.target.value })}
+                                                    disabled={running}
+                                                    className="w-1/2 text-xs border border-gray-200 rounded px-1.5 py-1">
+                                                <option value="">From</option>
+                                                {SIZE_BRACKETS.map((b) => <option key={b} value={b}>{b}</option>)}
+                                            </select>
+                                            <select value={item.ageEnd} onChange={(e) => updateItem(item.id, { ageEnd: e.target.value })}
+                                                    disabled={running}
+                                                    className="w-1/2 text-xs border border-gray-200 rounded px-1.5 py-1">
+                                                <option value="">To</option>
+                                                {SIZE_BRACKETS.map((b) => <option key={b} value={b}>{b}</option>)}
+                                            </select>
                                         </div>
                                         <div className="space-y-1 rounded-lg border border-gray-100 bg-cream/60 p-1.5">
                                             {item.subVariants.map((sv, idx) => (
