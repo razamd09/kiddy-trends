@@ -21,7 +21,10 @@ export async function GET() {
 
     try {
         const fields = 'id,caption,media_type,media_url,thumbnail_url,permalink,timestamp'
-        const url = `https://graph.facebook.com/${GRAPH_API_VERSION}/${businessAccountId}/media?fields=${fields}&limit=${POST_LIMIT}&access_token=${accessToken}`
+        // This token comes from the newer "Instagram API with Instagram Login"
+        // flow (starts with "IGAA"), which is served from graph.instagram.com,
+        // not graph.facebook.com (the older Facebook-Login-based flow).
+        const url = `https://graph.instagram.com/${GRAPH_API_VERSION}/${businessAccountId}/media?fields=${fields}&limit=${POST_LIMIT}&access_token=${accessToken}`
 
         const res = await fetch(url, { next: { revalidate: 3600 } })
         const data = await res.json()
