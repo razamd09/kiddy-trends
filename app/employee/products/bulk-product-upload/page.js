@@ -97,7 +97,7 @@ export default function EmployeeBulkProductUploadPage() {
     const [brandOptions, setBrandOptions] = useState([])
 
     const [batch, setBatch] = useState({
-        title_prefix: '',
+        title_prefix: 'Kids Affordable Collection 2026: Kids Boys Warm Winter',
         gender: 'Neutral',
         product_type: '',
         product_version: 'new arrivals',
