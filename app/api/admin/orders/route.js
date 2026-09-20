@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { sendEmailWithEmailJs } from '../customers/customer-data'
+import { sendOrderStatusWhatsApp } from '../../../../lib/whatsappApi'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -172,5 +173,18 @@ export async function PUT(request) {
         .single()
 
     if (error) return Response.json({ error: error.message }, { status: 500 })
-    return Response.json({ success: true, order: data })
+
+    let whatsapp = null
+    const isStatusChange = status && status !== current.status
+    if (isStatusChange) {
+        try {
+            whatsapp = await sendOrderStatusWhatsApp(data, status)
+            if (!whatsapp.success) console.log('WhatsApp status send failed:', whatsapp.error)
+        } catch (waErr) {
+            whatsapp = { success: false, error: waErr.message }
+            console.log('WhatsApp status send error:', waErr)
+        }
+    }
+
+    return Response.json({ success: true, order: data, whatsapp })
 }

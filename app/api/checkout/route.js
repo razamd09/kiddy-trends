@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { normalizePhone, upsertCustomers } from '../admin/customers/customer-data'
 import { sendMetaPurchaseEvent } from '../../../lib/metaConversionsApi'
+import { sendOrderStatusWhatsApp } from '../../../lib/whatsappApi'
 
 const ORDER_NOTIFICATION_EMAIL = process.env.ORDER_NOTIFICATION_EMAIL || 'thekiddytrends@gmail.com'
 const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_9p08wct'
@@ -559,6 +560,13 @@ export async function POST(request) {
             })
         } catch (emailErr) {
             console.log('Order email error:', emailErr)
+        }
+
+        try {
+            const whatsappResult = await sendOrderStatusWhatsApp({ ...savedOrder, order_number: orderNumber }, 'pending')
+            if (!whatsappResult.success) console.log('Order confirmation WhatsApp failed:', whatsappResult.error)
+        } catch (waErr) {
+            console.log('Order confirmation WhatsApp error:', waErr)
         }
 
         await syncCustomerSnapshot(customer)
