@@ -58,6 +58,7 @@ export default function AdminWhatsAppBroadcastPage() {
     const [selected, setSelected] = useState([])
 
     const [testNumbersInput, setTestNumbersInput] = useState('')
+    const [debugTemplateName, setDebugTemplateName] = useState('')
     const [testSending, setTestSending] = useState(false)
     const [testResult, setTestResult] = useState(null)
 
@@ -143,7 +144,7 @@ export default function AdminWhatsAppBroadcastPage() {
         if (product) addSelected(product)
     }
 
-    async function sendBatches(productLines, testNumbers) {
+    async function sendBatches(productLines, testNumbers, debugTemplateName) {
         let offset = 0
         let totals = { processed: 0, sent: 0, failed: 0 }
         let allErrors = []
@@ -152,7 +153,9 @@ export default function AdminWhatsAppBroadcastPage() {
             const res = await fetch('/api/admin/whatsapp-campaign', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(testNumbers ? { productLines, testNumbers } : { offset, limit: BATCH_SIZE, productLines }),
+                body: JSON.stringify(testNumbers
+                    ? { productLines, testNumbers, debugTemplateName: debugTemplateName || undefined }
+                    : { offset, limit: BATCH_SIZE, productLines }),
             })
             const data = await res.json()
             if (!data.success) throw new Error(data.error || 'Send failed')
@@ -175,12 +178,12 @@ export default function AdminWhatsAppBroadcastPage() {
     async function sendTest() {
         const numbers = parseTestNumbers(testNumbersInput)
         if (numbers.length === 0) { alert('Enter at least one phone number first.'); return }
-        if (selected.length === 0) { alert('Pick at least one product first.'); return }
+        if (!debugTemplateName && selected.length === 0) { alert('Pick at least one product first.'); return }
 
         setTestSending(true)
         setTestResult(null)
         try {
-            const { totals, allErrors } = await sendBatches(buildProductLines(selected), numbers)
+            const { totals, allErrors } = await sendBatches(buildProductLines(selected), numbers, debugTemplateName)
             setTestResult({ ...totals, details: allErrors })
         } catch (err) {
             setTestResult({ error: err.message })

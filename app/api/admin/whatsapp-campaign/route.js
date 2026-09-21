@@ -60,9 +60,14 @@ function normalizeTestNumber(value) {
 // through the customers table, so a campaign can be checked before launch.
 export async function POST(request) {
     try {
-        const { offset = 0, limit = BATCH_DEFAULT, productLines, testNumbers } = await request.json()
+        const { offset = 0, limit = BATCH_DEFAULT, productLines, testNumbers, debugTemplateName } = await request.json()
 
-        if (!Array.isArray(productLines) || productLines.length === 0) {
+        // Debug-only override so a different, already-Active template (with
+        // no variables of its own) can be used to sanity-check the send
+        // pipeline while new_arrivals_broadcast_kt is still in review.
+        const templateName = debugTemplateName ? String(debugTemplateName).trim() : TEMPLATE_NAME
+
+        if (!debugTemplateName && (!Array.isArray(productLines) || productLines.length === 0)) {
             return Response.json({ success: false, error: 'productLines is required' }, { status: 400 })
         }
 
@@ -100,8 +105,8 @@ export async function POST(request) {
                 const name = String(recipient.first_name || '').trim() || 'there'
                 const result = await sendWhatsAppTemplate({
                     to: recipient.phone,
-                    templateName: TEMPLATE_NAME,
-                    bodyParams: [name, ...productLines],
+                    templateName,
+                    bodyParams: debugTemplateName ? [] : [name, ...productLines],
                 })
                 if (result.success) sent += 1
                 else {

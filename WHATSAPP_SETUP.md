@@ -42,7 +42,8 @@ WHATSAPP_PHONE_NUMBER_ID=...
 Business-initiated messages (anything not a reply within 24h of the customer's
 last message) must use a pre-approved template — free text isn't allowed.
 In WhatsApp Manager > Message Templates > Create Template, submit these 5,
-category **Utility**, language **English (US)**, body exactly as shown
+category **Utility**, language **English** (plain "English", not "English (US)" —
+the code sends with language code `en` to match), body exactly as shown
 (`{{1}}` = customer's first name, `{{2}}` = order number):
 
 | Template name | Body |
@@ -73,7 +74,7 @@ above), which has stricter rules:
   deliver until the tier grows.
 
 Submit this template for approval (category **Marketing**, language
-**English (US)**):
+**English**):
 
 **Template name**: `new_arrivals_broadcast_kt`
 
