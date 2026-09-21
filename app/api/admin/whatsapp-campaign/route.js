@@ -6,47 +6,30 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_KEY
 )
 
-const SITE_URL = 'https://thekiddytrends.com'
 const TEMPLATE_NAME = 'new_arrivals_broadcast_kt'
 const PRODUCT_SLOTS = 5
 const SEND_CONCURRENCY = 5
+const BATCH_DEFAULT = 100
 
-function cleanTitle(rawTitle) {
-    return String(rawTitle || '')
-        .replace(/^\s*#?\s*Kids\s+Affordable\s+Collection\s*(?:2026)?\s*[:\-]*\s*/i, '')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, 60)
-}
-
-async function fetchNewArrivalLines() {
+async function fetchDefaultProductIds() {
     const { data, error } = await supabase
         .from('products')
-        .select('id, title')
+        .select('id')
         .eq('is_active', true)
         .ilike('product_version', '%new arrival%')
         .order('created_at', { ascending: false })
         .limit(PRODUCT_SLOTS)
 
     if (error) throw new Error(error.message)
-
-    const lines = (data || []).map((p) => cleanTitle(p.title) + ' – ' + SITE_URL + '/products/prd_id=' + p.id)
-
-    // Template is approved with exactly PRODUCT_SLOTS variables — pad with a
-    // safe filler on the rare chance there are fewer than that many active
-    // New Arrivals (Meta rejects empty template parameters).
-    while (lines.length < PRODUCT_SLOTS) {
-        lines.push('✨ More new arrivals at ' + SITE_URL + '/collections')
-    }
-
-    return lines
+    return (data || []).map((p) => p.id)
 }
 
-// Preview: the 5 products this campaign will link to, plus how many
-// customers it will reach — shown before the admin commits to sending.
+// Preview: which products default-select into the 5 broadcast slots (the
+// admin can drag different ones in instead), plus how many customers this
+// would reach — shown before committing to a send.
 export async function GET() {
     try {
-        const productLines = await fetchNewArrivalLines()
+        const defaultProductIds = await fetchDefaultProductIds()
         const { count, error } = await supabase
             .from('customers')
             .select('id', { count: 'exact', head: true })
@@ -55,32 +38,56 @@ export async function GET() {
 
         if (error) throw new Error(error.message)
 
-        return Response.json({ success: true, productLines, recipientCount: count || 0 })
+        return Response.json({ success: true, defaultProductIds, recipientCount: count || 0 })
     } catch (err) {
         return Response.json({ success: false, error: err.message }, { status: 500 })
     }
 }
 
+function normalizeTestNumber(value) {
+    const digits = String(value || '').replace(/\D/g, '')
+    if (!digits) return ''
+    if (digits.startsWith('92')) return digits
+    if (digits.startsWith('0')) return '92' + digits.slice(1)
+    if (digits.length === 10) return '92' + digits
+    return digits
+}
+
 // Sends one batch of the campaign, called repeatedly by the admin page with
 // an increasing offset — keeps each request short instead of one giant send
-// that risks a serverless timeout on a large customer list.
+// that risks a serverless timeout on a large customer list. When
+// `testNumbers` is given, it sends only to those numbers instead of paging
+// through the customers table, so a campaign can be checked before launch.
 export async function POST(request) {
     try {
-        const { offset = 0, limit = 40, productLines } = await request.json()
+        const { offset = 0, limit = BATCH_DEFAULT, productLines, testNumbers } = await request.json()
 
         if (!Array.isArray(productLines) || productLines.length === 0) {
             return Response.json({ success: false, error: 'productLines is required' }, { status: 400 })
         }
 
-        const { data: customers, error } = await supabase
-            .from('customers')
-            .select('id, first_name, last_name, phone')
-            .not('phone', 'is', null)
-            .neq('phone', '')
-            .order('id', { ascending: true })
-            .range(offset, offset + limit - 1)
+        let recipients
+        let isLastBatch
 
-        if (error) throw new Error(error.message)
+        if (Array.isArray(testNumbers) && testNumbers.length > 0) {
+            recipients = testNumbers
+                .map(normalizeTestNumber)
+                .filter(Boolean)
+                .map((phone) => ({ first_name: '', phone }))
+            isLastBatch = true
+        } else {
+            const { data: customers, error } = await supabase
+                .from('customers')
+                .select('id, first_name, last_name, phone')
+                .not('phone', 'is', null)
+                .neq('phone', '')
+                .order('id', { ascending: true })
+                .range(offset, offset + limit - 1)
+
+            if (error) throw new Error(error.message)
+            recipients = customers || []
+            isLastBatch = recipients.length < limit
+        }
 
         let sent = 0
         let failed = 0
@@ -88,11 +95,11 @@ export async function POST(request) {
 
         let idx = 0
         async function worker() {
-            while (idx < customers.length) {
-                const customer = customers[idx++]
-                const name = String(customer.first_name || '').trim() || 'there'
+            while (idx < recipients.length) {
+                const recipient = recipients[idx++]
+                const name = String(recipient.first_name || '').trim() || 'there'
                 const result = await sendWhatsAppTemplate({
-                    to: customer.phone,
+                    to: recipient.phone,
                     templateName: TEMPLATE_NAME,
                     bodyParams: [name, ...productLines],
                 })
@@ -103,15 +110,15 @@ export async function POST(request) {
                 }
             }
         }
-        await Promise.all(Array.from({ length: Math.min(SEND_CONCURRENCY, customers.length) }, worker))
+        await Promise.all(Array.from({ length: Math.min(SEND_CONCURRENCY, recipients.length) }, worker))
 
         return Response.json({
             success: true,
-            processed: customers.length,
+            processed: recipients.length,
             sent,
             failed,
             errors,
-            done: customers.length < limit,
+            done: isLastBatch,
         })
     } catch (err) {
         return Response.json({ success: false, error: err.message }, { status: 500 })
