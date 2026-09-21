@@ -56,9 +56,49 @@ category **Utility**, language **English (US)**, body exactly as shown
 Approval is usually minutes to ~24h. The names must match exactly —
 `lib/whatsappApi.js`'s `ORDER_STATUS_TEMPLATES` map references them by name.
 
+## 4. WhatsApp Broadcast (New Arrivals campaign)
+
+`/admin/whatsapp-broadcast` sends a promotional message to every customer in
+the `customers` table, listing the 5 newest active New Arrivals with links.
+This is a **Marketing**-category message (not Utility like the order updates
+above), which has stricter rules:
+
+- Recipients must have opted in to receive promotional WhatsApp messages —
+  having simply placed an order does not count as marketing consent under
+  WhatsApp's Commerce Policy. Confirm this before your first send, or Meta
+  may restrict the number.
+- A brand-new WhatsApp Business number starts on a lower daily messaging
+  tier (unique conversations/24h) that scales up automatically based on
+  quality rating and usage — a very large first broadcast may not fully
+  deliver until the tier grows.
+
+Submit this template for approval (category **Marketing**, language
+**English (US)**):
+
+**Template name**: `new_arrivals_broadcast_kt`
+
+**Body** (`{{1}}` = first name, `{{2}}`–`{{6}}` = one "title – link" line each
+for the 5 featured products):
+```
+Hi {{1}}! 🎉 New arrivals just dropped at Kiddy Trends:
+
+{{2}}
+{{3}}
+{{4}}
+{{5}}
+{{6}}
+
+Shop the full collection: thekiddytrends.com/collections
+```
+
+Marketing templates typically take longer to review than Utility ones and
+may be rejected if they read as spammy — keep the approved wording close to
+this if Meta asks for changes, since the code fills these exact 6 slots.
+
 ## Not built yet (possible next steps)
 
 - Auto-replying to inbound customer messages (needs a webhook receiver route).
-- Abandoned-cart nudges, marketing broadcasts (need Marketing-category
-  templates and explicit customer opt-in — different from the transactional
-  order updates this covers).
+- Abandoned-cart nudges.
+- Tracking marketing opt-in/opt-out per customer (the broadcast above
+  currently messages everyone with a phone number on file — see the policy
+  note above).

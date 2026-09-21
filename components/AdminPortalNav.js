@@ -40,6 +40,7 @@ const menus = [
       { href: '/admin/discount-codes', label: 'Discount Codes' },
       { href: '/admin/analytics', label: 'Analytics' },
       { href: '/admin/campaigns', label: 'Campaigns' },
+      { href: '/admin/whatsapp-broadcast', label: 'WhatsApp Broadcast' },
     ],
   },
   { label: 'Shipping Rates', href: '/admin/shipping-rates' },
