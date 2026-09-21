@@ -180,8 +180,8 @@ export default function AdminWhatsAppBroadcastPage() {
         setTestSending(true)
         setTestResult(null)
         try {
-            const { totals } = await sendBatches(buildProductLines(selected), numbers)
-            setTestResult(totals)
+            const { totals, allErrors } = await sendBatches(buildProductLines(selected), numbers)
+            setTestResult({ ...totals, details: allErrors })
         } catch (err) {
             setTestResult({ error: err.message })
         }
@@ -301,10 +301,17 @@ export default function AdminWhatsAppBroadcastPage() {
                     {testResult && (
                         testResult.error
                             ? <p className="text-sm text-red-500 mt-3">{testResult.error}</p>
-                            : <p className="text-sm text-charcoal mt-3">
-                                <span className="text-green-600 font-semibold">{testResult.sent} sent</span>
-                                {testResult.failed > 0 && <span className="text-red-500 font-semibold"> · {testResult.failed} failed</span>}
-                              </p>
+                            : <div className="mt-3">
+                                <p className="text-sm text-charcoal">
+                                    <span className="text-green-600 font-semibold">{testResult.sent} sent</span>
+                                    {testResult.failed > 0 && <span className="text-red-500 font-semibold"> · {testResult.failed} failed</span>}
+                                </p>
+                                {testResult.details?.length > 0 && (
+                                    <div className="mt-1 text-xs text-red-500 space-y-0.5">
+                                        {testResult.details.map((e, i) => <p key={i}>{e}</p>)}
+                                    </div>
+                                )}
+                              </div>
                     )}
                 </div>
 
