@@ -1,6 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useState, useEffect, useRef } from 'react'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import ProductCard from '../../../components/ProductCard'
@@ -11,6 +11,7 @@ import SizeRecommender from '../../../components/SizeRecommender'
 import { getAnalyticsSessionId, trackEvent } from '../../../lib/analyticsClient'
 import { metaPixelTrack, generateMetaEventId, sendServerMetaEvent } from '../../../lib/metaPixel'
 import { trackGA4Event, ga4Item } from '../../../lib/ga4'
+import { ageIdForLabel, ageBracketLabel } from '../../../lib/ageBrackets'
 
 function StarRating({ rating }) {
   return (
@@ -126,6 +127,7 @@ function getProductTitleParts(product) {
 
 export default function ProductPageClient({ initialProduct = null }) {
   const { handle } = useParams()
+  const router = useRouter()
   const { addToCart, cart } = useCart()
 
   const [product, setProduct]             = useState(initialProduct)
@@ -136,6 +138,10 @@ export default function ProductPageClient({ initialProduct = null }) {
   const [zoomed, setZoomed]               = useState(false)
   const [touchStart, setTouchStart]       = useState(0)
   const [added, setAdded]                 = useState(false)
+  const [sameAgeItems, setSameAgeItems]   = useState([])
+  const [sameAgeAgeId, setSameAgeAgeId]   = useState(null)
+  const [pageTouchStart, setPageTouchStart] = useState(0)
+  const imageZoneRef = useRef(null)
   const [showCheckout, setShowCheckout]   = useState(false)
   const [showSizeChart, setShowSizeChart] = useState(false)
   const [views, setViews]                 = useState(0)
@@ -253,6 +259,47 @@ export default function ProductPageClient({ initialProduct = null }) {
       })],
     })
   }, [product])
+
+  // "More in this size" — refetches whenever the shopper picks a different
+  // size, so swiping/arrows always browse the age group actually on screen.
+  useEffect(() => {
+    if (!product) return
+    const ageId = ageIdForLabel(selectedVariant?.title) || ageIdForLabel(product.title)
+    setSameAgeAgeId(ageId)
+    if (!ageId) { setSameAgeItems([]); return }
+
+    let cancelled = false
+    async function fetchSameAge() {
+      try {
+        const productId = product._id || product.id
+        const res = await fetch('/api/products/same-age?ageId=' + encodeURIComponent(ageId) + '&currentId=' + productId + '&limit=150', { cache: 'no-store' })
+        const data = await res.json()
+        if (!cancelled) setSameAgeItems(data.success ? (data.items || []) : [])
+      } catch {
+        if (!cancelled) setSameAgeItems([])
+      }
+    }
+    fetchSameAge()
+    return () => { cancelled = true }
+  }, [product, selectedVariant?.title])
+
+  const sameAgeIndex = sameAgeItems.findIndex((item) => item.id === (product?._id || product?.id))
+
+  function goToSameAgeOffset(offset) {
+    if (sameAgeItems.length < 2) return
+    const idx = sameAgeIndex === -1 ? 0 : sameAgeIndex
+    const target = sameAgeItems[(idx + offset + sameAgeItems.length) % sameAgeItems.length]
+    if (target) router.push('/products/' + target.handle)
+  }
+
+  // Swiping over the photo itself still cycles that product's own images
+  // (handleSwipe below) — this is for swiping anywhere else on the page to
+  // browse to the next/previous product in the same size, no back button needed.
+  function handlePageSwipe(e) {
+    if (imageZoneRef.current && imageZoneRef.current.contains(e.target)) return
+    const diff = pageTouchStart - e.changedTouches[0].clientX
+    if (Math.abs(diff) > 70) goToSameAgeOffset(diff > 0 ? 1 : -1)
+  }
 
   async function fetchReviews(productId) {
     try {
@@ -407,12 +454,31 @@ export default function ProductPageClient({ initialProduct = null }) {
   const displayTitle = normalizeDisplayTitle(product.title)
   const displayGender = (product.gender && String(product.gender).trim()) || getProductGender(product.title)
 
+  const sameAgeLabel = ageBracketLabel(sameAgeAgeId)
+
   return (
       <>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Floating prev/next — browse every other product in this same size
+            without leaving the page or using the browser's back button. */}
+        {sameAgeItems.length > 1 && (
+            <>
+              <button onClick={() => goToSameAgeOffset(-1)} aria-label="Previous product in this size"
+                      className="hidden sm:flex fixed left-3 top-1/2 -translate-y-1/2 z-40 w-11 h-11 bg-white shadow-lg border border-gray-100 rounded-full items-center justify-center text-charcoal hover:bg-coral hover:text-white hover:border-coral transition-all font-bold text-xl">
+                ‹
+              </button>
+              <button onClick={() => goToSameAgeOffset(1)} aria-label="Next product in this size"
+                      className="hidden sm:flex fixed right-3 top-1/2 -translate-y-1/2 z-40 w-11 h-11 bg-white shadow-lg border border-gray-100 rounded-full items-center justify-center text-charcoal hover:bg-coral hover:text-white hover:border-coral transition-all font-bold text-xl">
+                ›
+              </button>
+            </>
+        )}
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+             onTouchStart={(e) => setPageTouchStart(e.touches[0].clientX)}
+             onTouchEnd={handlePageSwipe}>
 
           {/* Breadcrumb */}
-          <nav className="flex items-center gap-2 text-sm text-gray-400 mb-8">
+          <nav className="flex items-center gap-2 text-sm text-gray-400 mb-2">
             <Link href="/" className="hover:text-coral transition-colors">Home</Link>
             <span>›</span>
             <Link href="/collections" className="hover:text-coral transition-colors">Collections</Link>
@@ -420,12 +486,29 @@ export default function ProductPageClient({ initialProduct = null }) {
             <span className="text-charcoal font-semibold truncate max-w-xs">{displayTitle}</span>
           </nav>
 
+          {/* Same-age position indicator — tap an arrow or swipe the page to move through it */}
+          {sameAgeItems.length > 1 && (
+              <div className="flex items-center justify-between gap-3 mb-6">
+                <p className="text-xs text-gray-400">
+                  {sameAgeLabel && <span className="font-semibold text-coral">{sameAgeLabel}</span>}
+                  {sameAgeIndex !== -1 && <span> · {sameAgeIndex + 1} of {sameAgeItems.length}</span>}
+                  <span className="hidden sm:inline"> · swipe or use the arrows to browse more</span>
+                </p>
+                <div className="flex gap-2 sm:hidden flex-shrink-0">
+                  <button onClick={() => goToSameAgeOffset(-1)} aria-label="Previous product in this size"
+                          className="w-8 h-8 bg-cream rounded-full flex items-center justify-center text-charcoal font-bold">‹</button>
+                  <button onClick={() => goToSameAgeOffset(1)} aria-label="Next product in this size"
+                          className="w-8 h-8 bg-cream rounded-full flex items-center justify-center text-charcoal font-bold">›</button>
+                </div>
+              </div>
+          )}
+
           <div className="grid md:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)] gap-8 lg:gap-12 mb-16">
 
             {/* Images */}
             <div className="space-y-4">
               {/* Main image with swipe */}
-                <div className="relative bg-cream rounded-3xl overflow-hidden shadow-sm border border-gray-100 aspect-[4/5] md:aspect-[5/6]"
+                <div ref={imageZoneRef} className="relative bg-cream rounded-3xl overflow-hidden shadow-sm border border-gray-100 aspect-[4/5] md:aspect-[5/6]"
                    onTouchStart={e => setTouchStart(e.touches[0].clientX)}
                    onTouchEnd={handleSwipe}>
                 <div className={'absolute inset-0 flex items-center justify-center overflow-hidden ' + (zoomed ? 'cursor-zoom-out' : 'cursor-zoom-in')}
