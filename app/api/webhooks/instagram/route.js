@@ -126,13 +126,26 @@ export async function POST(request) {
     // Always keep the raw payload regardless of whether it parses into a
     // clean message below — Meta doesn't let us re-query historical webhook
     // data, so this is the only safety net if our parsing misses a shape.
-    supabase.from('instagram_webhook_log').insert([{ raw_body: payload }]).then(() => {})
+    // Must be awaited: an unawaited insert can get killed mid-flight once
+    // the response below is sent, in a serverless environment.
+    try {
+        await supabase.from('instagram_webhook_log').insert([{ raw_body: payload }])
+    } catch (err) {
+        console.log('Instagram webhook log error:', err)
+    }
 
     try {
         const entries = Array.isArray(payload?.entry) ? payload.entry : []
         for (const entry of entries) {
+            // Confirmed live via Meta's dashboard "Test" button: the actual
+            // delivered shape is entry[].changes[] with {field: 'messages',
+            // value: {...}} — not the older Messenger-style entry[].messaging[].
+            // Both are checked here in case either shape shows up in practice.
+            const changeEvents = (Array.isArray(entry.changes) ? entry.changes : [])
+                .filter((c) => c.field === 'messages')
+                .map((c) => c.value)
             const messagingEvents = Array.isArray(entry.messaging) ? entry.messaging : []
-            for (const event of messagingEvents) {
+            for (const event of [...changeEvents, ...messagingEvents]) {
                 await processMessagingEvent(event)
             }
         }
