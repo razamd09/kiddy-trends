@@ -16,6 +16,10 @@ export default function AdminInstagramConversationsPage() {
     const [messages, setMessages] = useState([])
     const [messagesLoading, setMessagesLoading] = useState(false)
 
+    const [debugInfo, setDebugInfo] = useState(null)
+    const [debugLoading, setDebugLoading] = useState(false)
+    const [showDebug, setShowDebug] = useState(false)
+
     useEffect(() => {
         async function verify() {
             const token = localStorage.getItem('admin_token')
@@ -43,6 +47,24 @@ export default function AdminInstagramConversationsPage() {
             setConversations([])
         }
         setLoading(false)
+    }
+
+    async function loadDebugInfo() {
+        setDebugLoading(true)
+        try {
+            const res = await fetch('/api/admin/instagram-conversations/debug')
+            const data = await res.json()
+            setDebugInfo(data)
+        } catch {
+            setDebugInfo(null)
+        }
+        setDebugLoading(false)
+    }
+
+    function toggleDebug() {
+        const next = !showDebug
+        setShowDebug(next)
+        if (next) loadDebugInfo()
     }
 
     async function openConversation(conversation) {
@@ -75,11 +97,76 @@ export default function AdminInstagramConversationsPage() {
                     <Link href="/admin/dashboard" className="text-gray-400 hover:text-coral text-sm">← Back</Link>
                     <h1 className="font-display text-xl text-charcoal">Instagram Conversations</h1>
                 </div>
-                <p className="text-xs text-gray-400">Captured automatically from Instagram DMs — new messages only, from setup onward</p>
+                <div className="flex items-center gap-3">
+                    <p className="text-xs text-gray-400">Captured automatically from Instagram DMs — new messages only, from setup onward</p>
+                    <button onClick={toggleDebug} className="text-xs text-coral hover:underline flex-shrink-0">
+                        {showDebug ? 'Hide troubleshooting' : 'Troubleshoot'}
+                    </button>
+                </div>
             </div>
             <AdminPortalNav />
 
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+                {showDebug && (
+                    <div className="bg-white rounded-2xl shadow-sm p-5 mb-6 text-sm">
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="font-display text-base text-charcoal">Troubleshooting</p>
+                            <button onClick={loadDebugInfo} disabled={debugLoading} className="text-xs text-coral hover:underline disabled:opacity-40">↻ Refresh</button>
+                        </div>
+                        {debugLoading && <p className="text-gray-400">Loading...</p>}
+                        {!debugLoading && debugInfo && (
+                            <div className="space-y-3">
+                                <div className="grid grid-cols-3 gap-3 text-center">
+                                    <div className="bg-cream rounded-xl p-3">
+                                        <p className="text-2xl font-display text-charcoal">{debugInfo.totalWebhookDeliveries}</p>
+                                        <p className="text-xs text-gray-400">webhook deliveries ever received</p>
+                                    </div>
+                                    <div className="bg-cream rounded-xl p-3">
+                                        <p className="text-2xl font-display text-charcoal">{debugInfo.totalConversations}</p>
+                                        <p className="text-xs text-gray-400">conversations captured</p>
+                                    </div>
+                                    <div className="bg-cream rounded-xl p-3">
+                                        <p className="text-2xl font-display text-charcoal">{debugInfo.totalMessages}</p>
+                                        <p className="text-xs text-gray-400">messages captured</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-4 text-xs">
+                                    {Object.entries(debugInfo.configured || {}).map(([key, ok]) => (
+                                        <span key={key} className={ok ? 'text-green-600' : 'text-red-500'}>
+                                            {ok ? '✓' : '✕'} {key}
+                                        </span>
+                                    ))}
+                                </div>
+
+                                {debugInfo.totalWebhookDeliveries === 0 ? (
+                                    <p className="text-orange-500 text-xs bg-orange-50 rounded-xl p-3">
+                                        Zero deliveries ever recorded — Meta has not attempted to reach our webhook at all.
+                                        This points to something on Meta's side (subscription/tester access), not a bug in
+                                        our code — if it were rejecting a bad signature, it would still show up here.
+                                    </p>
+                                ) : (
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-2">Most recent deliveries:</p>
+                                        <div className="space-y-1.5">
+                                            {debugInfo.recentDeliveries.map((d) => (
+                                                <div key={d.id} className="bg-cream rounded-lg p-2 text-xs">
+                                                    <span className={d.signatureValid ? 'text-green-600 font-semibold' : 'text-red-500 font-semibold'}>
+                                                        {d.signatureValid ? 'valid signature' : 'INVALID signature'}
+                                                    </span>
+                                                    <span className="text-gray-400 ml-2">{new Date(d.receivedAt).toLocaleString()}</span>
+                                                    <p className="text-gray-500 mt-1 break-all">{d.preview}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-[320px_1fr] gap-6">
 
                     <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
