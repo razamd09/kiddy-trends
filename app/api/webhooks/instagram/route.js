@@ -111,27 +111,29 @@ async function processMessagingEvent(event) {
 export async function POST(request) {
     const rawBody = await request.text()
     const signature = request.headers.get('x-hub-signature-256')
-
-    if (!verifySignature(rawBody, signature)) {
-        return new Response('Invalid signature', { status: 401 })
-    }
+    const signatureValid = verifySignature(rawBody, signature)
 
     let payload
     try {
         payload = JSON.parse(rawBody)
     } catch {
-        return new Response('OK', { status: 200 })
+        payload = { unparseable_raw_body: rawBody }
     }
 
-    // Always keep the raw payload regardless of whether it parses into a
-    // clean message below — Meta doesn't let us re-query historical webhook
-    // data, so this is the only safety net if our parsing misses a shape.
-    // Must be awaited: an unawaited insert can get killed mid-flight once
-    // the response below is sent, in a serverless environment.
+    // Log every delivery attempt BEFORE the signature check — otherwise a
+    // signature mismatch (e.g. a stale app secret) fails completely silently,
+    // with no way to tell "Meta isn't delivering" apart from "we're
+    // rejecting what they send". Must be awaited: an unawaited insert can
+    // get killed mid-flight once the response below is sent, in a
+    // serverless environment.
     try {
-        await supabase.from('instagram_webhook_log').insert([{ raw_body: payload }])
+        await supabase.from('instagram_webhook_log').insert([{ raw_body: { ...payload, _signatureValid: signatureValid, _signatureHeader: signature || null } }])
     } catch (err) {
         console.log('Instagram webhook log error:', err)
+    }
+
+    if (!signatureValid) {
+        return new Response('Invalid signature', { status: 401 })
     }
 
     try {
