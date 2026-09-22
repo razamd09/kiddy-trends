@@ -26,7 +26,9 @@ export async function GET(request) {
         }
 
         if (mode === 'permissions') {
-            const res = await fetch('https://graph.instagram.com/v21.0/me/permissions?access_token=' + process.env.INSTAGRAM_ACCESS_TOKEN)
+            const res = await fetch(
+                'https://graph.facebook.com/debug_token?input_token=' + process.env.INSTAGRAM_ACCESS_TOKEN + '&access_token=' + process.env.INSTAGRAM_ACCESS_TOKEN
+            )
             const data = await res.json()
             return Response.json({ success: res.ok, data })
         }
