@@ -25,6 +25,12 @@ export async function GET(request) {
             return Response.json({ success: res.ok, data })
         }
 
+        if (mode === 'permissions') {
+            const res = await fetch('https://graph.instagram.com/v21.0/me/permissions?access_token=' + process.env.INSTAGRAM_ACCESS_TOKEN)
+            const data = await res.json()
+            return Response.json({ success: res.ok, data })
+        }
+
         const res = await fetch(
             'https://graph.instagram.com/v21.0/me/subscribed_apps?subscribed_fields=messages&access_token=' + process.env.INSTAGRAM_ACCESS_TOKEN,
             { method: 'POST' }
