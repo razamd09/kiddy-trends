@@ -33,12 +33,17 @@ export async function GET(request) {
         if (!valid) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
         const { searchParams } = new URL(request.url)
+        const tab = searchParams.get('tab') === 'sent' ? 'sent' : 'eligible'
+        const cooldownCutoffISO = new Date(Date.now() - CAMPAIGN_COOLDOWN_DAYS * 24 * 60 * 60 * 1000).toISOString()
+
         const data = await getCampaignRecipients(
             searchParams.get('page') || 1,
             searchParams.get('q') || '',
-            searchParams.get('sort') || 'created_at',
+            searchParams.get('sort') || '',
             searchParams.get('dir') || 'desc',
-            searchParams.get('source') || ''
+            searchParams.get('source') || '',
+            tab,
+            cooldownCutoffISO
         )
         return Response.json({ success: true, ...data, cooldownDays: CAMPAIGN_COOLDOWN_DAYS })
     } catch (err) {

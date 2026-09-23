@@ -146,13 +146,21 @@ const RECIPIENT_SORT_COLUMNS = {
 // source-filter conventions as fetchCustomersPage, but only customers with a
 // phone on file, and carrying last_campaign_sent_at so the picker can show
 // (and the send route can re-check) the 5-day cooldown.
-export async function getCampaignRecipients(page, queryText = '', sortBy = 'created_at', sortDir = 'desc', sourceFilter = '') {
+//
+// `tab` splits the picker into two disjoint-by-purpose views: 'eligible'
+// (selectable now — never sent, or sent long enough ago) vs 'sent' (a
+// read-only history of everyone ever sent a campaign, regardless of whether
+// their cooldown has since expired). `cooldownCutoffISO` is the timestamp
+// below which a past send no longer blocks re-selection; only needed for
+// the 'eligible' tab.
+export async function getCampaignRecipients(page, queryText = '', sortBy = 'created_at', sortDir = 'desc', sourceFilter = '', tab = 'eligible', cooldownCutoffISO = null) {
     const safePage = Math.max(1, Number(page || 1))
     const search = String(queryText || '').trim()
     const source = String(sourceFilter || '').trim()
     const limit = 30
     const offset = (safePage - 1) * limit
-    const column = RECIPIENT_SORT_COLUMNS[sortBy] || 'created_at'
+    const effectiveSortBy = sortBy || (tab === 'sent' ? 'last_sent' : 'created_at')
+    const column = RECIPIENT_SORT_COLUMNS[effectiveSortBy] || 'created_at'
     const ascending = sortDir === 'asc'
 
     let query = supabase
@@ -160,8 +168,14 @@ export async function getCampaignRecipients(page, queryText = '', sortBy = 'crea
         .select('id, first_name, last_name, phone, order_source, last_campaign_sent_at', { count: 'exact' })
         .not('phone', 'is', null)
         .neq('phone', '')
-        .order(column, { ascending, nullsFirst: sortBy === 'last_sent' ? ascending : undefined })
+        .order(column, { ascending, nullsFirst: effectiveSortBy === 'last_sent' ? ascending : undefined })
         .range(offset, offset + limit - 1)
+
+    if (tab === 'sent') {
+        query = query.not('last_campaign_sent_at', 'is', null)
+    } else if (cooldownCutoffISO) {
+        query = query.or('last_campaign_sent_at.is.null,last_campaign_sent_at.lt.' + cooldownCutoffISO)
+    }
 
     if (search) {
         query = query.or('first_name.ilike.%' + search + '%,last_name.ilike.%' + search + '%,phone.ilike.%' + search + '%,instagram_username.ilike.%' + search + '%')

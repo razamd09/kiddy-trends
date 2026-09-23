@@ -82,12 +82,15 @@ export default function AdminWhatsAppBroadcastPage() {
     const [testResult, setTestResult] = useState(null)
 
     // Recipient picker — mirrors the Customers page's search/sort/filter.
+    // 'eligible' = selectable now, 'sent' = read-only history of everyone
+    // ever sent a campaign (regardless of whether their cooldown expired).
+    const [recipientsTab, setRecipientsTab] = useState('eligible')
     const [recipients, setRecipients] = useState([])
     const [recipientsLoading, setRecipientsLoading] = useState(true)
     const [recipientsPage, setRecipientsPage] = useState(1)
     const [recipientsTotal, setRecipientsTotal] = useState(0)
     const [recipientsQuery, setRecipientsQuery] = useState('')
-    const [recipientsSort, setRecipientsSort] = useState('created_at')
+    const [recipientsSort, setRecipientsSort] = useState('')
     const [recipientsDir, setRecipientsDir] = useState('desc')
     const [recipientsSource, setRecipientsSource] = useState('')
     const [cooldownDays, setCooldownDays] = useState(5)
@@ -124,7 +127,7 @@ export default function AdminWhatsAppBroadcastPage() {
     useEffect(() => {
         if (!verified) return
         loadRecipients(recipientsPage)
-    }, [verified, recipientsPage, recipientsSort, recipientsDir, recipientsSource])
+    }, [verified, recipientsPage, recipientsSort, recipientsDir, recipientsSource, recipientsTab])
 
     function token() {
         return localStorage.getItem('admin_token') || ''
@@ -194,10 +197,15 @@ export default function AdminWhatsAppBroadcastPage() {
         return eligibleAt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
     }
 
+    function sentAtLabel(customer) {
+        return new Date(customer.last_campaign_sent_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+    }
+
     async function loadRecipients(page) {
         setRecipientsLoading(true)
         try {
-            const params = new URLSearchParams({ page: String(page), sort: recipientsSort, dir: recipientsDir })
+            const params = new URLSearchParams({ page: String(page), dir: recipientsDir, tab: recipientsTab })
+            if (recipientsSort) params.set('sort', recipientsSort)
             if (recipientsQuery.trim()) params.set('q', recipientsQuery.trim())
             if (recipientsSource) params.set('source', recipientsSource)
 
@@ -214,6 +222,13 @@ export default function AdminWhatsAppBroadcastPage() {
             setRecipients([])
         }
         setRecipientsLoading(false)
+    }
+
+    function switchRecipientsTab(tab) {
+        if (tab === recipientsTab) return
+        setRecipientsTab(tab)
+        setRecipientsSort('')
+        setRecipientsPage(1)
     }
 
     function submitRecipientSearch(e) {
@@ -529,8 +544,19 @@ export default function AdminWhatsAppBroadcastPage() {
                 <div className="bg-white rounded-2xl p-6 shadow-sm">
                     <p className="font-display text-lg text-charcoal mb-1">Recipients</p>
                     <p className="text-xs text-gray-500 mb-4">
-                        Pick which customers to send to. Anyone messaged in the last {cooldownDays} days is grayed out until their cooldown ends.
+                        Pick which customers to send to. Anyone messaged in the last {cooldownDays} days can't be selected again until their cooldown ends.
                     </p>
+
+                    <div className="flex gap-2 mb-4 border-b border-gray-100">
+                        <button type="button" onClick={() => switchRecipientsTab('eligible')}
+                                className={'px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors ' + (recipientsTab === 'eligible' ? 'border-coral text-coral' : 'border-transparent text-gray-400 hover:text-charcoal')}>
+                            Eligible to Send
+                        </button>
+                        <button type="button" onClick={() => switchRecipientsTab('sent')}
+                                className={'px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors ' + (recipientsTab === 'sent' ? 'border-coral text-coral' : 'border-transparent text-gray-400 hover:text-charcoal')}>
+                            Already Sent
+                        </button>
+                    </div>
 
                     <form onSubmit={submitRecipientSearch} className="flex flex-col sm:flex-row gap-2 mb-3">
                         <input value={recipientsQuery} onChange={(e) => setRecipientsQuery(e.target.value)}
@@ -547,25 +573,29 @@ export default function AdminWhatsAppBroadcastPage() {
                         <button type="submit" className="px-4 py-2 rounded-xl bg-charcoal text-white text-sm font-semibold hover:opacity-90">Search</button>
                     </form>
 
-                    <div className="flex items-center justify-between mb-2">
-                        <div className="flex gap-3">
-                            <button type="button" onClick={selectAllEligibleOnPage} className="text-xs text-coral hover:underline">Select all eligible on this page</button>
-                            <button type="button" onClick={clearSelection} className="text-xs text-gray-400 hover:text-coral">Clear selection</button>
+                    {recipientsTab === 'eligible' && (
+                        <div className="flex items-center justify-between mb-2">
+                            <div className="flex gap-3">
+                                <button type="button" onClick={selectAllEligibleOnPage} className="text-xs text-coral hover:underline">Select all on this page</button>
+                                <button type="button" onClick={clearSelection} className="text-xs text-gray-400 hover:text-coral">Clear selection</button>
+                            </div>
+                            <p className="text-xs font-semibold text-charcoal">{selectedCustomers.size} selected</p>
                         </div>
-                        <p className="text-xs font-semibold text-charcoal">{selectedCustomers.size} selected</p>
-                    </div>
+                    )}
 
                     <div className="border-2 border-gray-100 rounded-xl overflow-hidden mb-3">
                         {recipientsLoading ? (
                             <div className="p-6 text-sm text-gray-400">Loading customers...</div>
                         ) : recipients.length === 0 ? (
-                            <div className="p-6 text-sm text-gray-400 text-center">No customers found</div>
+                            <div className="p-6 text-sm text-gray-400 text-center">
+                                {recipientsTab === 'eligible' ? 'No eligible customers found' : 'No campaign messages sent yet'}
+                            </div>
                         ) : (
                             <div className="overflow-x-auto max-h-96 overflow-y-auto">
                                 <table className="min-w-full text-sm">
                                     <thead className="bg-cream text-gray-500 sticky top-0">
                                         <tr>
-                                            <th className="px-3 py-2 w-8"></th>
+                                            {recipientsTab === 'eligible' && <th className="px-3 py-2 w-8"></th>}
                                             <th className="text-left px-3 py-2 font-semibold">
                                                 <button onClick={() => toggleRecipientSort('name')} className="hover:text-coral">Name{sortArrow('name')}</button>
                                             </th>
@@ -583,17 +613,20 @@ export default function AdminWhatsAppBroadcastPage() {
                                             const checked = selectedCustomers.has(c.id)
                                             const name = [c.first_name, c.last_name].filter(Boolean).join(' ') || '-'
                                             return (
-                                                <tr key={c.id} className={'border-t border-gray-100 ' + (onCooldown ? 'opacity-40' : '')}>
-                                                    <td className="px-3 py-2">
-                                                        <input type="checkbox" checked={checked} disabled={onCooldown}
-                                                               onChange={() => toggleSelectCustomer(c)} />
-                                                    </td>
+                                                <tr key={c.id} className="border-t border-gray-100">
+                                                    {recipientsTab === 'eligible' && (
+                                                        <td className="px-3 py-2">
+                                                            <input type="checkbox" checked={checked} onChange={() => toggleSelectCustomer(c)} />
+                                                        </td>
+                                                    )}
                                                     <td className="px-3 py-2 font-medium text-charcoal">{name}</td>
                                                     <td className="px-3 py-2 text-charcoal whitespace-nowrap">{c.phone}</td>
                                                     <td className="px-3 py-2 text-gray-500 text-xs whitespace-nowrap">
-                                                        {onCooldown
-                                                            ? 'Cooldown until ' + cooldownUntilLabel(c)
-                                                            : (c.last_campaign_sent_at ? 'Eligible (last sent ' + cooldownUntilLabel(c) + ')' : 'Never messaged')}
+                                                        {!c.last_campaign_sent_at
+                                                            ? 'Never messaged'
+                                                            : onCooldown
+                                                                ? 'Cooldown until ' + cooldownUntilLabel(c)
+                                                                : 'Eligible again (last sent ' + sentAtLabel(c) + ')'}
                                                     </td>
                                                 </tr>
                                             )
