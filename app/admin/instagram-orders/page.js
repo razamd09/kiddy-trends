@@ -25,14 +25,27 @@ const FALLBACK_CITIES = [
 // "417 AA canal garden Lahore" matches "Lahore" — so staff never have to
 // pick it manually for the common case. Tries the live PostEx list first
 // (so the exact name PostEx expects is used), then falls back to a
-// hardcoded list of major cities if that doesn't match anything.
+// hardcoded list of major cities if that doesn't match anything. Matches
+// with spaces collapsed too (both sides), since multi-word city names like
+// "Tando Adam" often get pasted with no space ("Tandoadam") and a plain
+// substring check would otherwise miss them.
+function stripSpaces(value) {
+    return value.toLowerCase().replace(/\s+/g, '')
+}
+
+function includesCity(haystack, haystackNoSpaces, cityName) {
+    const lowerCity = cityName.toLowerCase()
+    return haystack.includes(lowerCity) || haystackNoSpaces.includes(stripSpaces(cityName))
+}
+
 function detectCity(address, cities) {
     const lower = address.toLowerCase()
+    const lowerNoSpaces = stripSpaces(address)
 
-    const liveMatch = cities.find((c) => lower.includes(String(c.operationalCityName || '').toLowerCase()))
+    const liveMatch = cities.find((c) => includesCity(lower, lowerNoSpaces, String(c.operationalCityName || '')))
     if (liveMatch) return liveMatch.operationalCityName
 
-    const fallbackMatch = FALLBACK_CITIES.find((name) => lower.includes(name.toLowerCase()))
+    const fallbackMatch = FALLBACK_CITIES.find((name) => includesCity(lower, lowerNoSpaces, name))
     return fallbackMatch || ''
 }
 
