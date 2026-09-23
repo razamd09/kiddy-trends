@@ -100,16 +100,16 @@ function matchesVersion(product, versionId) {
   return true
 }
 
+// Driven by the product's own `gender` field (Boys / Girls / Neutral / null
+// set from the admin product form), not title text — title keywords are
+// unreliable (many products, especially newer ones, don't mention Boys/Girls
+// at all, and the field is the actual source of truth for this attribute).
 function matchesGenderId(product, genderId) {
-  const title = (product.title || '').toLowerCase()
-  const hasBoys = /\bboys?\b/.test(title)
-  const hasGirls = /\bgirls?\b/.test(title)
-  // No gender word at all in the title (most of the newer "New Arrivals"
-  // batch — 173 of 180 don't mention Boys/Girls) — treat as unisex, so it
-  // shows under either specific filter instead of vanishing from both.
-  if (!hasBoys && !hasGirls) return true
-  if (genderId === 'boys') return hasBoys
-  if (genderId === 'girls') return hasGirls
+  const gender = String(product?.gender || '').trim().toLowerCase()
+  // Neutral or unset — unisex/unspecified, shows under either filter.
+  if (!gender || gender === 'neutral') return true
+  if (genderId === 'boys') return gender === 'boys'
+  if (genderId === 'girls') return gender === 'girls'
   return true
 }
 
