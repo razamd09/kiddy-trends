@@ -4,6 +4,8 @@
 // https://developers.facebook.com/docs/instagram-platform/webhooks
 // ("Your app must enable subscriptions by sending a POST request to the
 // /me/subscribed_apps endpoint with the subscribed_fields parameter").
+export const dynamic = 'force-dynamic'
+
 export async function GET(request) {
     if (!process.env.INSTAGRAM_ACCESS_TOKEN) {
         return Response.json({ success: false, error: 'INSTAGRAM_ACCESS_TOKEN is not configured' }, { status: 500 })

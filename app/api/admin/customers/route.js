@@ -15,6 +15,12 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_KEY
 )
 
+// Without this, Next.js treats this GET as static (reading searchParams via
+// `new URL(request.url)` doesn't opt it out) and Vercel's edge caches the
+// response for 5 minutes — newly booked/synced customers wouldn't show up
+// on the Customers page until that cache expired.
+export const dynamic = 'force-dynamic'
+
 async function validateAdmin(request) {
     const token = request.headers.get('x-admin-token')
     if (!token) return false

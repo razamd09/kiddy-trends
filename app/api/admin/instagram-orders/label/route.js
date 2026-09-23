@@ -1,5 +1,7 @@
 import { getAirwayBillPdf } from '../../../../../lib/postexApi'
 
+export const dynamic = 'force-dynamic'
+
 // Proxies PostEx's Airway Bill PDF — the browser can't call PostEx directly
 // since that requires our secret API token.
 export async function GET(request) {

@@ -13,6 +13,10 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_KEY
 )
 
+// See app/api/admin/customers/route.js — without this, Vercel's edge caches
+// this GET for 5 minutes and newly synced customers won't show up promptly.
+export const dynamic = 'force-dynamic'
+
 async function validateEmployeeAccess(employeeId) {
     const id = String(employeeId || '').trim()
     if (!id) return false

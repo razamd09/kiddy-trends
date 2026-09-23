@@ -2,6 +2,8 @@ import { createClient } from '@supabase/supabase-js'
 import { createOrder, getPickupAddresses } from '../../../../lib/postexApi'
 import { normalizePhone, splitName, upsertCustomers } from '../customers/customer-data'
 
+export const dynamic = 'force-dynamic'
+
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_KEY

@@ -3,6 +3,8 @@ import { normalizePhone, upsertCustomers } from '../admin/customers/customer-dat
 import { sendMetaPurchaseEvent } from '../../../lib/metaConversionsApi'
 import { sendOrderStatusWhatsApp } from '../../../lib/whatsappApi'
 
+export const dynamic = 'force-dynamic'
+
 const ORDER_NOTIFICATION_EMAIL = process.env.ORDER_NOTIFICATION_EMAIL || 'thekiddytrends@gmail.com'
 const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_9p08wct'
 const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID || 'template_ejlv2k2'
