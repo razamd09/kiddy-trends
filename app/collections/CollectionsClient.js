@@ -102,8 +102,14 @@ function matchesVersion(product, versionId) {
 
 function matchesGenderId(product, genderId) {
   const title = (product.title || '').toLowerCase()
-  if (genderId === 'boys') return /\bboys?\b/.test(title)
-  if (genderId === 'girls') return /\bgirls?\b/.test(title)
+  const hasBoys = /\bboys?\b/.test(title)
+  const hasGirls = /\bgirls?\b/.test(title)
+  // No gender word at all in the title (most of the newer "New Arrivals"
+  // batch — 173 of 180 don't mention Boys/Girls) — treat as unisex, so it
+  // shows under either specific filter instead of vanishing from both.
+  if (!hasBoys && !hasGirls) return true
+  if (genderId === 'boys') return hasBoys
+  if (genderId === 'girls') return hasGirls
   return true
 }
 
