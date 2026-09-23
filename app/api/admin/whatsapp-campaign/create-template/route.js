@@ -16,12 +16,17 @@ const SITE_URL = 'https://thekiddytrends.com'
 // MAX_PRODUCTS/PRODUCT_SLOTS in the broadcast page + that same route once
 // it's approved.
 export async function GET() {
+    // Wording deliberately differs from new_arrivals_carousel_kt's body and
+    // card text — Meta rejects a new template whose content is a
+    // near-duplicate of an existing one in the same language, even under a
+    // different name.
     const result = await createCarouselTemplate({
         name: 'new_arrivals_carousel_kt_10',
         languageCode: 'en',
-        bodyText: 'Hi {{1}}! 🎉 New arrivals just dropped at Kiddy Trends — check them out below 👇',
+        bodyText: 'Hey {{1}}! ✨ Take a look at our latest Kiddy Trends picks — swipe through below 👇',
         bodyExample: 'Sara',
         cardCount: 10,
+        cardBodyText: '🌟 Fresh pick: {{1}}',
         cardBodyExample: 'Cute Winter Frock – PKR 2,199',
         buttonBaseUrl: SITE_URL + '/',
         buttonExample: 'products/prd_id=123',
