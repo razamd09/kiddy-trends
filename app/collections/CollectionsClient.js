@@ -93,6 +93,13 @@ function matchesCategoryBucket(product, catId) {
   return true
 }
 
+function matchesVersion(product, versionId) {
+  const version = String(product?.product_version || '').trim().toLowerCase()
+  if (versionId === 'new_arrivals') return version.includes('new arrival')
+  if (versionId === 'winter_deals') return version === 'old packs'
+  return true
+}
+
 function matchesGenderId(product, genderId) {
   const title = (product.title || '').toLowerCase()
   if (genderId === 'boys') return /\bboys?\b/.test(title)
@@ -153,6 +160,7 @@ export default function CollectionsClient({ initialProducts = [] }) {
   const [activeCat, setActiveCat] = useState('all')
   const [activeGender, setActiveGender] = useState(null)
   const [activeSub, setActiveSub] = useState(null)
+  const [activeVersion, setActiveVersion] = useState(null)
   const [queryGenders, setQueryGenders] = useState([])
   const [queryAges, setQueryAges] = useState([])
   const [queryTitle, setQueryTitle] = useState('')
@@ -267,6 +275,10 @@ export default function CollectionsClient({ initialProducts = [] }) {
     filtered = filtered.filter((p) => matchesAnyGenders(p, effectiveGenders))
   }
 
+  if (activeVersion) {
+    filtered = filtered.filter((p) => matchesVersion(p, activeVersion))
+  }
+
   if (queryTitle) {
     filtered = filtered.filter((p) => String(p?.title || '').toLowerCase().includes(queryTitle))
   }
@@ -298,6 +310,7 @@ export default function CollectionsClient({ initialProducts = [] }) {
     setActiveCat(catId)
     setActiveGender(null)
     setActiveSub(null)
+    setActiveVersion(null)
     setPage(1)
   }
 
@@ -305,6 +318,7 @@ export default function CollectionsClient({ initialProducts = [] }) {
     setActiveCat('all')
     setActiveGender(null)
     setActiveSub(null)
+    setActiveVersion(null)
     setQueryAges([])
     setQueryGenders([])
     setPage(1)
@@ -366,6 +380,20 @@ export default function CollectionsClient({ initialProducts = [] }) {
                 {sub.label}
               </button>
             ))}
+            <div className="w-full h-px bg-charcoal/10 my-1" />
+            <p className="w-full text-center font-display text-charcoal text-sm mb-1">Winter New Arrivals or Winter Deals:</p>
+            <button onClick={() => setActiveVersion(null)}
+              className={'px-4 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ' + (!activeVersion ? 'bg-charcoal text-white border-charcoal' : 'bg-white text-charcoal border-gray-200 hover:border-charcoal')}>
+              All
+            </button>
+            <button onClick={() => setActiveVersion('new_arrivals')}
+              className={'px-4 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ' + (activeVersion === 'new_arrivals' ? 'bg-charcoal text-white border-charcoal' : 'bg-white text-charcoal border-gray-200 hover:border-charcoal')}>
+              New Arrivals
+            </button>
+            <button onClick={() => setActiveVersion('winter_deals')}
+              className={'px-4 py-1.5 rounded-full text-sm font-semibold border-2 transition-all ' + (activeVersion === 'winter_deals' ? 'bg-charcoal text-white border-charcoal' : 'bg-white text-charcoal border-gray-200 hover:border-charcoal')}>
+              Winter Deals
+            </button>
           </div>
         </div>
       )}
@@ -379,6 +407,9 @@ export default function CollectionsClient({ initialProducts = [] }) {
           )}
           {effectiveAgeIds.length > 0 && (
             <span className="ml-2 text-coral">· {effectiveAgeIds.map((id) => AGE_LABEL_BY_ID[id]).filter(Boolean).join(', ')}</span>
+          )}
+          {activeVersion && (
+            <span className="ml-2 text-coral">· {activeVersion === 'new_arrivals' ? 'New Arrivals' : 'Winter Deals'}</span>
           )}
         </p>
       </div>
