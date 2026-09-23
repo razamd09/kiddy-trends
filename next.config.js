@@ -19,6 +19,15 @@ const nextConfig = {
         source: '/(.*)',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=300, stale-while-revalidate=600' }],
       },
+      {
+        // API routes return live data (orders, customers, stock, etc.) and
+        // must never be cached — the catch-all rule above would otherwise
+        // also apply its 5-minute cache to every /api/* response. Next.js
+        // applies matching header rules in order and the later match wins
+        // for a repeated key, so this overrides it for API routes only.
+        source: '/api/:path*',
+        headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }],
+      },
     ]
   },
 }
