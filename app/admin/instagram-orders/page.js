@@ -36,6 +36,20 @@ function detectCity(address, cities) {
     return fallbackMatch || ''
 }
 
+// Staff often paste the whole block from Instagram (address + phone number
+// together) into the address box — pull a Pakistani mobile number out of
+// that text too, same idea as city detection.
+function detectPhone(text) {
+    const candidates = text.match(/[\d][\d\s-]{8,13}[\d]/g) || []
+    for (const candidate of candidates) {
+        const digits = candidate.replace(/\D/g, '')
+        if (digits.length === 11 && digits.startsWith('0')) return digits
+        if (digits.length === 10 && digits.startsWith('3')) return '0' + digits
+        if (digits.length === 12 && digits.startsWith('92')) return '0' + digits.slice(2)
+    }
+    return ''
+}
+
 export default function AdminInstagramOrdersPage() {
     const [verified, setVerified] = useState(false)
     const router = useRouter()
@@ -93,8 +107,16 @@ export default function AdminInstagramOrdersPage() {
 
     function updateQuick(field, value) {
         const next = { ...quick, [field]: value }
+        if (field === 'address') {
+            setDetectedCity(detectCity(value, cities))
+            // Only auto-fill if the phone box is still empty — never
+            // overwrite something staff already typed themselves.
+            if (!quick.phone.trim()) {
+                const detectedPhone = detectPhone(value)
+                if (detectedPhone) next.phone = detectedPhone
+            }
+        }
         setQuick(next)
-        if (field === 'address') setDetectedCity(detectCity(value, cities))
     }
 
     async function handleBook(e) {
