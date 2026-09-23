@@ -211,7 +211,7 @@ export default function ProductPageClient({ initialProduct = null }) {
     if (!product) return
     async function fetchRelated() {
       try {
-        const res  = await fetch('/api/products?limit=40', { cache: 'force-cache' })
+        const res  = await fetch('/api/products?limit=40', { cache: 'no-store' })
         const data = await res.json()
         const filtered = (data.products || [])
           .filter((p) => p._id !== product._id && (p.category === product.category || p.product_type === product.product_type))

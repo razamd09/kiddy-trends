@@ -226,8 +226,13 @@ export default function CollectionsClient({ initialProducts = [] }) {
     }
     async function fetchAll() {
       try {
+        // no-store, not force-cache: force-cache reuses whatever the browser
+        // already has for this URL without ever checking freshness — a
+        // customer who visited before a product was added/edited would keep
+        // seeing that stale snapshot indefinitely. The 5-minute module cache
+        // above is the intentional staleness window, not this.
         const first = await fetch('/api/products?limit=400&page=1', {
-          cache: 'force-cache'
+          cache: 'no-store'
         }).then(r => r.json())
 
         const totalPages = Math.max(first.pages || 1, 1)
@@ -235,7 +240,7 @@ export default function CollectionsClient({ initialProducts = [] }) {
         for (let p = 2; p <= totalPages; p++) {
           restPagePromises.push(
             fetch('/api/products?limit=400&page=' + p, {
-              cache: 'force-cache'
+              cache: 'no-store'
             }).then(r => r.json())
           )
         }

@@ -47,7 +47,7 @@ export default function SearchBar() {
           return
         }
 
-        const res  = await fetch('/api/products?limit=8&search=' + encodeURIComponent(query), { cache: 'force-cache' })
+        const res  = await fetch('/api/products?limit=8&search=' + encodeURIComponent(query), { cache: 'no-store' })
         const data = await res.json()
         const nextResults = (data.products || []).slice(0, 8)
         searchCache.set(key, { results: nextResults, expiresAt: Date.now() + SEARCH_CACHE_TTL })

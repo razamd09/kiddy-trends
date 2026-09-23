@@ -43,11 +43,11 @@ export default function CampaignClient({ initialProducts = [] }) {
     }
     async function fetchAll() {
       try {
-        const first = await fetch('/api/products?limit=400&page=1', { cache: 'force-cache' }).then((r) => r.json())
+        const first = await fetch('/api/products?limit=400&page=1', { cache: 'no-store' }).then((r) => r.json())
         const totalPages = Math.max(first.pages || 1, 1)
         const restPagePromises = []
         for (let p = 2; p <= totalPages; p++) {
-          restPagePromises.push(fetch('/api/products?limit=400&page=' + p, { cache: 'force-cache' }).then((r) => r.json()))
+          restPagePromises.push(fetch('/api/products?limit=400&page=' + p, { cache: 'no-store' }).then((r) => r.json()))
         }
         const restPages = restPagePromises.length > 0 ? await Promise.all(restPagePromises) : []
         const all = [...(first.products || []), ...restPages.flatMap((pageResult) => pageResult.products || [])]
