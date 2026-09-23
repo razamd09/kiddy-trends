@@ -103,6 +103,36 @@ close to this if Meta asks for changes, since the code depends on exactly
 this shape (1 intro variable, 5 cards each with 1 body variable + 1 button
 variable).
 
+Carousel Templates aren't offered in this account's Manage Templates UI at
+all (only Default/Catalog/Flows/Calling permissions show up there) — this
+one was created directly via the API instead. Hitting
+`GET /api/admin/whatsapp-campaign/create-template` (no body needed) submits
+it for review; safe to call again if it fails partway, since Meta rejects a
+duplicate name outright rather than creating a second copy. Needs two more
+env vars beyond the ones in step 2: `WHATSAPP_APP_ID` and
+`WHATSAPP_BUSINESS_ACCOUNT_ID` (the app id and the WABA id, both visible in
+the app dashboard — neither is secret).
+
+## 5. Delivery-status webhook
+
+The send API only confirms Meta *accepted* a message, not that it reached
+the customer's phone — `/admin/whatsapp-broadcast` and the order-status
+sends have both shown "sent" with no way to confirm actual delivery. A
+webhook fixes that visibility gap.
+
+In WhatsApp Manager → your phone number → **Configuration → Webhooks** (or
+via the app dashboard's WhatsApp product webhook config):
+- **Callback URL**: `https://www.thekiddytrends.com/api/webhooks/whatsapp`
+- **Verify token**: reuses `INSTAGRAM_WEBHOOK_VERIFY_TOKEN` by default (same
+  app as the Instagram integration) — set `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
+  instead if you want a separate value.
+- Subscribe to the **`messages`** field (this is also what carries delivery
+  status updates for WhatsApp, not just inbound messages).
+
+Every sent/delivered/read/failed event then lands in the
+`whatsapp_status_log` table, viewable via the "Troubleshoot" toggle on
+`/admin/whatsapp-broadcast`.
+
 ## Not built yet (possible next steps)
 
 - Auto-replying to inbound customer messages (needs a webhook receiver route).
