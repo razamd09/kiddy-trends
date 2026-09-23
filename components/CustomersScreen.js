@@ -385,7 +385,7 @@ export default function CustomersScreen({ mode = 'admin' }) {
                     <div className="bg-white rounded-2xl p-4 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
                         <div>
                             <p className="font-semibold text-charcoal">Import Customers</p>
-                            <p className="text-xs text-gray-400">Sync old orders or upload CSV with first name, last name, phone</p>
+                            <p className="text-xs text-gray-400">Sync website &amp; Instagram orders, or upload CSV with first name, last name, phone</p>
                             {csvName && <p className="text-xs text-gray-500 mt-1">Selected file: {csvName}</p>}
                         </div>
                         <div className="flex gap-2 flex-wrap">
@@ -450,18 +450,22 @@ export default function CustomersScreen({ mode = 'admin' }) {
                             <table className="min-w-full text-sm">
                                 <thead className="bg-cream text-gray-500">
                                     <tr>
-                                        <th className="text-left px-4 py-3 font-semibold">First Name</th>
-                                        <th className="text-left px-4 py-3 font-semibold">Last Name</th>
+                                        <th className="text-left px-4 py-3 font-semibold">Name</th>
                                         <th className="text-left px-4 py-3 font-semibold">Phone</th>
+                                        <th className="text-left px-4 py-3 font-semibold">Address</th>
+                                        <th className="text-left px-4 py-3 font-semibold">Instagram</th>
                                         <th className="text-left px-4 py-3 font-semibold">Date Added</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {customers.map((customer) => (
                                         <tr key={customer.id} className="border-t border-gray-100">
-                                            <td className="px-4 py-3 font-medium text-charcoal">{customer.first_name || '-'}</td>
-                                            <td className="px-4 py-3 text-charcoal">{customer.last_name || '-'}</td>
-                                            <td className="px-4 py-3 text-charcoal font-semibold">{customer.phone || '-'}</td>
+                                            <td className="px-4 py-3 font-medium text-charcoal">
+                                                {[customer.first_name, customer.last_name].filter(Boolean).join(' ') || '-'}
+                                            </td>
+                                            <td className="px-4 py-3 text-charcoal font-semibold whitespace-nowrap">{customer.phone || '-'}</td>
+                                            <td className="px-4 py-3 text-charcoal max-w-xs truncate" title={customer.address || ''}>{customer.address || '-'}</td>
+                                            <td className="px-4 py-3 text-charcoal">{customer.instagram_username ? '@' + customer.instagram_username : '-'}</td>
                                             <td className="px-4 py-3 text-charcoal whitespace-nowrap">{formatInsertedDate(customer.created_at)}</td>
                                         </tr>
                                     ))}

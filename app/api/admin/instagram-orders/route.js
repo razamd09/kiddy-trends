@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { createOrder, getPickupAddresses } from '../../../../lib/postexApi'
+import { normalizePhone, splitName, upsertCustomers } from '../customers/customer-data'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -40,7 +41,7 @@ export async function POST(request) {
         const body = await request.json()
         const {
             customerName, customerPhone, cityName, deliveryAddress,
-            orderDetail, items, invoicePayment, transactionNotes,
+            orderDetail, items, invoicePayment, transactionNotes, instagramUsername,
         } = body
 
         if (!customerName || !customerPhone || !cityName || !deliveryAddress || !invoicePayment) {
@@ -82,6 +83,7 @@ export async function POST(request) {
                 items: Number(items) || 1,
                 invoice_payment: Number(invoicePayment) || 0,
                 transaction_notes: transactionNotes || '',
+                instagram_username: String(instagramUsername || '').replace(/^@/, ''),
                 tracking_number: result.trackingNumber || null,
                 order_status: result.orderStatus || null,
                 postex_response: result,
@@ -98,6 +100,21 @@ export async function POST(request) {
                 warning: 'Order booked with PostEx but failed to save locally: ' + error.message,
                 trackingNumber: result.trackingNumber,
             })
+        }
+
+        // Every booked order is also a customer record — the book-order
+        // screen is effectively the "add customer" flow now, so there's no
+        // separate manual step needed to get them into the Customers list.
+        const normalizedPhone = normalizePhone(customerPhone)
+        if (normalizedPhone) {
+            await upsertCustomers([{
+                ...splitName(customerName),
+                phone: normalizedPhone,
+                address: deliveryAddress,
+                instagram_username: String(instagramUsername || '').replace(/^@/, ''),
+                order_source: 'Insta',
+                updated_at: new Date().toISOString(),
+            }])
         }
 
         return Response.json({ success: true, order: data })

@@ -149,6 +149,7 @@ export default function AdminInstagramOrdersPage() {
                     items: '1',
                     invoicePayment: quick.amount,
                     transactionNotes: 'IG: @' + quick.username.replace(/^@/, ''),
+                    instagramUsername: quick.username.replace(/^@/, ''),
                 }),
             })
             const data = await res.json()

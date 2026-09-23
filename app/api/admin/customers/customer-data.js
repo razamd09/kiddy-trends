@@ -31,7 +31,7 @@ export function normalizeOrderSource(value) {
     return 'Website'
 }
 
-function splitName(name) {
+export function splitName(name) {
     const normalized = String(name || '').trim().replace(/\s+/g, ' ')
     if (!normalized) return { first_name: '', last_name: '' }
     const parts = normalized.split(' ')
@@ -137,12 +137,12 @@ async function fetchCustomersPage(page, queryText) {
 
     let query = supabase
         .from('customers')
-        .select('id, first_name, last_name, phone, created_at, updated_at', { count: 'exact' })
+        .select('id, first_name, last_name, phone, address, instagram_username, order_source, created_at, updated_at', { count: 'exact' })
         .order('updated_at', { ascending: false })
         .range(offset, offset + limit - 1)
 
     if (queryText) {
-        query = query.or('first_name.ilike.%' + queryText + '%,last_name.ilike.%' + queryText + '%,phone.ilike.%' + queryText + '%')
+        query = query.or('first_name.ilike.%' + queryText + '%,last_name.ilike.%' + queryText + '%,phone.ilike.%' + queryText + '%,instagram_username.ilike.%' + queryText + '%')
     }
 
     const { data, error, count } = await query
@@ -233,8 +233,58 @@ async function buildCustomersFromOrders() {
     return [...byPhone.values()]
 }
 
+async function buildCustomersFromInstagramOrders() {
+    const pageSize = 1000
+    let from = 0
+    const byPhone = new Map()
+
+    while (true) {
+        const { data, error } = await supabase
+            .from('instagram_orders')
+            .select('customer_name, customer_phone, delivery_address, instagram_username, created_at')
+            .order('created_at', { ascending: false })
+            .range(from, from + pageSize - 1)
+
+        if (error) throw new Error(error.message)
+        if (!data || data.length === 0) break
+
+        data.forEach((order) => {
+            const phone = normalizePhone(order.customer_phone || '')
+            if (!phone || byPhone.has(phone)) return
+            const name = splitName(order.customer_name)
+            byPhone.set(phone, {
+                ...name,
+                phone,
+                address: order.delivery_address || '',
+                instagram_username: order.instagram_username || '',
+                order_source: 'Insta',
+                updated_at: new Date().toISOString(),
+            })
+        })
+
+        if (data.length < pageSize) break
+        from += pageSize
+    }
+
+    return [...byPhone.values()]
+}
+
 export async function backfillCustomersFromOrders() {
-    const rows = await buildCustomersFromOrders()
+    const [websiteRows, instagramRows] = await Promise.all([
+        buildCustomersFromOrders(),
+        buildCustomersFromInstagramOrders(),
+    ])
+
+    // Instagram quick-entry carries richer info (address, IG handle) — let
+    // it win when the same phone shows up from both sources.
+    const merged = new Map()
+    websiteRows.forEach((row) => merged.set(row.phone, row))
+    instagramRows.forEach((row) => {
+        const existing = merged.get(row.phone)
+        merged.set(row.phone, existing ? { ...existing, ...row } : row)
+    })
+
+    const rows = [...merged.values()]
     if (rows.length === 0) return 0
 
     const error = await upsertCustomers(rows)
