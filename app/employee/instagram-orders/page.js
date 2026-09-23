@@ -6,13 +6,34 @@ import EmployeePortalNav from '@/components/EmployeePortalNav'
 
 const EMPTY_QUICK_FORM = { address: '', phone: '', username: '', amount: '' }
 
-// Finds which PostEx-operational city the pasted address mentions — e.g.
+// Backup list of major Pakistani cities, checked if the live PostEx city
+// list doesn't yield a match (e.g. the PostEx API is briefly unreachable) —
+// city detection shouldn't go blind just because that one call failed.
+const FALLBACK_CITIES = [
+    'Lahore', 'Karachi', 'Islamabad', 'Rawalpindi', 'Faisalabad', 'Multan',
+    'Peshawar', 'Quetta', 'Sialkot', 'Gujranwala', 'Hyderabad', 'Sargodha',
+    'Bahawalpur', 'Sukkur', 'Larkana', 'Sheikhupura', 'Jhang', 'Gujrat',
+    'Kasur', 'Mardan', 'Mingora', 'Rahim Yar Khan', 'Sahiwal', 'Okara',
+    'Wah Cantt', 'Dera Ghazi Khan', 'Mirpur Khas', 'Nawabshah', 'Chiniot',
+    'Kotli', 'Kamoke', 'Hafizabad', 'Muzaffargarh', 'Khanpur', 'Gojra',
+    'Mandi Bahauddin', 'Abbottabad', 'Turbat', 'Muridke', 'Jacobabad',
+    'Shikarpur', 'Jhelum', 'Khanewal', 'Dera Ismail Khan', 'Chakwal',
+    'Kohat', 'Vehari', 'Nowshera', 'Mianwali', 'Attock', 'Toba Tek Singh',
+]
+
+// Finds which operational city the pasted address mentions — e.g.
 // "417 AA canal garden Lahore" matches "Lahore" — so staff never have to
-// pick it manually for the common case.
+// pick it manually for the common case. Tries the live PostEx list first
+// (so the exact name PostEx expects is used), then falls back to a
+// hardcoded list of major cities if that doesn't match anything.
 function detectCity(address, cities) {
     const lower = address.toLowerCase()
-    const match = cities.find((c) => lower.includes(String(c.operationalCityName || '').toLowerCase()))
-    return match ? match.operationalCityName : ''
+
+    const liveMatch = cities.find((c) => lower.includes(String(c.operationalCityName || '').toLowerCase()))
+    if (liveMatch) return liveMatch.operationalCityName
+
+    const fallbackMatch = FALLBACK_CITIES.find((name) => lower.includes(name.toLowerCase()))
+    return fallbackMatch || ''
 }
 
 export default function EmployeeInstagramOrdersPage() {
