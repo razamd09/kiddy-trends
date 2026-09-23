@@ -1,10 +1,22 @@
 import { createClient } from '@supabase/supabase-js'
-import { createOrder } from '../../../../lib/postexApi'
+import { createOrder, getPickupAddresses } from '../../../../lib/postexApi'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_KEY
 )
+
+// PostEx requires every order to carry a pickup (or store) address code —
+// the warehouse/pickup location is the same for every order regardless of
+// where it's shipping to, so just use whichever one is registered first.
+let cachedPickupAddressCode = null
+async function resolvePickupAddressCode() {
+    if (cachedPickupAddressCode) return cachedPickupAddressCode
+    const result = await getPickupAddresses()
+    if (!result.success || !result.addresses?.length) return null
+    cachedPickupAddressCode = result.addresses[0].addressCode
+    return cachedPickupAddressCode
+}
 
 export async function GET(request) {
     const { searchParams } = new URL(request.url)
@@ -36,6 +48,10 @@ export async function POST(request) {
         }
 
         const orderRefNumber = 'IG' + Date.now()
+        const pickupAddressCode = await resolvePickupAddressCode()
+        if (!pickupAddressCode) {
+            return Response.json({ success: false, error: 'No pickup address registered with PostEx — add one in your PostEx merchant dashboard first' }, { status: 502 })
+        }
 
         const result = await createOrder({
             orderRefNumber,
@@ -47,6 +63,7 @@ export async function POST(request) {
             items,
             invoicePayment,
             transactionNotes,
+            pickupAddressCode,
         })
 
         if (!result.success) {
