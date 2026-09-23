@@ -13,8 +13,8 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_KEY
 )
 
-const TEMPLATE_NAME = 'new_arrivals_carousel_kt'
-const PRODUCT_SLOTS = 5
+const TEMPLATE_NAME = 'new_arrivals_carousel_kt_10'
+const PRODUCT_SLOTS = 10
 const SEND_CONCURRENCY = 5
 
 async function fetchDefaultProductIds() {

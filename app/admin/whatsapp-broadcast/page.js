@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminPortalNav from '@/components/AdminPortalNav'
 
-const MAX_PRODUCTS = 5
+const MAX_PRODUCTS = 10
 const POOL_LIMIT = 100
 const SITE_URL = 'https://thekiddytrends.com'
 const BATCH_SIZE_MIN = 5
@@ -461,7 +461,7 @@ export default function AdminWhatsAppBroadcastPage() {
                     <p className="font-display text-lg text-charcoal mb-1">New Arrivals (drag into selection below)</p>
                     <p className="text-xs text-gray-500 mb-4">
                         Newest first · drag up to {MAX_PRODUCTS} cards down into "Selected for this broadcast" —
-                        these become the carousel cards in the <code className="bg-cream px-1.5 py-0.5 rounded">new_arrivals_carousel_kt</code> message.
+                        these become the carousel cards in the <code className="bg-cream px-1.5 py-0.5 rounded">new_arrivals_carousel_kt_10</code> message.
                     </p>
 
                     {poolLoading && <p className="text-sm text-gray-400">Loading...</p>}
