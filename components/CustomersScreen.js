@@ -118,6 +118,9 @@ export default function CustomersScreen({ mode = 'admin' }) {
     const [query, setQuery] = useState('')
     const [page, setPage] = useState(1)
     const [total, setTotal] = useState(0)
+    const [sortBy, setSortBy] = useState('created_at')
+    const [sortDir, setSortDir] = useState('desc')
+    const [sourceFilter, setSourceFilter] = useState('')
     const [statusMessage, setStatusMessage] = useState('')
     const [promotionSubject, setPromotionSubject] = useState('')
     const [syncingOrders, setSyncingOrders] = useState(false)
@@ -169,9 +172,9 @@ export default function CustomersScreen({ mode = 'admin' }) {
     useEffect(() => {
         if (!verified) return
         loadCustomers()
-    }, [verified, page])
+    }, [verified, page, sortBy, sortDir, sourceFilter])
 
-    async function loadCustomers(search = query, forcedPage = page) {
+    async function loadCustomers(search = query, forcedPage = page, forcedSortBy = sortBy, forcedSortDir = sortDir, forcedSource = sourceFilter) {
         setLoading(true)
         setStatusMessage('')
 
@@ -186,8 +189,9 @@ export default function CustomersScreen({ mode = 'admin' }) {
         }
 
         try {
-            const params = new URLSearchParams({ page: String(forcedPage) })
+            const params = new URLSearchParams({ page: String(forcedPage), sort: forcedSortBy, dir: forcedSortDir })
             if (search.trim()) params.set('q', search.trim())
+            if (forcedSource) params.set('source', forcedSource)
 
             const res = await fetch(apiPath + '?' + params.toString(), { headers })
             const data = await res.json().catch(() => ({}))
@@ -343,6 +347,26 @@ export default function CustomersScreen({ mode = 'admin' }) {
         loadCustomers(query, 1)
     }
 
+    function toggleSort(column) {
+        setPage(1)
+        if (sortBy === column) {
+            setSortDir((currentDir) => (currentDir === 'asc' ? 'desc' : 'asc'))
+        } else {
+            setSortBy(column)
+            setSortDir('asc')
+        }
+    }
+
+    function sortArrow(column) {
+        if (sortBy !== column) return ''
+        return sortDir === 'asc' ? ' ▲' : ' ▼'
+    }
+
+    function changeSourceFilter(value) {
+        setSourceFilter(value)
+        setPage(1)
+    }
+
     const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total])
     const headerMessageClass = statusMessage.toLowerCase().includes('failed') || statusMessage.toLowerCase().includes('error')
         ? 'text-coral text-sm'
@@ -373,9 +397,18 @@ export default function CustomersScreen({ mode = 'admin' }) {
                     <input
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        placeholder="Search by first name, last name, or phone"
+                        placeholder="Search by first name, last name, phone, or Instagram"
                         className="flex-1 rounded-xl border border-gray-200 px-4 py-2 text-sm outline-none focus:border-coral"
                     />
+                    <select
+                        value={sourceFilter}
+                        onChange={(e) => changeSourceFilter(e.target.value)}
+                        className="rounded-xl border border-gray-200 px-4 py-2 text-sm outline-none focus:border-coral bg-white sm:w-48"
+                    >
+                        <option value="">Filter: All Sources</option>
+                        <option value="Website">Filter: Website</option>
+                        <option value="Insta">Filter: Instagram</option>
+                    </select>
                     <button type="submit" className="px-4 py-2 rounded-xl bg-charcoal text-white text-sm font-semibold hover:opacity-90">
                         Search
                     </button>
@@ -450,11 +483,17 @@ export default function CustomersScreen({ mode = 'admin' }) {
                             <table className="min-w-full text-sm">
                                 <thead className="bg-cream text-gray-500">
                                     <tr>
-                                        <th className="text-left px-4 py-3 font-semibold">Name</th>
-                                        <th className="text-left px-4 py-3 font-semibold">Phone</th>
+                                        <th className="text-left px-4 py-3 font-semibold">
+                                            <button onClick={() => toggleSort('name')} className="hover:text-coral">Name{sortArrow('name')}</button>
+                                        </th>
+                                        <th className="text-left px-4 py-3 font-semibold">
+                                            <button onClick={() => toggleSort('phone')} className="hover:text-coral">Phone{sortArrow('phone')}</button>
+                                        </th>
                                         <th className="text-left px-4 py-3 font-semibold">Address</th>
                                         <th className="text-left px-4 py-3 font-semibold">Instagram</th>
-                                        <th className="text-left px-4 py-3 font-semibold">Date Added</th>
+                                        <th className="text-left px-4 py-3 font-semibold">
+                                            <button onClick={() => toggleSort('created_at')} className="hover:text-coral">Date Added{sortArrow('created_at')}</button>
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>

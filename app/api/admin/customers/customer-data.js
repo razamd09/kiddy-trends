@@ -131,18 +131,30 @@ async function mergeCustomersWithoutPhoneConstraint(rows, includeOrderSource) {
     return null
 }
 
-async function fetchCustomersPage(page, queryText) {
+const SORT_COLUMNS = {
+    name: 'first_name',
+    phone: 'phone',
+    created_at: 'created_at',
+}
+
+async function fetchCustomersPage(page, queryText, sortBy = 'created_at', sortDir = 'desc', sourceFilter = '') {
     const limit = 30
     const offset = (page - 1) * limit
+    const column = SORT_COLUMNS[sortBy] || 'created_at'
+    const ascending = sortDir === 'asc'
 
     let query = supabase
         .from('customers')
         .select('id, first_name, last_name, phone, address, instagram_username, order_source, created_at, updated_at', { count: 'exact' })
-        .order('updated_at', { ascending: false })
+        .order(column, { ascending })
         .range(offset, offset + limit - 1)
 
     if (queryText) {
         query = query.or('first_name.ilike.%' + queryText + '%,last_name.ilike.%' + queryText + '%,phone.ilike.%' + queryText + '%,instagram_username.ilike.%' + queryText + '%')
+    }
+
+    if (sourceFilter) {
+        query = query.eq('order_source', sourceFilter)
     }
 
     const { data, error, count } = await query
@@ -293,17 +305,18 @@ export async function backfillCustomersFromOrders() {
     return rows.length
 }
 
-export async function getCustomersPage(page, queryText = '') {
+export async function getCustomersPage(page, queryText = '', sortBy = 'created_at', sortDir = 'desc', sourceFilter = '') {
     const safePage = Math.max(1, Number(page || 1))
     const search = String(queryText || '').trim()
+    const source = String(sourceFilter || '').trim()
 
-    let result = await fetchCustomersPage(safePage, search)
+    let result = await fetchCustomersPage(safePage, search, sortBy, sortDir, source)
 
-    if (!search && safePage === 1 && (result.total === 0 || hasMissingNames(result.customers))) {
+    if (!search && !source && safePage === 1 && (result.total === 0 || hasMissingNames(result.customers))) {
         try {
             const imported = await backfillCustomersFromOrders()
             if (imported > 0) {
-                result = await fetchCustomersPage(safePage, search)
+                result = await fetchCustomersPage(safePage, search, sortBy, sortDir, source)
             }
         } catch {
             // Keep the current response if background backfill fails.

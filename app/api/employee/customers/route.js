@@ -36,8 +36,11 @@ export async function GET(request) {
         const { searchParams } = new URL(request.url)
         const page = searchParams.get('page') || 1
         const queryText = searchParams.get('q') || ''
+        const sortBy = searchParams.get('sort') || 'created_at'
+        const sortDir = searchParams.get('dir') || 'desc'
+        const source = searchParams.get('source') || ''
 
-        const data = await getCustomersPage(page, queryText)
+        const data = await getCustomersPage(page, queryText, sortBy, sortDir, source)
         return Response.json(data)
     } catch (error) {
         return Response.json({ error: error.message }, { status: 500 })

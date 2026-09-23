@@ -41,7 +41,13 @@ export async function GET(request) {
         if (!valid) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
         const { searchParams } = new URL(request.url)
-        const data = await getCustomersPage(searchParams.get('page') || 1, searchParams.get('q') || '')
+        const data = await getCustomersPage(
+            searchParams.get('page') || 1,
+            searchParams.get('q') || '',
+            searchParams.get('sort') || 'created_at',
+            searchParams.get('dir') || 'desc',
+            searchParams.get('source') || ''
+        )
         return Response.json(data)
     } catch (error) {
         return Response.json({ error: error.message }, { status: 500 })
