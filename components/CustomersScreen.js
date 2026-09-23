@@ -408,6 +408,8 @@ export default function CustomersScreen({ mode = 'admin' }) {
                         <option value="">Filter: All Sources</option>
                         <option value="Website">Filter: Website</option>
                         <option value="Insta">Filter: Instagram</option>
+                        <option value="Whatsapp">Filter: WhatsApp</option>
+                        <option value="Facebook">Filter: Facebook</option>
                     </select>
                     <button type="submit" className="px-4 py-2 rounded-xl bg-charcoal text-white text-sm font-semibold hover:opacity-90">
                         Search
