@@ -47,7 +47,7 @@ export async function POST(request) {
             return Response.json({ success: false, error: 'Customer name, phone, city, address and COD amount are all required' }, { status: 400 })
         }
 
-        const orderRefNumber = 'IG' + Date.now()
+        const orderRefNumber = '786-KT-' + Date.now()
         const pickupAddressCode = await resolvePickupAddressCode()
         if (!pickupAddressCode) {
             return Response.json({ success: false, error: 'No pickup address registered with PostEx — add one in your PostEx merchant dashboard first' }, { status: 502 })

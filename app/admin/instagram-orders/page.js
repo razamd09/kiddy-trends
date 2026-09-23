@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminPortalNav from '@/components/AdminPortalNav'
 
-const EMPTY_QUICK_FORM = { address: '', phone: '', username: '', amount: '' }
+const EMPTY_QUICK_FORM = { customerName: '', address: '', phone: '', username: '', amount: '' }
 
 // Backup list of major Pakistani cities, checked if the live PostEx city
 // list doesn't yield a match (e.g. the PostEx API is briefly unreachable) —
@@ -125,8 +125,8 @@ export default function AdminInstagramOrdersPage() {
         setLastBooked(null)
 
         const cityName = cityOverride || detectedCity
-        if (!quick.address.trim() || !quick.phone.trim() || !quick.username.trim() || !quick.amount.trim()) {
-            setBookError('Address, phone, Instagram username and amount are all required.')
+        if (!quick.customerName.trim() || !quick.address.trim() || !quick.phone.trim() || !quick.username.trim() || !quick.amount.trim()) {
+            setBookError('Name, address, phone, Instagram username and amount are all required.')
             return
         }
         if (!cityName) {
@@ -141,14 +141,14 @@ export default function AdminInstagramOrdersPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    customerName: quick.username,
+                    customerName: quick.customerName,
                     customerPhone: quick.phone,
                     cityName,
                     deliveryAddress: quick.address,
                     orderDetail,
                     items: '1',
                     invoicePayment: quick.amount,
-                    transactionNotes: '',
+                    transactionNotes: 'IG: @' + quick.username.replace(/^@/, ''),
                 }),
             })
             const data = await res.json()
@@ -211,9 +211,14 @@ export default function AdminInstagramOrdersPage() {
 
                 <form onSubmit={handleBook} className="bg-white rounded-2xl p-6 shadow-sm">
                     <p className="font-display text-lg text-charcoal mb-1">Quick order entry</p>
-                    <p className="text-xs text-gray-500 mb-4">Copy these four things straight from the Instagram chat — city fills in automatically from the address.</p>
+                    <p className="text-xs text-gray-500 mb-4">Copy these straight from the Instagram chat — city fills in automatically from the address.</p>
 
                     <div className="space-y-4">
+                        <div>
+                            <label className="text-xs text-gray-500 mb-1 block">Customer Name *</label>
+                            <input value={quick.customerName} onChange={(e) => updateQuick('customerName', e.target.value)}
+                                   placeholder="e.g. Sehar Majid" className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
+                        </div>
                         <div>
                             <label className="text-xs text-gray-500 mb-1 block">Address *</label>
                             <textarea value={quick.address} onChange={(e) => updateQuick('address', e.target.value)}
