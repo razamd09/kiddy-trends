@@ -137,6 +137,45 @@ const SORT_COLUMNS = {
     created_at: 'created_at',
 }
 
+const RECIPIENT_SORT_COLUMNS = {
+    ...SORT_COLUMNS,
+    last_sent: 'last_campaign_sent_at',
+}
+
+// Customer picker for the WhatsApp broadcast screen — same search/sort/
+// source-filter conventions as fetchCustomersPage, but only customers with a
+// phone on file, and carrying last_campaign_sent_at so the picker can show
+// (and the send route can re-check) the 5-day cooldown.
+export async function getCampaignRecipients(page, queryText = '', sortBy = 'created_at', sortDir = 'desc', sourceFilter = '') {
+    const safePage = Math.max(1, Number(page || 1))
+    const search = String(queryText || '').trim()
+    const source = String(sourceFilter || '').trim()
+    const limit = 30
+    const offset = (safePage - 1) * limit
+    const column = RECIPIENT_SORT_COLUMNS[sortBy] || 'created_at'
+    const ascending = sortDir === 'asc'
+
+    let query = supabase
+        .from('customers')
+        .select('id, first_name, last_name, phone, order_source, last_campaign_sent_at', { count: 'exact' })
+        .not('phone', 'is', null)
+        .neq('phone', '')
+        .order(column, { ascending, nullsFirst: sortBy === 'last_sent' ? ascending : undefined })
+        .range(offset, offset + limit - 1)
+
+    if (search) {
+        query = query.or('first_name.ilike.%' + search + '%,last_name.ilike.%' + search + '%,phone.ilike.%' + search + '%,instagram_username.ilike.%' + search + '%')
+    }
+    if (source) {
+        query = query.eq('order_source', source)
+    }
+
+    const { data, error, count } = await query
+    if (error) throw new Error(error.message)
+
+    return { customers: data || [], total: count || 0, page: safePage, pageSize: limit }
+}
+
 async function fetchCustomersPage(page, queryText, sortBy = 'created_at', sortDir = 'desc', sourceFilter = '') {
     const limit = 30
     const offset = (page - 1) * limit

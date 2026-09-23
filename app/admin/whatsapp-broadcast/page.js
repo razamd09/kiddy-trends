@@ -4,10 +4,12 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminPortalNav from '@/components/AdminPortalNav'
 
-const BATCH_SIZE = 100
 const MAX_PRODUCTS = 5
 const POOL_LIMIT = 100
 const SITE_URL = 'https://thekiddytrends.com'
+const BATCH_SIZE_MIN = 5
+const BATCH_SIZE_MAX = 20
+const RECIPIENTS_PAGE_SIZE = 30
 
 function isNewArrival(product) {
     return String(product?.product_version || '').trim().toLowerCase().includes('new arrival')
@@ -68,8 +70,6 @@ export default function AdminWhatsAppBroadcastPage() {
     const router = useRouter()
     const dragRef = useRef(null)
 
-    const [loading, setLoading] = useState(true)
-    const [recipientCount, setRecipientCount] = useState(0)
     const [loadError, setLoadError] = useState('')
 
     const [pool, setPool] = useState([])
@@ -81,8 +81,22 @@ export default function AdminWhatsAppBroadcastPage() {
     const [testSending, setTestSending] = useState(false)
     const [testResult, setTestResult] = useState(null)
 
+    // Recipient picker — mirrors the Customers page's search/sort/filter.
+    const [recipients, setRecipients] = useState([])
+    const [recipientsLoading, setRecipientsLoading] = useState(true)
+    const [recipientsPage, setRecipientsPage] = useState(1)
+    const [recipientsTotal, setRecipientsTotal] = useState(0)
+    const [recipientsQuery, setRecipientsQuery] = useState('')
+    const [recipientsSort, setRecipientsSort] = useState('created_at')
+    const [recipientsDir, setRecipientsDir] = useState('desc')
+    const [recipientsSource, setRecipientsSource] = useState('')
+    const [cooldownDays, setCooldownDays] = useState(5)
+    const [selectedCustomers, setSelectedCustomers] = useState(new Map())
+    const [batchSize, setBatchSize] = useState(10)
+
     const [sending, setSending] = useState(false)
-    const [progress, setProgress] = useState({ processed: 0, sent: 0, failed: 0 })
+    const [sendTotal, setSendTotal] = useState(0)
+    const [progress, setProgress] = useState({ processed: 0, sent: 0, failed: 0, skippedCooldown: 0 })
     const [errors, setErrors] = useState([])
     const [finished, setFinished] = useState(false)
 
@@ -107,15 +121,18 @@ export default function AdminWhatsAppBroadcastPage() {
         verify()
     }, [])
 
+    useEffect(() => {
+        if (!verified) return
+        loadRecipients(recipientsPage)
+    }, [verified, recipientsPage, recipientsSort, recipientsDir, recipientsSource])
+
     function token() {
         return localStorage.getItem('admin_token') || ''
     }
 
-    // Fetches recipient count + default picks, and the New Arrivals pool for
-    // the drag-and-drop picker, together — same pool source as the Campaigns
-    // drag-and-drop screen.
+    // Fetches default picks, and the New Arrivals pool for the drag-and-drop
+    // picker, together — same pool source as the Campaigns drag-and-drop screen.
     async function loadAll() {
-        setLoading(true)
         setPoolLoading(true)
         setLoadError('')
         try {
@@ -131,14 +148,12 @@ export default function AdminWhatsAppBroadcastPage() {
             const newArrivals = all.filter(isNewArrival).slice(0, POOL_LIMIT)
             setPool(newArrivals)
 
-            setRecipientCount(previewData.recipientCount || 0)
             const defaultIds = previewData.defaultProductIds || []
             setSelected(defaultIds.map((id) => newArrivals.find((p) => p.id === id)).filter(Boolean))
         } catch (err) {
             setLoadError(err.message)
             setPool([])
         }
-        setLoading(false)
         setPoolLoading(false)
     }
 
@@ -165,6 +180,83 @@ export default function AdminWhatsAppBroadcastPage() {
         const product = dragRef.current
         dragRef.current = null
         if (product) addSelected(product)
+    }
+
+    function isOnCooldown(customer) {
+        if (!customer.last_campaign_sent_at) return false
+        const cooldownMs = cooldownDays * 24 * 60 * 60 * 1000
+        return Date.now() - new Date(customer.last_campaign_sent_at).getTime() < cooldownMs
+    }
+
+    function cooldownUntilLabel(customer) {
+        const sentAt = new Date(customer.last_campaign_sent_at).getTime()
+        const eligibleAt = new Date(sentAt + cooldownDays * 24 * 60 * 60 * 1000)
+        return eligibleAt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+    }
+
+    async function loadRecipients(page) {
+        setRecipientsLoading(true)
+        try {
+            const params = new URLSearchParams({ page: String(page), sort: recipientsSort, dir: recipientsDir })
+            if (recipientsQuery.trim()) params.set('q', recipientsQuery.trim())
+            if (recipientsSource) params.set('source', recipientsSource)
+
+            const res = await fetch('/api/admin/whatsapp-campaign/recipients?' + params.toString(), {
+                headers: { 'x-admin-token': token() },
+            })
+            const data = await res.json()
+            if (!data.success) throw new Error(data.error || 'Failed to load customers')
+
+            setRecipients(data.customers || [])
+            setRecipientsTotal(data.total || 0)
+            if (data.cooldownDays) setCooldownDays(data.cooldownDays)
+        } catch {
+            setRecipients([])
+        }
+        setRecipientsLoading(false)
+    }
+
+    function submitRecipientSearch(e) {
+        e.preventDefault()
+        setRecipientsPage(1)
+        loadRecipients(1)
+    }
+
+    function toggleRecipientSort(column) {
+        setRecipientsPage(1)
+        if (recipientsSort === column) {
+            setRecipientsDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+        } else {
+            setRecipientsSort(column)
+            setRecipientsDir('asc')
+        }
+    }
+
+    function sortArrow(column) {
+        if (recipientsSort !== column) return ''
+        return recipientsDir === 'asc' ? ' ▲' : ' ▼'
+    }
+
+    function toggleSelectCustomer(customer) {
+        if (isOnCooldown(customer)) return
+        setSelectedCustomers((prev) => {
+            const next = new Map(prev)
+            if (next.has(customer.id)) next.delete(customer.id)
+            else next.set(customer.id, customer)
+            return next
+        })
+    }
+
+    function selectAllEligibleOnPage() {
+        setSelectedCustomers((prev) => {
+            const next = new Map(prev)
+            recipients.forEach((c) => { if (!isOnCooldown(c)) next.set(c.id, c) })
+            return next
+        })
+    }
+
+    function clearSelection() {
+        setSelectedCustomers(new Map())
     }
 
     async function loadDebugInfo() {
@@ -204,36 +296,27 @@ export default function AdminWhatsAppBroadcastPage() {
         return cards.map((c) => ({ ...c, mediaId: mediaById[c.id] }))
     }
 
-    async function sendBatches(cardsWithMedia, testNumbers, debugTemplateName) {
-        const cardsPayload = cardsWithMedia.map((c) => ({ mediaId: c.mediaId, bodyText: c.bodyText, buttonPath: c.buttonPath }))
-        let offset = 0
-        let totals = { processed: 0, sent: 0, failed: 0 }
-        let allErrors = []
+    function cardsToPayload(cardsWithMedia) {
+        return cardsWithMedia.map((c) => ({ mediaId: c.mediaId, bodyText: c.bodyText, buttonPath: c.buttonPath }))
+    }
 
-        while (true) {
-            const res = await fetch('/api/admin/whatsapp-campaign', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(testNumbers
-                    ? { cards: cardsPayload, testNumbers, debugTemplateName: debugTemplateName || undefined }
-                    : { offset, limit: BATCH_SIZE, cards: cardsPayload }),
-            })
-            const data = await res.json()
-            if (!data.success) throw new Error(data.error || 'Send failed')
+    async function sendOneBatch(cardsPayload, { customerIds, testNumbers, debugTemplateName } = {}) {
+        const res = await fetch('/api/admin/whatsapp-campaign', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(testNumbers
+                ? { cards: cardsPayload, testNumbers, debugTemplateName: debugTemplateName || undefined }
+                : { cards: cardsPayload, customerIds }),
+        })
+        const data = await res.json()
+        if (!data.success) throw new Error(data.error || 'Send failed')
+        return data
+    }
 
-            totals = {
-                processed: totals.processed + data.processed,
-                sent: totals.sent + data.sent,
-                failed: totals.failed + data.failed,
-            }
-            if (data.errors?.length) allErrors = [...allErrors, ...data.errors].slice(0, 10)
-
-            if (!testNumbers) { setProgress(totals); setErrors(allErrors) }
-            if (data.done) break
-            offset += BATCH_SIZE
-        }
-
-        return { totals, allErrors }
+    function chunkArray(array, size) {
+        const chunks = []
+        for (let i = 0; i < array.length; i += size) chunks.push(array.slice(i, i + size))
+        return chunks
     }
 
     async function sendTest() {
@@ -245,8 +328,8 @@ export default function AdminWhatsAppBroadcastPage() {
         setTestResult(null)
         try {
             const cardsWithMedia = debugTemplateName ? [] : await uploadCardMedia(buildCards(selected))
-            const { totals, allErrors } = await sendBatches(cardsWithMedia, numbers, debugTemplateName)
-            setTestResult({ ...totals, details: allErrors })
+            const data = await sendOneBatch(cardsToPayload(cardsWithMedia), { testNumbers: numbers, debugTemplateName })
+            setTestResult({ processed: data.processed, sent: data.sent, failed: data.failed, details: data.errors })
         } catch (err) {
             setTestResult({ error: err.message })
         }
@@ -255,17 +338,40 @@ export default function AdminWhatsAppBroadcastPage() {
 
     async function launchCampaign() {
         if (sending) return
+        const customers = [...selectedCustomers.values()]
         if (selected.length === 0) { alert('Pick at least one product first.'); return }
-        if (!window.confirm('Send this broadcast to all ' + recipientCount + ' customers on WhatsApp, in batches of ' + BATCH_SIZE + '? This cannot be undone.')) return
+        if (customers.length === 0) { alert('Select at least one customer to send to.'); return }
+        if (!window.confirm('Send this broadcast to ' + customers.length + ' selected customer(s), in batches of ' + batchSize + '? This cannot be undone.')) return
 
         setSending(true)
         setFinished(false)
         setErrors([])
-        setProgress({ processed: 0, sent: 0, failed: 0 })
+        setSendTotal(customers.length)
+        setProgress({ processed: 0, sent: 0, failed: 0, skippedCooldown: 0 })
 
         try {
             const cardsWithMedia = await uploadCardMedia(buildCards(selected))
-            await sendBatches(cardsWithMedia)
+            const cardsPayload = cardsToPayload(cardsWithMedia)
+            const batches = chunkArray(customers.map((c) => c.id), batchSize)
+
+            let totals = { processed: 0, sent: 0, failed: 0, skippedCooldown: 0 }
+            let allErrors = []
+
+            for (const batchIds of batches) {
+                const data = await sendOneBatch(cardsPayload, { customerIds: batchIds })
+                totals = {
+                    processed: totals.processed + data.processed,
+                    sent: totals.sent + data.sent,
+                    failed: totals.failed + data.failed,
+                    skippedCooldown: totals.skippedCooldown + (data.skippedCooldown || 0),
+                }
+                if (data.errors?.length) allErrors = [...allErrors, ...data.errors].slice(0, 10)
+                setProgress(totals)
+                setErrors(allErrors)
+            }
+
+            clearSelection()
+            loadRecipients(recipientsPage)
         } catch (err) {
             setErrors((prev) => [...prev, err.message].slice(0, 10))
         }
@@ -422,25 +528,117 @@ export default function AdminWhatsAppBroadcastPage() {
 
                 <div className="bg-white rounded-2xl p-6 shadow-sm">
                     <p className="font-display text-lg text-charcoal mb-1">Recipients</p>
-                    <p className="text-sm text-gray-500 mb-4">
-                        {loading ? 'Loading...' : recipientCount.toLocaleString() + ' customers have a WhatsApp number on file — sent in batches of ' + BATCH_SIZE + '.'}
+                    <p className="text-xs text-gray-500 mb-4">
+                        Pick which customers to send to. Anyone messaged in the last {cooldownDays} days is grayed out until their cooldown ends.
                     </p>
 
-                    <button onClick={launchCampaign} disabled={sending || loading || recipientCount === 0 || selected.length === 0}
+                    <form onSubmit={submitRecipientSearch} className="flex flex-col sm:flex-row gap-2 mb-3">
+                        <input value={recipientsQuery} onChange={(e) => setRecipientsQuery(e.target.value)}
+                               placeholder="Search by name or phone"
+                               className="flex-1 rounded-xl border-2 border-gray-100 px-3 py-2 text-sm outline-none focus:border-coral" />
+                        <select value={recipientsSource} onChange={(e) => { setRecipientsSource(e.target.value); setRecipientsPage(1) }}
+                                className="rounded-xl border-2 border-gray-100 px-3 py-2 text-sm bg-white sm:w-44">
+                            <option value="">All Sources</option>
+                            <option value="Website">Website</option>
+                            <option value="Insta">Instagram</option>
+                            <option value="Whatsapp">WhatsApp</option>
+                            <option value="Facebook">Facebook</option>
+                        </select>
+                        <button type="submit" className="px-4 py-2 rounded-xl bg-charcoal text-white text-sm font-semibold hover:opacity-90">Search</button>
+                    </form>
+
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="flex gap-3">
+                            <button type="button" onClick={selectAllEligibleOnPage} className="text-xs text-coral hover:underline">Select all eligible on this page</button>
+                            <button type="button" onClick={clearSelection} className="text-xs text-gray-400 hover:text-coral">Clear selection</button>
+                        </div>
+                        <p className="text-xs font-semibold text-charcoal">{selectedCustomers.size} selected</p>
+                    </div>
+
+                    <div className="border-2 border-gray-100 rounded-xl overflow-hidden mb-3">
+                        {recipientsLoading ? (
+                            <div className="p-6 text-sm text-gray-400">Loading customers...</div>
+                        ) : recipients.length === 0 ? (
+                            <div className="p-6 text-sm text-gray-400 text-center">No customers found</div>
+                        ) : (
+                            <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                                <table className="min-w-full text-sm">
+                                    <thead className="bg-cream text-gray-500 sticky top-0">
+                                        <tr>
+                                            <th className="px-3 py-2 w-8"></th>
+                                            <th className="text-left px-3 py-2 font-semibold">
+                                                <button onClick={() => toggleRecipientSort('name')} className="hover:text-coral">Name{sortArrow('name')}</button>
+                                            </th>
+                                            <th className="text-left px-3 py-2 font-semibold">
+                                                <button onClick={() => toggleRecipientSort('phone')} className="hover:text-coral">Phone{sortArrow('phone')}</button>
+                                            </th>
+                                            <th className="text-left px-3 py-2 font-semibold">
+                                                <button onClick={() => toggleRecipientSort('last_sent')} className="hover:text-coral">Last Messaged{sortArrow('last_sent')}</button>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {recipients.map((c) => {
+                                            const onCooldown = isOnCooldown(c)
+                                            const checked = selectedCustomers.has(c.id)
+                                            const name = [c.first_name, c.last_name].filter(Boolean).join(' ') || '-'
+                                            return (
+                                                <tr key={c.id} className={'border-t border-gray-100 ' + (onCooldown ? 'opacity-40' : '')}>
+                                                    <td className="px-3 py-2">
+                                                        <input type="checkbox" checked={checked} disabled={onCooldown}
+                                                               onChange={() => toggleSelectCustomer(c)} />
+                                                    </td>
+                                                    <td className="px-3 py-2 font-medium text-charcoal">{name}</td>
+                                                    <td className="px-3 py-2 text-charcoal whitespace-nowrap">{c.phone}</td>
+                                                    <td className="px-3 py-2 text-gray-500 text-xs whitespace-nowrap">
+                                                        {onCooldown
+                                                            ? 'Cooldown until ' + cooldownUntilLabel(c)
+                                                            : (c.last_campaign_sent_at ? 'Eligible (last sent ' + cooldownUntilLabel(c) + ')' : 'Never messaged')}
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="flex items-center justify-between mb-4">
+                        <p className="text-xs text-gray-500">
+                            Page {recipientsPage} of {Math.max(1, Math.ceil(recipientsTotal / RECIPIENTS_PAGE_SIZE))} · {recipientsTotal} customers with a WhatsApp number
+                        </p>
+                        <div className="flex gap-2">
+                            <button onClick={() => setRecipientsPage((p) => Math.max(1, p - 1))} disabled={recipientsPage <= 1}
+                                    className="px-3 py-1.5 rounded-xl bg-cream text-xs disabled:opacity-40">Prev</button>
+                            <button onClick={() => setRecipientsPage((p) => p + 1)} disabled={recipientsPage >= Math.ceil(recipientsTotal / RECIPIENTS_PAGE_SIZE)}
+                                    className="px-3 py-1.5 rounded-xl bg-cream text-xs disabled:opacity-40">Next</button>
+                        </div>
+                    </div>
+
+                    <div className="mb-4">
+                        <label className="block text-xs text-gray-500 mb-1">Batch size ({BATCH_SIZE_MIN}-{BATCH_SIZE_MAX} customers per request)</label>
+                        <input type="number" min={BATCH_SIZE_MIN} max={BATCH_SIZE_MAX} value={batchSize}
+                               onChange={(e) => setBatchSize(Math.min(BATCH_SIZE_MAX, Math.max(BATCH_SIZE_MIN, Number(e.target.value) || BATCH_SIZE_MIN)))}
+                               className="w-28 rounded-xl border-2 border-gray-100 px-3 py-2 text-sm" />
+                    </div>
+
+                    <button onClick={launchCampaign} disabled={sending || selectedCustomers.size === 0 || selected.length === 0}
                             className="px-6 py-3 bg-coral text-white font-display text-sm rounded-full hover:bg-opacity-90 disabled:opacity-50">
-                        {sending ? 'Uploading images & sending...' : '🚀 Launch Campaign'}
+                        {sending ? 'Uploading images & sending...' : '🚀 Send to Selected (' + selectedCustomers.size + ')'}
                     </button>
 
                     {(sending || finished) && (
                         <div className="mt-5">
                             <div className="w-full bg-cream rounded-full h-2 mb-2 overflow-hidden">
                                 <div className="bg-coral h-2 transition-all"
-                                     style={{ width: (recipientCount ? (progress.processed / recipientCount) * 100 : 0) + '%' }} />
+                                     style={{ width: (sendTotal ? (progress.processed / sendTotal) * 100 : 0) + '%' }} />
                             </div>
                             <p className="text-sm text-charcoal">
-                                {progress.processed} / {recipientCount} processed ·
+                                {progress.processed} / {sendTotal} processed ·
                                 <span className="text-green-600 font-semibold"> {progress.sent} sent</span>
                                 {progress.failed > 0 && <span className="text-red-500 font-semibold"> · {progress.failed} failed</span>}
+                                {progress.skippedCooldown > 0 && <span className="text-orange-500 font-semibold"> · {progress.skippedCooldown} skipped (cooldown)</span>}
                             </p>
                             {finished && !sending && <p className="text-sm font-semibold text-charcoal mt-1">✓ Campaign finished</p>}
                             {errors.length > 0 && (

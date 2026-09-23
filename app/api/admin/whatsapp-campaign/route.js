@@ -1,5 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
-import { sendWhatsAppTemplate, sendCarouselTemplate } from '../../../../lib/whatsappApi'
+import {
+    CAMPAIGN_BATCH_SIZE_MAX,
+    CAMPAIGN_COOLDOWN_DAYS,
+    sendWhatsAppTemplate,
+    sendCarouselTemplate,
+} from '../../../../lib/whatsappApi'
+
+export const dynamic = 'force-dynamic'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -9,7 +16,6 @@ const supabase = createClient(
 const TEMPLATE_NAME = 'new_arrivals_carousel_kt'
 const PRODUCT_SLOTS = 5
 const SEND_CONCURRENCY = 5
-const BATCH_DEFAULT = 100
 
 async function fetchDefaultProductIds() {
     const { data, error } = await supabase
@@ -25,20 +31,11 @@ async function fetchDefaultProductIds() {
 }
 
 // Preview: which products default-select into the 5 broadcast slots (the
-// admin can drag different ones in instead), plus how many customers this
-// would reach — shown before committing to a send.
+// admin can drag different ones in instead) — shown before committing.
 export async function GET() {
     try {
         const defaultProductIds = await fetchDefaultProductIds()
-        const { count, error } = await supabase
-            .from('customers')
-            .select('id', { count: 'exact', head: true })
-            .not('phone', 'is', null)
-            .neq('phone', '')
-
-        if (error) throw new Error(error.message)
-
-        return Response.json({ success: true, defaultProductIds, recipientCount: count || 0 })
+        return Response.json({ success: true, defaultProductIds })
     } catch (err) {
         return Response.json({ success: false, error: err.message }, { status: 500 })
     }
@@ -53,14 +50,18 @@ function normalizeTestNumber(value) {
     return digits
 }
 
-// Sends one batch of the campaign, called repeatedly by the admin page with
-// an increasing offset — keeps each request short instead of one giant send
-// that risks a serverless timeout on a large customer list. When
-// `testNumbers` is given, it sends only to those numbers instead of paging
-// through the customers table, so a campaign can be checked before launch.
+function isOnCooldown(customer) {
+    if (!customer.last_campaign_sent_at) return false
+    const cooldownMs = CAMPAIGN_COOLDOWN_DAYS * 24 * 60 * 60 * 1000
+    return Date.now() - new Date(customer.last_campaign_sent_at).getTime() < cooldownMs
+}
+
+// Sends one batch — called once per chunk the admin page splits its selected
+// customerIds into (size chosen on the page, 5-20). `testNumbers` bypasses
+// customerIds/cooldown entirely, for trying the message before a real send.
 export async function POST(request) {
     try {
-        const { offset = 0, limit = BATCH_DEFAULT, cards, testNumbers, debugTemplateName } = await request.json()
+        const { customerIds, cards, testNumbers, debugTemplateName } = await request.json()
 
         // Debug-only override so a different, already-Active template (with
         // no variables of its own) can be used to sanity-check the send
@@ -74,32 +75,46 @@ export async function POST(request) {
             return Response.json({ success: false, error: 'Every card needs an uploaded mediaId — upload images first' }, { status: 400 })
         }
 
-        let recipients
-        let isLastBatch
+        let recipients = []
+        let skippedCooldown = 0
+        const isTestSend = Array.isArray(testNumbers) && testNumbers.length > 0
 
-        if (Array.isArray(testNumbers) && testNumbers.length > 0) {
+        if (isTestSend) {
             recipients = testNumbers
                 .map(normalizeTestNumber)
                 .filter(Boolean)
                 .map((phone) => ({ first_name: '', phone }))
-            isLastBatch = true
         } else {
+            const ids = Array.isArray(customerIds) ? customerIds.filter(Boolean) : []
+            if (ids.length === 0) {
+                return Response.json({ success: false, error: 'customerIds is required' }, { status: 400 })
+            }
+            if (ids.length > CAMPAIGN_BATCH_SIZE_MAX) {
+                return Response.json({ success: false, error: 'A single batch can\'t exceed ' + CAMPAIGN_BATCH_SIZE_MAX + ' customers' }, { status: 400 })
+            }
+
             const { data: customers, error } = await supabase
                 .from('customers')
-                .select('id, first_name, last_name, phone')
+                .select('id, first_name, last_name, phone, last_campaign_sent_at')
+                .in('id', ids)
                 .not('phone', 'is', null)
                 .neq('phone', '')
-                .order('id', { ascending: true })
-                .range(offset, offset + limit - 1)
 
             if (error) throw new Error(error.message)
-            recipients = customers || []
-            isLastBatch = recipients.length < limit
+
+            // Re-checked fresh from the DB (not trusting whatever the picker
+            // page had loaded) — this is what actually enforces the cooldown,
+            // the UI graying-out is just a courtesy so it isn't a surprise here.
+            for (const customer of customers || []) {
+                if (isOnCooldown(customer)) skippedCooldown += 1
+                else recipients.push(customer)
+            }
         }
 
         let sent = 0
         let failed = 0
         const errors = []
+        const successfulIds = []
 
         let idx = 0
         async function worker() {
@@ -118,8 +133,10 @@ export async function POST(request) {
                             buttonUrlParam: c.buttonPath,
                         })),
                     })
-                if (result.success) sent += 1
-                else {
+                if (result.success) {
+                    sent += 1
+                    if (recipient.id) successfulIds.push(recipient.id)
+                } else {
                     failed += 1
                     if (errors.length < 5) errors.push(result.error)
                 }
@@ -127,13 +144,21 @@ export async function POST(request) {
         }
         await Promise.all(Array.from({ length: Math.min(SEND_CONCURRENCY, recipients.length) }, worker))
 
+        if (!isTestSend && successfulIds.length > 0) {
+            await supabase
+                .from('customers')
+                .update({ last_campaign_sent_at: new Date().toISOString() })
+                .in('id', successfulIds)
+        }
+
         return Response.json({
             success: true,
             processed: recipients.length,
             sent,
             failed,
+            skippedCooldown,
             errors,
-            done: isLastBatch,
+            done: true,
         })
     } catch (err) {
         return Response.json({ success: false, error: err.message }, { status: 500 })
