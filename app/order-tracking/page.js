@@ -68,11 +68,11 @@ export default function OrderTracking() {
         <form onSubmit={handleTrack} className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-6">
           <div className="mb-4">
             <label className="block font-semibold text-sm text-charcoal mb-2">Order Number</label>
-            <input type="text" placeholder="e.g. KT101, KT102..."
+            <input type="text" placeholder="e.g. KT101 or 786-KT-..."
                    value={orderNumber}
                    onChange={e => { setOrderNumber(e.target.value.toUpperCase()); setError('') }}
                    className="w-full px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm font-bold tracking-wider" />
-            <p className="text-xs text-gray-400 mt-2">Your order number was shared after placing the order e.g. KT101</p>
+            <p className="text-xs text-gray-400 mt-2">Your order number was shared after placing the order e.g. KT101 or 786-KT-...</p>
           </div>
           <div className="mb-4">
             <label className="block font-semibold text-sm text-charcoal mb-2">PostEx Tracking ID</label>

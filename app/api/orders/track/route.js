@@ -1,12 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
+import { trackOrder } from '../../../../lib/postexApi'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
-
-const POSTEX_TRACKING_URL = process.env.POSTEX_TRACKING_URL || 'https://postex.pk/api/tracking-order'
-const POSTEX_TIMEOUT_MS = 12000
 
 function pick(obj, keys) {
     for (const key of keys) {
@@ -34,103 +32,43 @@ function extractTrackingNumber(order) {
     return match?.[1]?.trim() || null
 }
 
-async function postExRequest(payload) {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), POSTEX_TIMEOUT_MS)
-    try {
-        const headers = { 'Content-Type': 'application/json' }
-        if (process.env.POSTEX_BEARER_TOKEN) headers.Authorization = 'Bearer ' + process.env.POSTEX_BEARER_TOKEN
-        if (process.env.POSTEX_API_KEY) headers['x-api-key'] = process.env.POSTEX_API_KEY
-        if (process.env.POSTEX_CLIENT_ID) headers['x-client-id'] = process.env.POSTEX_CLIENT_ID
-        if (process.env.POSTEX_CLIENT_SECRET) headers['x-client-secret'] = process.env.POSTEX_CLIENT_SECRET
-
-        const res = await fetch(POSTEX_TRACKING_URL, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(payload),
-            cache: 'no-store',
-            signal: controller.signal,
-        })
-        const raw = await res.text()
-        let json = null
-        let parseError = ''
-        try {
-            json = raw ? JSON.parse(raw) : null
-        } catch (error) {
-            parseError = error instanceof Error ? error.message : 'Invalid JSON response'
-        }
-        return { ok: res.ok, status: res.status, json, raw, parseError }
-    } finally {
-        clearTimeout(timer)
-    }
-}
-
 function normalizePostExStatus(statusValue) {
     const status = String(statusValue || '').toLowerCase()
     if (!status) return 'processing'
     if (status.includes('deliver')) return 'delivered'
     if (status.includes('cancel') || status.includes('return') || status.includes('failed')) return 'cancelled'
-    if (status.includes('dispatch') || status.includes('transit') || status.includes('ship') || status.includes('out for')) return 'dispatched'
-    if (status.includes('process') || status.includes('book') || status.includes('pickup')) return 'processing'
-    return 'processing'
+    if (status.includes('dispatch') || status.includes('transit') || status.includes('picked') || status.includes('out for')) return 'dispatched'
+    return 'processing' // covers Unbooked, Booked, "At Warehouse", etc.
 }
 
-function normalizeShipmentResponse(trackingNumber, response) {
-    const body = response?.json || {}
-    const shipment = body?.data || body?.result || body?.shipment || body?.order || body || {}
-    const rawStatus = pick(shipment, ['status', 'shipment_status', 'current_status', 'tracking_status']) || body?.statusMessage || body?.message || ''
-    const status = normalizePostExStatus(rawStatus)
+// Uses our own verified PostEx integration (lib/postexApi.js) — the real
+// response shape (confirmed live) uses transactionStatus /
+// transactionStatusHistory, not the generic status/history field names a
+// much older, speculative version of this route used to guess at.
+async function fetchPostExTracking(trackingNumber) {
+    const result = await trackOrder(trackingNumber)
+    if (!result.success) {
+        return { provider: 'postex', tracking_number: trackingNumber, status: '', raw_status: '', updated_at: '', events: [], error: result.error }
+    }
 
-    const historyRaw = pick(shipment, ['history', 'tracking_history', 'trackingHistory', 'events', 'statuses', 'activities'])
-    const events = Array.isArray(historyRaw)
-        ? historyRaw.map((event) => ({
-            status: pick(event, ['status', 'title', 'state']) || '',
-            description: pick(event, ['description', 'details', 'remarks', 'message']) || '',
-            location: pick(event, ['location', 'city', 'hub']) || '',
-            timestamp: pick(event, ['date', 'datetime', 'time', 'created_at', 'updated_at']) || '',
+    const rawStatus = result.transactionStatus || ''
+    const events = (Array.isArray(result.transactionStatusHistory) ? result.transactionStatusHistory : [])
+        .map((e) => ({
+            status: e.transactionStatusMessage || '',
+            description: '',
+            location: '',
+            timestamp: e.updatedAt || '',
         }))
-        : []
+        .reverse() // PostEx returns oldest-first; show most recent first
 
     return {
         provider: 'postex',
         tracking_number: trackingNumber,
-        status,
-        raw_status: String(rawStatus || ''),
-        updated_at: pick(shipment, ['updated_at', 'last_updated', 'scan_date', 'date']) || '',
+        status: normalizePostExStatus(rawStatus),
+        raw_status: rawStatus,
+        updated_at: events[0]?.timestamp || '',
         events,
-        raw: body,
     }
-}
-
-async function fetchPostExTracking(trackingNumber) {
-    let lastError = ''
-    const payloads = [
-        { trackingNumber },
-        { tracking_number: trackingNumber },
-        { consignment_number: trackingNumber },
-        { cn_number: trackingNumber },
-    ]
-    for (const payload of payloads) {
-        try {
-            const response = await postExRequest(payload)
-            if (!response.ok) continue
-            return normalizeShipmentResponse(trackingNumber, response)
-        } catch (error) {
-            lastError = error instanceof Error ? error.message : 'PostEx request failed'
-        }
-    }
-    if (lastError) {
-        return {
-            provider: 'postex',
-            tracking_number: trackingNumber,
-            status: '',
-            raw_status: '',
-            updated_at: '',
-            events: [],
-            error: lastError,
-        }
-    }
-    return null
 }
 
 export async function GET(request) {
@@ -142,49 +80,60 @@ export async function GET(request) {
         return Response.json({ error: 'Order number or PostEx tracking number is required' }, { status: 400 })
     }
 
+    // Tracking-number-only search needs no local order record at all.
     if (!orderNumber && directTrackingNumber) {
         const shipmentOnly = await fetchPostExTracking(directTrackingNumber)
-        if (!shipmentOnly) {
+        if (shipmentOnly.error) {
             return Response.json({ error: 'Tracking not found. Please check your PostEx tracking number.' }, { status: 404 })
         }
-        return Response.json({
-            success: true,
-            order: null,
-            shipment: shipmentOnly,
-        })
+        return Response.json({ success: true, order: null, shipment: shipmentOnly })
     }
 
-    const { data, error } = await supabase
+    // Regular website checkout orders.
+    const { data: websiteOrder } = await supabase
         .from('orders')
         .select('*')
         .eq('order_number', orderNumber)
-        .single()
+        .maybeSingle()
 
-    if (error || !data) {
-        if (directTrackingNumber) {
-            const shipmentOnly = await fetchPostExTracking(directTrackingNumber)
-            if (shipmentOnly) {
-                return Response.json({
-                    success: true,
-                    order: null,
-                    shipment: shipmentOnly,
-                })
-            }
+    if (websiteOrder) {
+        const trackingNumber = directTrackingNumber || extractTrackingNumber(websiteOrder)
+        const shipment = trackingNumber ? await fetchPostExTracking(trackingNumber) : null
+        const order = { ...websiteOrder, tracking_number: trackingNumber || null, status: shipment?.status || websiteOrder.status }
+        return Response.json({ success: true, order, shipment })
+    }
+
+    // Instagram quick-entry orders — order_ref_number looks like "786-KT-...".
+    const { data: igOrder } = await supabase
+        .from('instagram_orders')
+        .select('*')
+        .eq('order_ref_number', orderNumber)
+        .maybeSingle()
+
+    if (igOrder && igOrder.tracking_number) {
+        const shipment = await fetchPostExTracking(igOrder.tracking_number)
+        const order = {
+            order_number: igOrder.order_ref_number,
+            customer_name: igOrder.customer_name,
+            customer_city: igOrder.city_name,
+            total: igOrder.invoice_payment,
+            subtotal: igOrder.invoice_payment,
+            shipping: 0,
+            items: igOrder.order_detail ? [{ title: igOrder.order_detail, quantity: igOrder.items || 1, price: igOrder.invoice_payment }] : [],
+            created_at: igOrder.created_at,
+            tracking_number: igOrder.tracking_number,
+            status: shipment?.status || 'processing',
         }
-        return Response.json({ error: 'Order not found. Please check your order number.' }, { status: 404 })
+        return Response.json({ success: true, order, shipment })
     }
 
-    const trackingNumber = directTrackingNumber || extractTrackingNumber(data)
-    const shipment = trackingNumber ? await fetchPostExTracking(trackingNumber) : null
-    const order = {
-        ...data,
-        tracking_number: trackingNumber || null,
-        status: shipment?.status || data.status,
+    // Neither table had it by order number — last resort, try it as a raw tracking number.
+    if (directTrackingNumber) {
+        const shipmentOnly = await fetchPostExTracking(directTrackingNumber)
+        if (!shipmentOnly.error) {
+            return Response.json({ success: true, order: null, shipment: shipmentOnly })
+        }
     }
 
-    return Response.json({
-        success: true,
-        order,
-        shipment,
-    })
+    return Response.json({ error: 'Order not found. Please check your order number.' }, { status: 404 })
 }
