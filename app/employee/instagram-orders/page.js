@@ -4,9 +4,15 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import EmployeePortalNav from '@/components/EmployeePortalNav'
 
-const EMPTY_FORM = {
-    customerName: '', customerPhone: '', cityName: '', deliveryAddress: '',
-    orderDetail: '', items: '1', invoicePayment: '', transactionNotes: '',
+const EMPTY_QUICK_FORM = { address: '', phone: '', username: '', amount: '' }
+
+// Finds which PostEx-operational city the pasted address mentions — e.g.
+// "417 AA canal garden Lahore" matches "Lahore" — so staff never have to
+// pick it manually for the common case.
+function detectCity(address, cities) {
+    const lower = address.toLowerCase()
+    const match = cities.find((c) => lower.includes(String(c.operationalCityName || '').toLowerCase()))
+    return match ? match.operationalCityName : ''
 }
 
 export default function EmployeeInstagramOrdersPage() {
@@ -17,11 +23,11 @@ export default function EmployeeInstagramOrdersPage() {
     const [orders, setOrders] = useState([])
     const [loadingOrders, setLoadingOrders] = useState(true)
 
-    const [chatText, setChatText] = useState('')
-    const [extracting, setExtracting] = useState(false)
-    const [extractError, setExtractError] = useState('')
+    const [quick, setQuick] = useState(EMPTY_QUICK_FORM)
+    const [detectedCity, setDetectedCity] = useState('')
+    const [cityOverride, setCityOverride] = useState('')
+    const [orderDetail, setOrderDetail] = useState('')
 
-    const [form, setForm] = useState(EMPTY_FORM)
     const [booking, setBooking] = useState(false)
     const [bookError, setBookError] = useState('')
     const [lastBooked, setLastBooked] = useState(null)
@@ -79,34 +85,10 @@ export default function EmployeeInstagramOrdersPage() {
         setLoadingOrders(false)
     }
 
-    async function extractFromChat() {
-        if (!chatText.trim()) { alert('Paste the Instagram conversation first.'); return }
-        setExtracting(true)
-        setExtractError('')
-        try {
-            const res = await fetch('/api/admin/instagram-orders/extract', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chatText }),
-            })
-            const data = await res.json()
-            if (!data.success) throw new Error(data.error || 'Extraction failed')
-
-            const e = data.extracted
-            setForm({
-                customerName: e.customerName,
-                customerPhone: e.customerPhone,
-                cityName: e.cityName,
-                deliveryAddress: e.deliveryAddress,
-                orderDetail: e.orderDetail,
-                items: String(e.items || 1),
-                invoicePayment: e.invoicePayment ? String(e.invoicePayment) : '',
-                transactionNotes: '',
-            })
-        } catch (err) {
-            setExtractError(err.message)
-        }
-        setExtracting(false)
+    function updateQuick(field, value) {
+        const next = { ...quick, [field]: value }
+        setQuick(next)
+        if (field === 'address') setDetectedCity(detectCity(value, cities))
     }
 
     async function handleBook(e) {
@@ -114,8 +96,13 @@ export default function EmployeeInstagramOrdersPage() {
         setBookError('')
         setLastBooked(null)
 
-        if (!form.customerName || !form.customerPhone || !form.cityName || !form.deliveryAddress || !form.invoicePayment) {
-            setBookError('Customer name, phone, city, address and COD amount are all required.')
+        const cityName = cityOverride || detectedCity
+        if (!quick.address.trim() || !quick.phone.trim() || !quick.username.trim() || !quick.amount.trim()) {
+            setBookError('Address, phone, Instagram username and amount are all required.')
+            return
+        }
+        if (!cityName) {
+            setBookError("Couldn't detect a city from that address — pick one below.")
             return
         }
         if (!window.confirm('Book this order with PostEx now? A real shipment will be created.')) return
@@ -125,14 +112,25 @@ export default function EmployeeInstagramOrdersPage() {
             const res = await fetch('/api/admin/instagram-orders', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(form),
+                body: JSON.stringify({
+                    customerName: quick.username,
+                    customerPhone: quick.phone,
+                    cityName,
+                    deliveryAddress: quick.address,
+                    orderDetail,
+                    items: '1',
+                    invoicePayment: quick.amount,
+                    transactionNotes: '',
+                }),
             })
             const data = await res.json()
             if (!data.success) throw new Error(data.error || 'Booking failed')
 
             setLastBooked(data.order || { tracking_number: data.trackingNumber })
-            setForm(EMPTY_FORM)
-            setChatText('')
+            setQuick(EMPTY_QUICK_FORM)
+            setDetectedCity('')
+            setCityOverride('')
+            setOrderDetail('')
             loadOrders()
         } catch (err) {
             setBookError(err.message)
@@ -168,6 +166,8 @@ export default function EmployeeInstagramOrdersPage() {
         )
     }
 
+    const effectiveCity = cityOverride || detectedCity
+
     return (
         <div className="min-h-screen bg-cream">
             <div className="bg-white shadow-sm px-6 py-4 flex items-center justify-between sticky top-0 z-10">
@@ -175,72 +175,54 @@ export default function EmployeeInstagramOrdersPage() {
                     <Link href="/employee/dashboard" className="text-gray-400 hover:text-coral text-sm">← Back</Link>
                     <h1 className="font-display text-xl text-charcoal">Instagram Orders</h1>
                 </div>
-                <p className="text-xs text-gray-400">Paste the chat, let AI fill the form, review, then book with PostEx</p>
+                <p className="text-xs text-gray-400">Paste address, phone, username &amp; amount from the chat — books straight to PostEx</p>
             </div>
             <EmployeePortalNav />
 
-            <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-
-                <div className="bg-white rounded-2xl p-6 shadow-sm">
-                    <p className="font-display text-lg text-charcoal mb-1">1. Paste the Instagram conversation</p>
-                    <p className="text-xs text-gray-500 mb-3">Copy the customer's messages (name/phone/address/what they ordered) from Instagram and paste below — AI will pull out the details into the form.</p>
-                    <textarea value={chatText} onChange={(e) => setChatText(e.target.value)}
-                              placeholder="Paste the conversation here..." rows={6}
-                              className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm mb-3" />
-                    <button onClick={extractFromChat} disabled={extracting}
-                            className="px-6 py-2.5 bg-charcoal text-white font-display text-sm rounded-full hover:bg-opacity-90 disabled:opacity-50">
-                        {extracting ? 'Reading conversation...' : '✨ Extract Details'}
-                    </button>
-                    {extractError && <p className="text-sm text-red-500 mt-3">{extractError}</p>}
-                </div>
+            <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
                 <form onSubmit={handleBook} className="bg-white rounded-2xl p-6 shadow-sm">
-                    <p className="font-display text-lg text-charcoal mb-1">2. Review &amp; book</p>
-                    <p className="text-xs text-gray-500 mb-4">Check the extracted details below (or type them in directly) before booking.</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <p className="font-display text-lg text-charcoal mb-1">Quick order entry</p>
+                    <p className="text-xs text-gray-500 mb-4">Copy these four things straight from the Instagram chat — city fills in automatically from the address.</p>
+
+                    <div className="space-y-4">
                         <div>
-                            <label className="text-xs text-gray-500 mb-1 block">Customer Name *</label>
-                            <input value={form.customerName} onChange={(e) => setForm((f) => ({ ...f, customerName: e.target.value }))}
-                                   className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
+                            <label className="text-xs text-gray-500 mb-1 block">Address *</label>
+                            <textarea value={quick.address} onChange={(e) => updateQuick('address', e.target.value)}
+                                      placeholder="e.g. 417 AA canal garden Lahore" rows={2}
+                                      className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
+                            {quick.address.trim() && (
+                                effectiveCity
+                                    ? <p className="text-xs text-mint mt-1">✓ Detected city: <strong>{effectiveCity}</strong></p>
+                                    : <p className="text-xs text-orange-500 mt-1">⚠ Couldn't detect a city — pick one below</p>
+                            )}
+                            {quick.address.trim() && !detectedCity && (
+                                <select value={cityOverride} onChange={(e) => setCityOverride(e.target.value)}
+                                        className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm mt-2">
+                                    <option value="">Select city manually...</option>
+                                    {cities.map((c) => <option key={c.operationalCityName} value={c.operationalCityName}>{c.operationalCityName}</option>)}
+                                </select>
+                            )}
                         </div>
                         <div>
                             <label className="text-xs text-gray-500 mb-1 block">Phone *</label>
-                            <input value={form.customerPhone} onChange={(e) => setForm((f) => ({ ...f, customerPhone: e.target.value }))}
-                                   placeholder="03xxxxxxxxx" className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
+                            <input value={quick.phone} onChange={(e) => updateQuick('phone', e.target.value)}
+                                   placeholder="03191598004" className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
                         </div>
                         <div>
-                            <label className="text-xs text-gray-500 mb-1 block">City *</label>
-                            <input list="postex-cities" value={form.cityName} onChange={(e) => setForm((f) => ({ ...f, cityName: e.target.value }))}
-                                   className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
-                            <datalist id="postex-cities">
-                                {cities.map((c) => <option key={c.operationalCityName} value={c.operationalCityName} />)}
-                            </datalist>
-                        </div>
-                        <div className="sm:col-span-2 lg:col-span-3">
-                            <label className="text-xs text-gray-500 mb-1 block">Delivery Address *</label>
-                            <textarea value={form.deliveryAddress} onChange={(e) => setForm((f) => ({ ...f, deliveryAddress: e.target.value }))}
-                                      rows={2} className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
-                        </div>
-                        <div className="sm:col-span-2">
-                            <label className="text-xs text-gray-500 mb-1 block">Order Detail</label>
-                            <input value={form.orderDetail} onChange={(e) => setForm((f) => ({ ...f, orderDetail: e.target.value }))}
-                                   placeholder="e.g. Pink Frock 2-3Y x1, Blue Shorts 3-4Y x1"
-                                   className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-500 mb-1 block">Pieces</label>
-                            <input type="number" min="1" value={form.items} onChange={(e) => setForm((f) => ({ ...f, items: e.target.value }))}
-                                   className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
+                            <label className="text-xs text-gray-500 mb-1 block">Instagram Username *</label>
+                            <input value={quick.username} onChange={(e) => updateQuick('username', e.target.value)}
+                                   placeholder="seharmajid20" className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
                         </div>
                         <div>
                             <label className="text-xs text-gray-500 mb-1 block">COD Amount (PKR) *</label>
-                            <input type="number" min="0" value={form.invoicePayment} onChange={(e) => setForm((f) => ({ ...f, invoicePayment: e.target.value }))}
-                                   className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
+                            <input type="number" min="0" value={quick.amount} onChange={(e) => updateQuick('amount', e.target.value)}
+                                   placeholder="2000" className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
                         </div>
                         <div>
-                            <label className="text-xs text-gray-500 mb-1 block">Notes (optional)</label>
-                            <input value={form.transactionNotes} onChange={(e) => setForm((f) => ({ ...f, transactionNotes: e.target.value }))}
-                                   className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
+                            <label className="text-xs text-gray-500 mb-1 block">What they ordered (optional)</label>
+                            <input value={orderDetail} onChange={(e) => setOrderDetail(e.target.value)}
+                                   placeholder="e.g. Pink Frock 2-3Y" className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
                         </div>
                     </div>
 
