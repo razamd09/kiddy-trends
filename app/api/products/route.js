@@ -250,6 +250,7 @@ function transformProduct(product) {
     if (opt2Values.length > 0) options.push({ name: rawVariants[0]?.option2_name || 'Color', values: opt2Values })
 
     const imageUrls = normalizeImages(product.images).filter(url => url && url.trim())
+    const videoUrls = normalizeImages(product.videos).filter(url => url && url.trim())
     const seasonName = product?.product_seasons?.name || null
 
     return {
@@ -273,6 +274,7 @@ function transformProduct(product) {
                 return trimmedSrc ? { src: trimmedSrc } : null
             })
             .filter(Boolean),
+        videos: videoUrls,
         variants,
         options,
         stock: product.stock || 0,

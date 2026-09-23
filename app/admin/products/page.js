@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatPakistanDate } from '../../../lib/dateFormat'
+import { supabaseClient } from '../../../lib/supabaseClient'
 import AdminPortalNav from '@/components/AdminPortalNav'
 
 const MONOCHROME_BG_COLORS = ['transparent', '#000000', '#1f2937', '#374151', '#6b7280', '#9ca3af', '#ffffff']
@@ -77,6 +78,7 @@ export default function AdminProducts() {
         product_version: '', product_season_id: '', character_id: '', brand_id: '', status: '', campaign_tier: ''
     })
     const [formImages, setFormImages] = useState([])   // [{url, rotating}]
+    const [formVideos, setFormVideos] = useState([])   // [{url, uploading, tempId}]
     const [formVariants, setFormVariants] = useState([]) // [{option1_name,option1_value,option2_name,option2_value,price,stock,sku}]
     const [rotatingIdx, setRotatingIdx] = useState(null)
     const [imageEditor, setImageEditor] = useState({
@@ -487,6 +489,7 @@ export default function AdminProducts() {
                 tags: Array.isArray(product.tags) ? product.tags : [],
                 stock: product.stock || 0,
                 images: normalizeImages(product.images),
+                videos: normalizeImages(product.videos),
                 variants: Array.isArray(product.variants) ? product.variants : null,
                 shopify_handle: buildShortProductHandle((product.title || 'Untitled Product') + ' duplicate', product.id || Date.now()),
                 product_version: product.product_version || 'Old Packs',
@@ -516,6 +519,7 @@ export default function AdminProducts() {
     function resetForm() {
         setForm({ title: '', description: '', price: '', compare_price: '', category: '', product_type: '', fabric: '', color: '', gender: '', tags: '', stock: '', product_version: '', product_season_id: '', character_id: '', brand_id: '', status: '', campaign_tier: '' })
         setFormImages([])
+        setFormVideos([])
         setFormVariants([])
         setEditingId(null)
         setImageEditor(prev => ({ ...prev, open: false, saving: false }))
@@ -524,6 +528,8 @@ export default function AdminProducts() {
     function openEdit(product) {
         const imgs = normalizeImages(product.images)
         setFormImages(imgs.map(url => ({ url })))
+        const vids = normalizeImages(product.videos)
+        setFormVideos(vids.map(url => ({ url })))
         setImageEditor(prev => ({ ...prev, open: false, saving: false }))
 
         // Parse variants from DB format
@@ -617,6 +623,9 @@ export default function AdminProducts() {
             stock:         totalStock,
             images:        formImages
                 .map(img => img.url)
+                .filter((url) => typeof url === 'string' && url.trim() && !url.startsWith('blob:')),
+            videos:        formVideos
+                .map(vid => vid.url)
                 .filter((url) => typeof url === 'string' && url.trim() && !url.startsWith('blob:')),
             variants:      variants.length > 0 ? variants : null,
             product_version: productVersion,
@@ -847,6 +856,68 @@ export default function AdminProducts() {
         }))
 
         e.target.value = ''
+    }
+
+    // Videos upload straight from the browser to Supabase Storage via a
+    // signed URL (see /api/admin/upload-video/sign) instead of going through
+    // our own API the way images do — a real video clip is way past
+    // Vercel's 4.5MB serverless request body limit.
+    async function handleVideoUpload(e) {
+        const files = e.target.files
+        if (!files) return
+
+        const selectedFiles = Array.from(files)
+        const uploadItems = selectedFiles.map((file, idx) => {
+            const tempId = String(Date.now()) + '_' + String(idx) + '_' + Math.random().toString(36).slice(2, 8)
+            return { tempId, file, previewUrl: URL.createObjectURL(file) }
+        })
+
+        setFormVideos(prev => [
+            ...prev,
+            ...uploadItems.map((item) => ({ url: item.previewUrl, uploading: true, tempId: item.tempId })),
+        ])
+
+        await Promise.all(uploadItems.map(async (item) => {
+            try {
+                const signRes = await fetch('/api/admin/upload-video/sign', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fileName: item.file.name, fileSize: item.file.size }),
+                })
+                const signData = await readApiJson(signRes)
+                if (!signRes.ok || !signData.success) throw new Error(signData.error || 'Failed to prepare upload')
+
+                const { error: uploadError } = await supabaseClient.storage
+                    .from('products')
+                    .uploadToSignedUrl(signData.path, signData.token, item.file)
+                if (uploadError) throw new Error(uploadError.message)
+
+                const finalizeRes = await fetch('/api/admin/upload-video/finalize', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: signData.path }),
+                })
+                const finalizeData = await readApiJson(finalizeRes)
+                if (!finalizeRes.ok || !finalizeData.success) throw new Error(finalizeData.error || 'Failed to finalize upload')
+
+                setFormVideos(prev => prev.map((vid) =>
+                    vid.tempId === item.tempId
+                        ? { url: finalizeData.url, uploading: false, storagePath: finalizeData.storagePath }
+                        : vid
+                ))
+            } catch (err) {
+                setFormVideos(prev => prev.filter((vid) => vid.tempId !== item.tempId))
+                alert('Video upload failed: ' + err.message)
+            } finally {
+                URL.revokeObjectURL(item.previewUrl)
+            }
+        }))
+
+        e.target.value = ''
+    }
+
+    function removeFormVideo(idx) {
+        setFormVideos(prev => prev.filter((_, i) => i !== idx))
     }
 
     function openImageEditor(idx) {
@@ -1362,6 +1433,45 @@ export default function AdminProducts() {
                                     </label>
                                 </div>
                                 <p className="text-xs text-gray-400">First image is the main/thumbnail · Use Edit Image for larger image controls</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-charcoal mb-2">
+                                    Product Videos
+                                    <span className="text-xs text-gray-400 font-normal ml-1">({formVideos.length} video{formVideos.length !== 1 ? 's' : ''})</span>
+                                </label>
+
+                                {formVideos.length > 0 && (
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+                                        {formVideos.map((vidObj, idx) => (
+                                            <div key={vidObj.tempId || vidObj.url} className="border-2 border-gray-100 rounded-xl overflow-hidden">
+                                                {vidObj.uploading ? (
+                                                    <div className="aspect-video bg-gray-100 flex items-center justify-center text-xs text-gray-400">
+                                                        Uploading...
+                                                    </div>
+                                                ) : (
+                                                    <video src={vidObj.url} controls className="w-full aspect-video bg-black" />
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeFormVideo(idx)}
+                                                    disabled={vidObj.uploading}
+                                                    className="w-full px-2 py-1.5 bg-red-50 text-red-600 text-xs hover:bg-red-100"
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                <div className="flex gap-2 items-center mb-2">
+                                    <label className="flex-1 cursor-pointer px-4 py-3 rounded-xl border-2 border-dashed border-gray-200 hover:border-coral text-sm text-gray-400 hover:text-coral text-center transition-colors">
+                                        + Upload Video (MP4, MOV, WEBM, up to 150MB)
+                                        <input type="file" multiple accept="video/mp4,video/quicktime,video/webm,video/x-m4v,video/*" onChange={handleVideoUpload} className="hidden" />
+                                    </label>
+                                </div>
+                                <p className="text-xs text-gray-400">Uploads straight to storage, so it can take a moment for a large clip</p>
                             </div>
 
                             <div className="flex gap-3 pt-2">

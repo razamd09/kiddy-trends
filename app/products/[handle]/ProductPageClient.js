@@ -558,6 +558,13 @@ export default function ProductPageClient({ initialProduct = null }) {
                     ))}
                   </div>
               )}
+
+              {/* Product video */}
+              {product.videos?.length > 0 && (
+                  <div className="rounded-3xl overflow-hidden shadow-sm border border-gray-100 bg-black">
+                    <video src={product.videos[0]} controls playsInline className="w-full aspect-[4/5] md:aspect-[5/6] object-contain" />
+                  </div>
+              )}
             </div>
 
             {/* Info */}

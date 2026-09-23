@@ -422,10 +422,13 @@ export async function GET(request) {
     const products = await Promise.all((data || []).map(async (product) => {
         const imageUrls = normalizeImages(product.images)
         const resolvedImages = await Promise.all(imageUrls.map(resolveSignedImageUrl))
+        const videoUrls = normalizeImages(product.videos)
+        const resolvedVideos = await Promise.all(videoUrls.map(resolveSignedImageUrl))
 
         return {
             ...product,
             images: resolvedImages,
+            videos: resolvedVideos,
             variants: parseVariants(product.variants),
         }
     }))
@@ -466,6 +469,7 @@ export async function POST(request) {
                     images:        Array.isArray(body.images)
                         ? body.images.map(img => typeof img === 'string' ? img : img.src)
                         : (body.images || []),
+                    videos:        Array.isArray(body.videos) ? body.videos : [],
                     category:      body.category,
                     product_type:  body.product_type,
                     fabric:        fabricRef.fabric,
@@ -553,6 +557,10 @@ export async function PUT(request) {
             cleanUpdates.images = Array.isArray(updates.images)
                 ? updates.images.map(img => typeof img === 'string' ? img : img.src)
                 : []
+        }
+
+        if (updates.videos !== undefined) {
+            cleanUpdates.videos = Array.isArray(updates.videos) ? updates.videos : []
         }
 
         if (updates.tags) {
