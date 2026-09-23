@@ -1,12 +1,12 @@
 import { createClient } from '@supabase/supabase-js'
-import { sendWhatsAppTemplate } from '../../../../lib/whatsappApi'
+import { sendWhatsAppTemplate, sendCarouselTemplate } from '../../../../lib/whatsappApi'
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_KEY
 )
 
-const TEMPLATE_NAME = 'new_arrivals_broadcast_kt'
+const TEMPLATE_NAME = 'new_arrivals_carousel_kt'
 const PRODUCT_SLOTS = 5
 const SEND_CONCURRENCY = 5
 const BATCH_DEFAULT = 100
@@ -60,15 +60,18 @@ function normalizeTestNumber(value) {
 // through the customers table, so a campaign can be checked before launch.
 export async function POST(request) {
     try {
-        const { offset = 0, limit = BATCH_DEFAULT, productLines, testNumbers, debugTemplateName } = await request.json()
+        const { offset = 0, limit = BATCH_DEFAULT, cards, testNumbers, debugTemplateName } = await request.json()
 
         // Debug-only override so a different, already-Active template (with
         // no variables of its own) can be used to sanity-check the send
-        // pipeline while new_arrivals_broadcast_kt is still in review.
+        // pipeline while new_arrivals_carousel_kt is still in review.
         const templateName = debugTemplateName ? String(debugTemplateName).trim() : TEMPLATE_NAME
 
-        if (!debugTemplateName && (!Array.isArray(productLines) || productLines.length === 0)) {
-            return Response.json({ success: false, error: 'productLines is required' }, { status: 400 })
+        if (!debugTemplateName && (!Array.isArray(cards) || cards.length === 0)) {
+            return Response.json({ success: false, error: 'cards is required' }, { status: 400 })
+        }
+        if (!debugTemplateName && cards.some((c) => !c.mediaId)) {
+            return Response.json({ success: false, error: 'Every card needs an uploaded mediaId — upload images first' }, { status: 400 })
         }
 
         let recipients
@@ -103,11 +106,18 @@ export async function POST(request) {
             while (idx < recipients.length) {
                 const recipient = recipients[idx++]
                 const name = String(recipient.first_name || '').trim() || 'there'
-                const result = await sendWhatsAppTemplate({
-                    to: recipient.phone,
-                    templateName,
-                    bodyParams: debugTemplateName ? [] : [name, ...productLines],
-                })
+                const result = debugTemplateName
+                    ? await sendWhatsAppTemplate({ to: recipient.phone, templateName, bodyParams: [] })
+                    : await sendCarouselTemplate({
+                        to: recipient.phone,
+                        templateName,
+                        bodyParams: [name],
+                        cards: cards.map((c) => ({
+                            mediaId: c.mediaId,
+                            bodyParams: c.bodyText ? [c.bodyText] : [],
+                            buttonUrlParam: c.buttonPath,
+                        })),
+                    })
                 if (result.success) sent += 1
                 else {
                     failed += 1

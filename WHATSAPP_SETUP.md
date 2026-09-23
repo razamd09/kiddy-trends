@@ -59,10 +59,11 @@ Approval is usually minutes to ~24h. The names must match exactly —
 
 ## 4. WhatsApp Broadcast (New Arrivals campaign)
 
-`/admin/whatsapp-broadcast` sends a promotional message to every customer in
-the `customers` table, listing the 5 newest active New Arrivals with links.
-This is a **Marketing**-category message (not Utility like the order updates
-above), which has stricter rules:
+`/admin/whatsapp-broadcast` sends a **Carousel Template** — an intro line plus
+up to 5 swipeable cards, each with a product image, price line, and a "View
+Product" button — to every customer in the `customers` table. This is a
+**Marketing**-category message (not Utility like the order updates above),
+which has stricter rules:
 
 - Recipients must have opted in to receive promotional WhatsApp messages —
   having simply placed an order does not count as marketing consent under
@@ -73,28 +74,34 @@ above), which has stricter rules:
   quality rating and usage — a very large first broadcast may not fully
   deliver until the tier grows.
 
+Card images are uploaded to WhatsApp's Media API automatically by the code at
+send time (Cloud API does not accept a plain public image URL in a template
+send, only a pre-uploaded media id) — nothing extra needed here for that part.
+
 Submit this template for approval (category **Marketing**, language
-**English**):
+**English**, type **Carousel** in the template editor — a different type from
+the plain "Default" templates above):
 
-**Template name**: `new_arrivals_broadcast_kt`
+**Template name**: `new_arrivals_carousel_kt`
 
-**Body** (`{{1}}` = first name, `{{2}}`–`{{6}}` = one "title – link" line each
-for the 5 featured products):
+**Body** (the intro text above the cards, `{{1}}` = first name):
 ```
-Hi {{1}}! 🎉 New arrivals just dropped at Kiddy Trends:
-
-{{2}}
-{{3}}
-{{4}}
-{{5}}
-{{6}}
-
-Shop the full collection: thekiddytrends.com/collections
+Hi {{1}}! 🎉 New arrivals just dropped at Kiddy Trends — check them out below 👇
 ```
+
+**Carousel — 5 cards**, every card identical in structure (Meta requires this):
+- **Header**: image (any placeholder image works for the approval sample —
+  the real ones are swapped in per-send by the code)
+- **Body**: one variable, `{{1}}` — e.g. sample value `Cute Winter Frock – PKR 2,199`
+- **Button**: one URL button, base URL `https://thekiddytrends.com/`, with a
+  variable suffix — sample value `products/prd_id=123`. Label it something
+  like "View Product".
 
 Marketing templates typically take longer to review than Utility ones and
-may be rejected if they read as spammy — keep the approved wording close to
-this if Meta asks for changes, since the code fills these exact 6 slots.
+may be rejected if they read as spammy — keep the approved wording/structure
+close to this if Meta asks for changes, since the code depends on exactly
+this shape (1 intro variable, 5 cards each with 1 body variable + 1 button
+variable).
 
 ## Not built yet (possible next steps)
 

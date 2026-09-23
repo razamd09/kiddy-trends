@@ -28,13 +28,32 @@ function cleanTitle(rawTitle) {
         .slice(0, 60)
 }
 
-// Matches the server's own padding so the preview is exactly what recipients see.
-function buildProductLines(selected) {
-    const lines = selected.map((p) => cleanTitle(p.title) + ' – ' + SITE_URL + '/products/prd_id=' + p.id)
-    while (lines.length < MAX_PRODUCTS) {
-        lines.push('✨ More new arrivals at ' + SITE_URL + '/collections')
+function formatPrice(value) {
+    return Math.round(Number(value) || 0).toLocaleString()
+}
+
+// One card per selected product (image + short text + a button pointing at
+// that product), padded to MAX_PRODUCTS with a generic "more new arrivals"
+// card using the site logo — every card in an approved carousel template
+// must always be sent, so a short selection still needs a real image per slot.
+function buildCards(selected) {
+    const cards = selected.map((p) => ({
+        id: String(p.id),
+        image: SITE_URL + '/api/image?src=' + encodeURIComponent(firstImage(p) || ''),
+        bodyText: cleanTitle(p.title) + ' – PKR ' + formatPrice(p.price),
+        buttonPath: 'products/prd_id=' + p.id,
+    }))
+    let fillerCount = 0
+    while (cards.length < MAX_PRODUCTS) {
+        fillerCount += 1
+        cards.push({
+            id: 'filler-' + fillerCount,
+            image: SITE_URL + '/logo.jpg',
+            bodyText: '✨ More new arrivals at Kiddy Trends',
+            buttonPath: 'collections',
+        })
     }
-    return lines
+    return cards
 }
 
 function parseTestNumbers(input) {
@@ -144,7 +163,27 @@ export default function AdminWhatsAppBroadcastPage() {
         if (product) addSelected(product)
     }
 
-    async function sendBatches(productLines, testNumbers, debugTemplateName) {
+    // Uploads every card's image to WhatsApp once — the resulting media ids
+    // are reused for every recipient in the send loop below, instead of
+    // re-uploading per batch or per customer.
+    async function uploadCardMedia(cards) {
+        const res = await fetch('/api/admin/whatsapp-campaign/upload-media', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ images: cards.map((c) => ({ id: c.id, url: c.image })) }),
+        })
+        const data = await res.json()
+        if (!data.success) throw new Error(data.error || 'Media upload failed')
+
+        const failed = data.results.filter((r) => !r.success)
+        if (failed.length > 0) throw new Error('Image upload failed for ' + failed.length + ' card(s): ' + failed[0].error)
+
+        const mediaById = Object.fromEntries(data.results.map((r) => [r.id, r.mediaId]))
+        return cards.map((c) => ({ ...c, mediaId: mediaById[c.id] }))
+    }
+
+    async function sendBatches(cardsWithMedia, testNumbers, debugTemplateName) {
+        const cardsPayload = cardsWithMedia.map((c) => ({ mediaId: c.mediaId, bodyText: c.bodyText, buttonPath: c.buttonPath }))
         let offset = 0
         let totals = { processed: 0, sent: 0, failed: 0 }
         let allErrors = []
@@ -154,8 +193,8 @@ export default function AdminWhatsAppBroadcastPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(testNumbers
-                    ? { productLines, testNumbers, debugTemplateName: debugTemplateName || undefined }
-                    : { offset, limit: BATCH_SIZE, productLines }),
+                    ? { cards: cardsPayload, testNumbers, debugTemplateName: debugTemplateName || undefined }
+                    : { offset, limit: BATCH_SIZE, cards: cardsPayload }),
             })
             const data = await res.json()
             if (!data.success) throw new Error(data.error || 'Send failed')
@@ -183,7 +222,8 @@ export default function AdminWhatsAppBroadcastPage() {
         setTestSending(true)
         setTestResult(null)
         try {
-            const { totals, allErrors } = await sendBatches(buildProductLines(selected), numbers, debugTemplateName)
+            const cardsWithMedia = debugTemplateName ? [] : await uploadCardMedia(buildCards(selected))
+            const { totals, allErrors } = await sendBatches(cardsWithMedia, numbers, debugTemplateName)
             setTestResult({ ...totals, details: allErrors })
         } catch (err) {
             setTestResult({ error: err.message })
@@ -202,7 +242,8 @@ export default function AdminWhatsAppBroadcastPage() {
         setProgress({ processed: 0, sent: 0, failed: 0 })
 
         try {
-            await sendBatches(buildProductLines(selected))
+            const cardsWithMedia = await uploadCardMedia(buildCards(selected))
+            await sendBatches(cardsWithMedia)
         } catch (err) {
             setErrors((prev) => [...prev, err.message].slice(0, 10))
         }
@@ -236,7 +277,7 @@ export default function AdminWhatsAppBroadcastPage() {
                     <p className="font-display text-lg text-charcoal mb-1">New Arrivals (drag into selection below)</p>
                     <p className="text-xs text-gray-500 mb-4">
                         Newest first · drag up to {MAX_PRODUCTS} cards down into "Selected for this broadcast" —
-                        these become the product links in the <code className="bg-cream px-1.5 py-0.5 rounded">new_arrivals_broadcast_kt</code> message.
+                        these become the carousel cards in the <code className="bg-cream px-1.5 py-0.5 rounded">new_arrivals_carousel_kt</code> message.
                     </p>
 
                     {poolLoading && <p className="text-sm text-gray-400">Loading...</p>}
@@ -269,19 +310,17 @@ export default function AdminWhatsAppBroadcastPage() {
 
                 <div className="bg-white rounded-2xl p-6 shadow-sm">
                     <p className="font-display text-lg text-charcoal mb-1">Selected for this broadcast ({selected.length}/{MAX_PRODUCTS})</p>
-                    <p className="text-xs text-gray-500 mb-4">This is exactly what recipients will see, link and all.</p>
+                    <p className="text-xs text-gray-500 mb-4">This is exactly what each carousel card will show — image, price line, and a "View Product" button.</p>
 
                     <div onDragOver={handleDragOver} onDrop={handleDrop}
                          className="space-y-2 min-h-[70px] border-2 border-dashed border-gray-200 rounded-xl p-3">
                         {selected.length === 0 && (
                             <p className="text-sm text-gray-400 text-center py-3">Drop New Arrivals cards here</p>
                         )}
-                        {buildProductLines(selected).map((line, i) => (
-                            <div key={i} className="flex items-center gap-3 bg-cream rounded-xl px-3 py-2">
-                                {selected[i] && firstImage(selected[i]) && (
-                                    <img src={'/api/image?src=' + encodeURIComponent(firstImage(selected[i]))} alt="" className="w-8 h-8 object-cover rounded-lg flex-shrink-0" />
-                                )}
-                                <p className="text-sm text-charcoal flex-1 min-w-0 truncate">{line}</p>
+                        {buildCards(selected).map((card, i) => (
+                            <div key={card.id} className="flex items-center gap-3 bg-cream rounded-xl px-3 py-2">
+                                <img src={card.image} alt="" className="w-8 h-8 object-cover rounded-lg flex-shrink-0" />
+                                <p className="text-sm text-charcoal flex-1 min-w-0 truncate">{card.bodyText}</p>
                                 {selected[i] && (
                                     <button onClick={() => removeSelected(selected[i].id)} className="text-xs text-gray-300 hover:text-coral px-1 flex-shrink-0">✕</button>
                                 )}
@@ -299,7 +338,7 @@ export default function AdminWhatsAppBroadcastPage() {
                               className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm mb-3" />
                     <button onClick={sendTest} disabled={testSending || selected.length === 0}
                             className="px-5 py-2.5 border-2 border-charcoal text-charcoal font-display text-sm rounded-full hover:bg-charcoal hover:text-white transition-all disabled:opacity-40">
-                        {testSending ? 'Sending test...' : 'Send Test'}
+                        {testSending ? 'Uploading images & sending...' : 'Send Test'}
                     </button>
                     {testResult && (
                         testResult.error
@@ -326,7 +365,7 @@ export default function AdminWhatsAppBroadcastPage() {
 
                     <button onClick={launchCampaign} disabled={sending || loading || recipientCount === 0 || selected.length === 0}
                             className="px-6 py-3 bg-coral text-white font-display text-sm rounded-full hover:bg-opacity-90 disabled:opacity-50">
-                        {sending ? 'Sending...' : '🚀 Launch Campaign'}
+                        {sending ? 'Uploading images & sending...' : '🚀 Launch Campaign'}
                     </button>
 
                     {(sending || finished) && (
