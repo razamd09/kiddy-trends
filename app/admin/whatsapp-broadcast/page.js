@@ -86,6 +86,10 @@ export default function AdminWhatsAppBroadcastPage() {
     const [errors, setErrors] = useState([])
     const [finished, setFinished] = useState(false)
 
+    const [debugInfo, setDebugInfo] = useState(null)
+    const [debugLoading, setDebugLoading] = useState(false)
+    const [showDebug, setShowDebug] = useState(false)
+
     useEffect(() => {
         async function verify() {
             const token = localStorage.getItem('admin_token')
@@ -161,6 +165,24 @@ export default function AdminWhatsAppBroadcastPage() {
         const product = dragRef.current
         dragRef.current = null
         if (product) addSelected(product)
+    }
+
+    async function loadDebugInfo() {
+        setDebugLoading(true)
+        try {
+            const res = await fetch('/api/admin/whatsapp-campaign/status-log')
+            const data = await res.json()
+            setDebugInfo(data)
+        } catch {
+            setDebugInfo(null)
+        }
+        setDebugLoading(false)
+    }
+
+    function toggleDebug() {
+        const next = !showDebug
+        setShowDebug(next)
+        if (next) loadDebugInfo()
     }
 
     // Uploads every card's image to WhatsApp once — the resulting media ids
@@ -267,11 +289,52 @@ export default function AdminWhatsAppBroadcastPage() {
                     <Link href="/admin/dashboard" className="text-gray-400 hover:text-coral text-sm">← Back</Link>
                     <h1 className="font-display text-xl text-charcoal">WhatsApp Broadcast</h1>
                 </div>
-                <p className="text-xs text-gray-400">New Arrivals campaign · sent to every customer's WhatsApp</p>
+                <div className="flex items-center gap-3">
+                    <p className="text-xs text-gray-400">New Arrivals campaign · sent to every customer's WhatsApp</p>
+                    <button onClick={toggleDebug} className="text-xs text-coral hover:underline flex-shrink-0">
+                        {showDebug ? 'Hide troubleshooting' : 'Troubleshoot'}
+                    </button>
+                </div>
             </div>
             <AdminPortalNav />
 
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+
+                {showDebug && (
+                    <div className="bg-white rounded-2xl shadow-sm p-5 text-sm">
+                        <div className="flex items-center justify-between mb-3">
+                            <p className="font-display text-base text-charcoal">Delivery status log</p>
+                            <button onClick={loadDebugInfo} disabled={debugLoading} className="text-xs text-coral hover:underline disabled:opacity-40">↻ Refresh</button>
+                        </div>
+                        {debugLoading && <p className="text-gray-400">Loading...</p>}
+                        {!debugLoading && debugInfo && (
+                            <div className="space-y-3">
+                                <p className="text-xs text-gray-500">{debugInfo.totalEvents} status events ever received from WhatsApp's delivery webhook.</p>
+                                {debugInfo.totalEvents === 0 ? (
+                                    <p className="text-orange-500 text-xs bg-orange-50 rounded-xl p-3">
+                                        Zero status events ever recorded — the delivery-status webhook likely isn't configured
+                                        in Meta yet (WhatsApp Manager → Configuration → Webhooks, subscribe to "messages" field
+                                        with this same callback URL), so we have no visibility into what happens after a send
+                                        is accepted.
+                                    </p>
+                                ) : (
+                                    <div className="space-y-1.5">
+                                        {debugInfo.recent.map((e) => (
+                                            <div key={e.id} className="bg-cream rounded-lg p-2 text-xs">
+                                                <span className={e.status === 'failed' ? 'text-red-500 font-semibold' : e.status === '_webhook_received' ? 'text-gray-400 font-semibold' : 'text-green-600 font-semibold'}>
+                                                    {e.status || '—'}
+                                                </span>
+                                                <span className="text-gray-400 ml-2">{new Date(e.received_at).toLocaleString()}</span>
+                                                {e.wa_message_id && <p className="text-gray-500 mt-0.5">msg: {e.wa_message_id}</p>}
+                                                {e.error_message && <p className="text-red-500 mt-0.5">{e.error_title}: {e.error_message}</p>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 <div className="bg-white rounded-2xl p-6 shadow-sm">
                     <p className="font-display text-lg text-charcoal mb-1">New Arrivals (drag into selection below)</p>
