@@ -1,5 +1,7 @@
 import {
+    backfillCustomersFromOrders,
     getCustomersPage,
+    normalizeCsvRow,
     normalizeOrderSource,
     normalizePhone,
     sendPromotionEmailToAllCustomers,
@@ -72,6 +74,38 @@ export async function POST(request) {
 
             const result = await sendPromotionWhatsAppToAllCustomers(subject)
             return Response.json({ success: true, ...result })
+        }
+
+        if (action === 'backfill-orders') {
+            const validEmployee = await validateEmployeeAccess(body?.employee_id)
+            if (!validEmployee) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+            const imported = await backfillCustomersFromOrders()
+            return Response.json({ success: true, imported, source: 'orders' })
+        }
+
+        if (action === 'import-csv') {
+            const validEmployee = await validateEmployeeAccess(body?.employee_id)
+            if (!validEmployee) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+            const inputRows = Array.isArray(body?.rows) ? body.rows : []
+            const byPhone = new Map()
+
+            inputRows.forEach((raw) => {
+                const row = normalizeCsvRow(raw)
+                if (!row) return
+                byPhone.set(row.phone, row)
+            })
+
+            const rows = [...byPhone.values()]
+            if (rows.length === 0) {
+                return Response.json({ success: true, imported: 0, source: 'csv' })
+            }
+
+            const error = await upsertCustomers(rows)
+            if (error) return Response.json({ error: error.message }, { status: 500 })
+
+            return Response.json({ success: true, imported: rows.length, source: 'csv' })
         }
 
         if (action !== 'add-customer') {

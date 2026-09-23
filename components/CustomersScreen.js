@@ -208,20 +208,42 @@ export default function CustomersScreen({ mode = 'admin' }) {
         setLoading(false)
     }
 
+    // Admin authenticates by token header; employee authenticates by
+    // sending their employee_id in the body — every mutating action below
+    // needs to branch on that the same way, so this centralizes it.
+    function buildAuthContext() {
+        if (isAdmin) {
+            const token = localStorage.getItem('admin_token')
+            if (!token) {
+                router.push('/admin')
+                return null
+            }
+            return { headers: { 'Content-Type': 'application/json', 'x-admin-token': token }, employeeId: '' }
+        }
+
+        const employee = JSON.parse(localStorage.getItem('employee') || '{}')
+        const employeeId = employee.employee_id || ''
+        if (!employeeId) {
+            router.push('/admin')
+            return null
+        }
+        return { headers: { 'Content-Type': 'application/json' }, employeeId }
+    }
+
     async function syncFromOrders() {
-        const token = localStorage.getItem('admin_token')
-        if (!token) return
+        const auth = buildAuthContext()
+        if (!auth) return
 
         setSyncingOrders(true)
         setStatusMessage('')
         try {
-            const res = await fetch('/api/admin/customers', {
+            const payload = { action: 'backfill-orders' }
+            if (!isAdmin) payload.employee_id = auth.employeeId
+
+            const res = await fetch(apiPath, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-admin-token': token,
-                },
-                body: JSON.stringify({ action: 'backfill-orders' }),
+                headers: auth.headers,
+                body: JSON.stringify(payload),
             })
             const data = await res.json().catch(() => ({}))
             if (!res.ok) throw new Error(data?.error || 'Failed to sync customers from orders')
@@ -243,8 +265,8 @@ export default function CustomersScreen({ mode = 'admin' }) {
         const file = e.target.files?.[0]
         if (!file) return
 
-        const token = localStorage.getItem('admin_token')
-        if (!token) return
+        const auth = buildAuthContext()
+        if (!auth) return
 
         setImportingCsv(true)
         setStatusMessage('')
@@ -260,13 +282,13 @@ export default function CustomersScreen({ mode = 'admin' }) {
 
             for (let i = 0; i < rows.length; i += batchSize) {
                 const chunk = rows.slice(i, i + batchSize)
-                const res = await fetch('/api/admin/customers', {
+                const payload = { action: 'import-csv', rows: chunk }
+                if (!isAdmin) payload.employee_id = auth.employeeId
+
+                const res = await fetch(apiPath, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-admin-token': token,
-                    },
-                    body: JSON.stringify({ action: 'import-csv', rows: chunk }),
+                    headers: auth.headers,
+                    body: JSON.stringify(payload),
                 })
                 const data = await res.json().catch(() => ({}))
                 if (!res.ok) throw new Error(data?.error || 'CSV import failed')
@@ -291,23 +313,8 @@ export default function CustomersScreen({ mode = 'admin' }) {
             return
         }
 
-        let employeeId = ''
-        const headers = { 'Content-Type': 'application/json' }
-        if (isAdmin) {
-            const token = localStorage.getItem('admin_token')
-            if (!token) {
-                router.push('/admin')
-                return
-            }
-            headers['x-admin-token'] = token
-        } else {
-            const employee = JSON.parse(localStorage.getItem('employee') || '{}')
-            employeeId = employee.employee_id || ''
-            if (!employeeId) {
-                router.push('/admin')
-                return
-            }
-        }
+        const auth = buildAuthContext()
+        if (!auth) return
 
         setSendingPromotion(true)
         setStatusMessage('')
@@ -317,11 +324,11 @@ export default function CustomersScreen({ mode = 'admin' }) {
                 action: 'send-promotions-email',
                 subject,
             }
-            if (!isAdmin) payload.employee_id = employeeId
+            if (!isAdmin) payload.employee_id = auth.employeeId
 
             const res = await fetch(apiPath, {
                 method: 'POST',
-                headers,
+                headers: auth.headers,
                 body: JSON.stringify(payload),
             })
 
@@ -416,32 +423,30 @@ export default function CustomersScreen({ mode = 'admin' }) {
                     </button>
                 </form>
 
-                {isAdmin && (
-                    <div className="bg-white rounded-2xl p-4 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-                        <div>
-                            <p className="font-semibold text-charcoal">Import Customers</p>
-                            <p className="text-xs text-gray-400">Sync website &amp; Instagram orders, or upload CSV with first name, last name, phone</p>
-                            {csvName && <p className="text-xs text-gray-500 mt-1">Selected file: {csvName}</p>}
-                        </div>
-                        <div className="flex gap-2 flex-wrap">
-                            <button
-                                onClick={syncFromOrders}
-                                disabled={syncingOrders || importingCsv}
-                                className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-sm font-semibold disabled:opacity-50"
-                            >
-                                {syncingOrders ? 'Syncing...' : 'Sync From Orders'}
-                            </button>
-                            <button
-                                onClick={triggerCsvPicker}
-                                disabled={syncingOrders || importingCsv}
-                                className="px-4 py-2 rounded-xl bg-coral text-white text-sm font-semibold disabled:opacity-50"
-                            >
-                                {importingCsv ? 'Uploading...' : 'Upload CSV'}
-                            </button>
-                            <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={uploadCsv} className="hidden" />
-                        </div>
+                <div className="bg-white rounded-2xl p-4 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+                    <div>
+                        <p className="font-semibold text-charcoal">Import Customers</p>
+                        <p className="text-xs text-gray-400">Sync website &amp; Instagram orders, or upload CSV with first name, last name, phone</p>
+                        {csvName && <p className="text-xs text-gray-500 mt-1">Selected file: {csvName}</p>}
                     </div>
-                )}
+                    <div className="flex gap-2 flex-wrap">
+                        <button
+                            onClick={syncFromOrders}
+                            disabled={syncingOrders || importingCsv}
+                            className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-sm font-semibold disabled:opacity-50"
+                        >
+                            {syncingOrders ? 'Syncing...' : 'Sync From Orders'}
+                        </button>
+                        <button
+                            onClick={triggerCsvPicker}
+                            disabled={syncingOrders || importingCsv}
+                            className="px-4 py-2 rounded-xl bg-coral text-white text-sm font-semibold disabled:opacity-50"
+                        >
+                            {importingCsv ? 'Uploading...' : 'Upload CSV'}
+                        </button>
+                        <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={uploadCsv} className="hidden" />
+                    </div>
+                </div>
 
                 {/* EMAIL PROMOTION */}
                 <div className="bg-white rounded-2xl p-4 space-y-3">
