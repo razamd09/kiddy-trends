@@ -85,6 +85,14 @@ export default function AdminWhatsAppBroadcastPage() {
     const [campaignTagline, setCampaignTagline] = useState('')
     const [campaignButtonPath, setCampaignButtonPath] = useState('collections')
 
+    // Saved campaigns — so relaunching the same campaign later (fresh batch,
+    // or whoever didn't respond) doesn't mean re-uploading the video and
+    // retyping everything. Works for both modes.
+    const [savedCampaigns, setSavedCampaigns] = useState([])
+    const [savedCampaignsLoading, setSavedCampaignsLoading] = useState(true)
+    const [campaignSaveName, setCampaignSaveName] = useState('')
+    const [savingCampaign, setSavingCampaign] = useState(false)
+
     const [testNumbersInput, setTestNumbersInput] = useState('')
     const [debugTemplateName, setDebugTemplateName] = useState('')
     const [testSending, setTestSending] = useState(false)
@@ -126,6 +134,7 @@ export default function AdminWhatsAppBroadcastPage() {
                 if (!data.valid) { localStorage.removeItem('admin_token'); router.push('/admin'); return }
                 setVerified(true)
                 loadAll()
+                loadSavedCampaigns()
             } catch {
                 router.push('/admin')
             }
@@ -167,6 +176,77 @@ export default function AdminWhatsAppBroadcastPage() {
             setPool([])
         }
         setPoolLoading(false)
+    }
+
+    async function loadSavedCampaigns() {
+        setSavedCampaignsLoading(true)
+        try {
+            const res = await fetch('/api/admin/whatsapp-campaign/saved', { headers: { 'x-admin-token': token() } })
+            const data = await res.json()
+            setSavedCampaigns(data.success ? (data.campaigns || []) : [])
+        } catch {
+            setSavedCampaigns([])
+        }
+        setSavedCampaignsLoading(false)
+    }
+
+    // Saves whatever is currently set up (video+tagline+button, or the
+    // selected products) as a reusable campaign — not the recipients, since
+    // who you're sending to is a fresh decision every launch.
+    async function saveCampaign() {
+        const cleanName = campaignSaveName.trim()
+        if (!cleanName) { alert('Give this campaign a name first.'); return }
+        const validationError = validateCampaignReady()
+        if (validationError) { alert(validationError); return }
+
+        const content = campaignMode === 'video'
+            ? { videoUrl: campaignVideo.url, storagePath: campaignVideo.storagePath, tagline: campaignTagline.trim(), buttonPath: campaignButtonPath.trim() || 'collections' }
+            : { productIds: selected.map((p) => p.id) }
+
+        setSavingCampaign(true)
+        try {
+            const res = await fetch('/api/admin/whatsapp-campaign/saved', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: cleanName, type: campaignMode, content }),
+            })
+            const data = await res.json()
+            if (!data.success) throw new Error(data.error || 'Failed to save')
+            setCampaignSaveName('')
+            loadSavedCampaigns()
+        } catch (err) {
+            alert('Failed to save campaign: ' + err.message)
+        }
+        setSavingCampaign(false)
+    }
+
+    function loadSavedCampaign(campaign) {
+        if (campaign.type === 'video') {
+            setCampaignMode('video')
+            setCampaignVideo({ url: campaign.content.videoUrl, storagePath: campaign.content.storagePath, uploading: false })
+            setCampaignTagline(campaign.content.tagline || '')
+            setCampaignButtonPath(campaign.content.buttonPath || 'collections')
+        } else {
+            setCampaignMode('carousel')
+            const ids = Array.isArray(campaign.content.productIds) ? campaign.content.productIds : []
+            const matched = ids.map((id) => pool.find((p) => p.id === id)).filter(Boolean)
+            setSelected(matched)
+            if (matched.length < ids.length) {
+                alert((ids.length - matched.length) + ' of ' + ids.length + ' saved products are no longer in the New Arrivals pool and were skipped.')
+            }
+        }
+    }
+
+    async function deleteSavedCampaign(id) {
+        if (!window.confirm('Delete this saved campaign?')) return
+        try {
+            const res = await fetch('/api/admin/whatsapp-campaign/saved?id=' + id, { method: 'DELETE' })
+            const data = await res.json()
+            if (!data.success) throw new Error(data.error || 'Delete failed')
+            setSavedCampaigns((prev) => prev.filter((c) => c.id !== id))
+        } catch (err) {
+            alert('Failed to delete: ' + err.message)
+        }
     }
 
     function addSelected(product) {
@@ -567,6 +647,40 @@ export default function AdminWhatsAppBroadcastPage() {
                             className={'flex-1 px-4 py-3 rounded-xl font-display text-sm transition-all ' + (campaignMode === 'video' ? 'bg-coral text-white' : 'text-gray-400 hover:text-charcoal')}>
                         🎥 Video (Single Clip)
                     </button>
+                </div>
+
+                <div className="bg-white rounded-2xl p-6 shadow-sm">
+                    <p className="font-display text-lg text-charcoal mb-1">Saved Campaigns</p>
+                    <p className="text-xs text-gray-500 mb-3">Save the current setup to relaunch it later without re-uploading the video or rebuilding the product picks.</p>
+
+                    <div className="flex gap-2 mb-3">
+                        <input value={campaignSaveName} onChange={(e) => setCampaignSaveName(e.target.value)}
+                               placeholder={campaignMode === 'video' ? 'e.g. Winter Video Promo' : 'e.g. Winter Carousel'}
+                               className="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
+                        <button type="button" onClick={saveCampaign} disabled={savingCampaign}
+                                className="px-4 py-2 rounded-xl bg-charcoal text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50 whitespace-nowrap">
+                            {savingCampaign ? 'Saving...' : '💾 Save Current'}
+                        </button>
+                    </div>
+
+                    {savedCampaignsLoading ? (
+                        <p className="text-sm text-gray-400">Loading...</p>
+                    ) : savedCampaigns.length === 0 ? (
+                        <p className="text-sm text-gray-400">No saved campaigns yet.</p>
+                    ) : (
+                        <div className="space-y-2">
+                            {savedCampaigns.map((c) => (
+                                <div key={c.id} className="flex items-center gap-3 bg-cream rounded-xl px-3 py-2">
+                                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold flex-shrink-0 bg-white">
+                                        {c.type === 'video' ? '🎥' : '🎠'}
+                                    </span>
+                                    <p className="text-sm text-charcoal flex-1 min-w-0 truncate">{c.name}</p>
+                                    <button type="button" onClick={() => loadSavedCampaign(c)} className="text-xs text-coral hover:underline flex-shrink-0">Load</button>
+                                    <button type="button" onClick={() => deleteSavedCampaign(c.id)} className="text-xs text-gray-300 hover:text-coral flex-shrink-0">Delete</button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {campaignMode === 'video' && (
