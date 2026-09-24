@@ -63,8 +63,10 @@ function isOnCooldown(customer) {
 // customerIds/cooldown entirely, for trying the message before a real send.
 export async function POST(request) {
     try {
-        const { customerIds, cards, video, testNumbers, debugTemplateName } = await request.json()
+        const { customerIds, cards, video, testNumbers, debugTemplateName, recipientPool } = await request.json()
         const mode = video ? 'video' : 'carousel'
+        const pool = recipientPool === 'non_kiddy' ? 'non_kiddy' : 'customers'
+        const recipientTable = pool === 'non_kiddy' ? 'non_kiddy_contacts' : 'customers'
 
         // Debug-only override so a different, already-Active template (with
         // no variables of its own) can be used to sanity-check the send
@@ -105,8 +107,8 @@ export async function POST(request) {
             }
 
             const { data: customers, error } = await supabase
-                .from('customers')
-                .select('id, first_name, last_name, phone, last_campaign_sent_at')
+                .from(recipientTable)
+                .select(pool === 'non_kiddy' ? 'id, name, phone, last_campaign_sent_at' : 'id, first_name, last_name, phone, last_campaign_sent_at')
                 .in('id', ids)
                 .not('phone', 'is', null)
                 .neq('phone', '')
@@ -131,7 +133,11 @@ export async function POST(request) {
         async function worker() {
             while (idx < recipients.length) {
                 const recipient = recipients[idx++]
-                const name = String(recipient.first_name || '').trim() || 'there'
+                // Non-Kiddy contacts only ever have a placeholder name (CP1,
+                // CP2, ...) since real names can't be reliably matched to a
+                // WhatsApp group's member list — never show that in an
+                // outgoing greeting, use a generic "there" instead.
+                const name = pool === 'non_kiddy' ? 'there' : (String(recipient.first_name || '').trim() || 'there')
                 let result
                 if (debugTemplateName) {
                     result = await sendWhatsAppTemplate({ to: recipient.phone, templateName, bodyParams: [] })
@@ -168,7 +174,7 @@ export async function POST(request) {
 
         if (!isTestSend && successfulIds.length > 0) {
             await supabase
-                .from('customers')
+                .from(recipientTable)
                 .update({ last_campaign_sent_at: new Date().toISOString() })
                 .in('id', successfulIds)
         }

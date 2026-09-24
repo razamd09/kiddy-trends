@@ -114,6 +114,13 @@ export default function AdminWhatsAppBroadcastPage() {
     const [selectedCustomers, setSelectedCustomers] = useState(new Map())
     const [batchSize, setBatchSize] = useState(10)
 
+    // 'customers' = real Kiddy Trends order customers. 'non_kiddy' = separate
+    // community/leads lists (see Customers > Non-Kiddy Customers) — its own
+    // cooldown tracking, never mixed with real customer data.
+    const [recipientPool, setRecipientPool] = useState('customers')
+    const [nonKiddyGroups, setNonKiddyGroups] = useState([])
+    const [nonKiddyGroupId, setNonKiddyGroupId] = useState('')
+
     const [sending, setSending] = useState(false)
     const [sendTotal, setSendTotal] = useState(0)
     const [progress, setProgress] = useState({ processed: 0, sent: 0, failed: 0, skippedCooldown: 0 })
@@ -135,6 +142,7 @@ export default function AdminWhatsAppBroadcastPage() {
                 setVerified(true)
                 loadAll()
                 loadSavedCampaigns()
+                loadNonKiddyGroups()
             } catch {
                 router.push('/admin')
             }
@@ -145,7 +153,7 @@ export default function AdminWhatsAppBroadcastPage() {
     useEffect(() => {
         if (!verified) return
         loadRecipients(recipientsPage)
-    }, [verified, recipientsPage, recipientsSort, recipientsDir, recipientsSource, recipientsTab])
+    }, [verified, recipientsPage, recipientsSort, recipientsDir, recipientsSource, recipientsTab, recipientPool, nonKiddyGroupId])
 
     function token() {
         return localStorage.getItem('admin_token') || ''
@@ -290,13 +298,27 @@ export default function AdminWhatsAppBroadcastPage() {
         return new Date(customer.last_campaign_sent_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
     }
 
+    async function loadNonKiddyGroups() {
+        try {
+            const res = await fetch('/api/admin/non-kiddy/groups', { headers: { 'x-admin-token': token() } })
+            const data = await res.json()
+            setNonKiddyGroups(data.success ? (data.groups || []) : [])
+        } catch {
+            setNonKiddyGroups([])
+        }
+    }
+
     async function loadRecipients(page) {
         setRecipientsLoading(true)
         try {
-            const params = new URLSearchParams({ page: String(page), dir: recipientsDir, tab: recipientsTab })
+            const params = new URLSearchParams({ page: String(page), dir: recipientsDir, tab: recipientsTab, pool: recipientPool })
             if (recipientsSort) params.set('sort', recipientsSort)
             if (recipientsQuery.trim()) params.set('q', recipientsQuery.trim())
-            if (recipientsSource) params.set('source', recipientsSource)
+            if (recipientPool === 'non_kiddy') {
+                if (nonKiddyGroupId) params.set('groupId', nonKiddyGroupId)
+            } else if (recipientsSource) {
+                params.set('source', recipientsSource)
+            }
 
             const res = await fetch('/api/admin/whatsapp-campaign/recipients?' + params.toString(), {
                 headers: { 'x-admin-token': token() },
@@ -311,6 +333,14 @@ export default function AdminWhatsAppBroadcastPage() {
             setRecipients([])
         }
         setRecipientsLoading(false)
+    }
+
+    function switchRecipientPool(pool) {
+        if (pool === recipientPool) return
+        setRecipientPool(pool)
+        setNonKiddyGroupId('')
+        clearSelection()
+        setRecipientsPage(1)
     }
 
     function switchRecipientsTab(tab) {
@@ -478,7 +508,7 @@ export default function AdminWhatsAppBroadcastPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(testNumbers
                 ? { ...content, testNumbers, debugTemplateName: debugTemplateName || undefined }
-                : { ...content, customerIds }),
+                : { ...content, customerIds, recipientPool }),
         })
         const data = await res.json()
         if (!data.success) throw new Error(data.error || 'Send failed')
@@ -830,6 +860,23 @@ export default function AdminWhatsAppBroadcastPage() {
                         Pick which customers to send to. Anyone messaged in the last {cooldownDays} days can't be selected again until their cooldown ends.
                     </p>
 
+                    <div className="flex gap-2 mb-3">
+                        <button type="button" onClick={() => switchRecipientPool('customers')}
+                                className={'px-4 py-2 rounded-xl text-sm font-semibold transition-all ' + (recipientPool === 'customers' ? 'bg-charcoal text-white' : 'bg-cream text-gray-500 hover:text-charcoal')}>
+                            Kiddy Customers
+                        </button>
+                        <button type="button" onClick={() => switchRecipientPool('non_kiddy')}
+                                className={'px-4 py-2 rounded-xl text-sm font-semibold transition-all ' + (recipientPool === 'non_kiddy' ? 'bg-charcoal text-white' : 'bg-cream text-gray-500 hover:text-charcoal')}>
+                            Non-Kiddy Customers
+                        </button>
+                    </div>
+
+                    {recipientPool === 'non_kiddy' && (
+                        <p className="text-xs text-orange-500 bg-orange-50 rounded-xl px-3 py-2 mb-3">
+                            ⚠ These contacts haven't opted in to Kiddy Trends promotions specifically — sending marketing broadcasts here carries a higher risk of spam reports and could get this WhatsApp number restricted.
+                        </p>
+                    )}
+
                     <div className="flex gap-2 mb-4 border-b border-gray-100">
                         <button type="button" onClick={() => switchRecipientsTab('eligible')}
                                 className={'px-4 py-2 text-sm font-semibold border-b-2 -mb-px transition-colors ' + (recipientsTab === 'eligible' ? 'border-coral text-coral' : 'border-transparent text-gray-400 hover:text-charcoal')}>
@@ -845,14 +892,24 @@ export default function AdminWhatsAppBroadcastPage() {
                         <input value={recipientsQuery} onChange={(e) => setRecipientsQuery(e.target.value)}
                                placeholder="Search by name or phone"
                                className="flex-1 rounded-xl border-2 border-gray-100 px-3 py-2 text-sm outline-none focus:border-coral" />
-                        <select value={recipientsSource} onChange={(e) => { setRecipientsSource(e.target.value); setRecipientsPage(1) }}
-                                className="rounded-xl border-2 border-gray-100 px-3 py-2 text-sm bg-white sm:w-44">
-                            <option value="">All Sources</option>
-                            <option value="Website">Website</option>
-                            <option value="Insta">Instagram</option>
-                            <option value="Whatsapp">WhatsApp</option>
-                            <option value="Facebook">Facebook</option>
-                        </select>
+                        {recipientPool === 'non_kiddy' ? (
+                            <select value={nonKiddyGroupId} onChange={(e) => { setNonKiddyGroupId(e.target.value); setRecipientsPage(1) }}
+                                    className="rounded-xl border-2 border-gray-100 px-3 py-2 text-sm bg-white sm:w-48">
+                                <option value="">All Groups</option>
+                                {nonKiddyGroups.map((g) => (
+                                    <option key={g.id} value={g.id}>{g.name} ({g.contactCount})</option>
+                                ))}
+                            </select>
+                        ) : (
+                            <select value={recipientsSource} onChange={(e) => { setRecipientsSource(e.target.value); setRecipientsPage(1) }}
+                                    className="rounded-xl border-2 border-gray-100 px-3 py-2 text-sm bg-white sm:w-44">
+                                <option value="">All Sources</option>
+                                <option value="Website">Website</option>
+                                <option value="Insta">Instagram</option>
+                                <option value="Whatsapp">WhatsApp</option>
+                                <option value="Facebook">Facebook</option>
+                            </select>
+                        )}
                         <button type="submit" className="px-4 py-2 rounded-xl bg-charcoal text-white text-sm font-semibold hover:opacity-90">Search</button>
                     </form>
 
@@ -894,7 +951,7 @@ export default function AdminWhatsAppBroadcastPage() {
                                         {recipients.map((c) => {
                                             const onCooldown = isOnCooldown(c)
                                             const checked = selectedCustomers.has(c.id)
-                                            const name = [c.first_name, c.last_name].filter(Boolean).join(' ') || '-'
+                                            const name = recipientPool === 'non_kiddy' ? (c.name || '-') : ([c.first_name, c.last_name].filter(Boolean).join(' ') || '-')
                                             return (
                                                 <tr key={c.id} className="border-t border-gray-100">
                                                     {recipientsTab === 'eligible' && (

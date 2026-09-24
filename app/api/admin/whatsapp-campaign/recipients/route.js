@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { getCampaignRecipients } from '../../customers/customer-data'
+import { getNonKiddyRecipients } from '../../non-kiddy/data'
 import { CAMPAIGN_COOLDOWN_DAYS } from '../../../../../lib/whatsappApi'
 
 export const dynamic = 'force-dynamic'
@@ -35,6 +36,20 @@ export async function GET(request) {
         const { searchParams } = new URL(request.url)
         const tab = searchParams.get('tab') === 'sent' ? 'sent' : 'eligible'
         const cooldownCutoffISO = new Date(Date.now() - CAMPAIGN_COOLDOWN_DAYS * 24 * 60 * 60 * 1000).toISOString()
+        const pool = searchParams.get('pool') === 'non_kiddy' ? 'non_kiddy' : 'customers'
+
+        if (pool === 'non_kiddy') {
+            const data = await getNonKiddyRecipients(
+                searchParams.get('page') || 1,
+                searchParams.get('groupId') || '',
+                searchParams.get('q') || '',
+                searchParams.get('sort') || '',
+                searchParams.get('dir') || 'desc',
+                tab,
+                cooldownCutoffISO
+            )
+            return Response.json({ success: true, customers: data.contacts, total: data.total, page: data.page, cooldownDays: CAMPAIGN_COOLDOWN_DAYS })
+        }
 
         const data = await getCampaignRecipients(
             searchParams.get('page') || 1,
