@@ -4,6 +4,7 @@ import {
     CAMPAIGN_COOLDOWN_DAYS,
     sendWhatsAppTemplate,
     sendCarouselTemplate,
+    sendVideoTemplate,
 } from '../../../../lib/whatsappApi'
 
 export const dynamic = 'force-dynamic'
@@ -14,6 +15,7 @@ const supabase = createClient(
 )
 
 const TEMPLATE_NAME = 'new_arrivals_carousel_kt_10'
+const VIDEO_TEMPLATE_NAME = 'single_video_promo_kt'
 const PRODUCT_SLOTS = 10
 const SEND_CONCURRENCY = 5
 
@@ -61,18 +63,27 @@ function isOnCooldown(customer) {
 // customerIds/cooldown entirely, for trying the message before a real send.
 export async function POST(request) {
     try {
-        const { customerIds, cards, testNumbers, debugTemplateName } = await request.json()
+        const { customerIds, cards, video, testNumbers, debugTemplateName } = await request.json()
+        const mode = video ? 'video' : 'carousel'
 
         // Debug-only override so a different, already-Active template (with
         // no variables of its own) can be used to sanity-check the send
-        // pipeline while new_arrivals_carousel_kt is still in review.
-        const templateName = debugTemplateName ? String(debugTemplateName).trim() : TEMPLATE_NAME
+        // pipeline while a new template is still in review.
+        const templateName = debugTemplateName
+            ? String(debugTemplateName).trim()
+            : (mode === 'video' ? VIDEO_TEMPLATE_NAME : TEMPLATE_NAME)
 
-        if (!debugTemplateName && (!Array.isArray(cards) || cards.length === 0)) {
+        if (!debugTemplateName && mode === 'carousel' && (!Array.isArray(cards) || cards.length === 0)) {
             return Response.json({ success: false, error: 'cards is required' }, { status: 400 })
         }
-        if (!debugTemplateName && cards.some((c) => !c.mediaId)) {
+        if (!debugTemplateName && mode === 'carousel' && cards.some((c) => !c.mediaId)) {
             return Response.json({ success: false, error: 'Every card needs an uploaded mediaId — upload images first' }, { status: 400 })
+        }
+        if (!debugTemplateName && mode === 'video' && !video.mediaId) {
+            return Response.json({ success: false, error: 'Video needs an uploaded mediaId — upload the video first' }, { status: 400 })
+        }
+        if (!debugTemplateName && mode === 'video' && !String(video.tagline || '').trim()) {
+            return Response.json({ success: false, error: 'A tagline is required' }, { status: 400 })
         }
 
         let recipients = []
@@ -121,9 +132,19 @@ export async function POST(request) {
             while (idx < recipients.length) {
                 const recipient = recipients[idx++]
                 const name = String(recipient.first_name || '').trim() || 'there'
-                const result = debugTemplateName
-                    ? await sendWhatsAppTemplate({ to: recipient.phone, templateName, bodyParams: [] })
-                    : await sendCarouselTemplate({
+                let result
+                if (debugTemplateName) {
+                    result = await sendWhatsAppTemplate({ to: recipient.phone, templateName, bodyParams: [] })
+                } else if (mode === 'video') {
+                    result = await sendVideoTemplate({
+                        to: recipient.phone,
+                        templateName,
+                        mediaId: video.mediaId,
+                        bodyParams: [video.tagline],
+                        buttonUrlParam: video.buttonPath,
+                    })
+                } else {
+                    result = await sendCarouselTemplate({
                         to: recipient.phone,
                         templateName,
                         bodyParams: [name],
@@ -133,6 +154,7 @@ export async function POST(request) {
                             buttonUrlParam: c.buttonPath,
                         })),
                     })
+                }
                 if (result.success) {
                     sent += 1
                     if (recipient.id) successfulIds.push(recipient.id)

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminPortalNav from '@/components/AdminPortalNav'
+import { supabaseClient } from '../../../lib/supabaseClient'
 
 const MAX_PRODUCTS = 10
 const POOL_LIMIT = 100
@@ -75,6 +76,14 @@ export default function AdminWhatsAppBroadcastPage() {
     const [pool, setPool] = useState([])
     const [poolLoading, setPoolLoading] = useState(true)
     const [selected, setSelected] = useState([])
+
+    // 'carousel' = multiple product cards (built above). 'video' = one clip,
+    // one tagline, one button — a completely different template/send shape,
+    // sharing everything below (recipients, batch size, send loop, cooldown).
+    const [campaignMode, setCampaignMode] = useState('carousel')
+    const [campaignVideo, setCampaignVideo] = useState(null) // {url, storagePath, uploading}
+    const [campaignTagline, setCampaignTagline] = useState('')
+    const [campaignButtonPath, setCampaignButtonPath] = useState('collections')
 
     const [testNumbersInput, setTestNumbersInput] = useState('')
     const [debugTemplateName, setDebugTemplateName] = useState('')
@@ -315,13 +324,81 @@ export default function AdminWhatsAppBroadcastPage() {
         return cardsWithMedia.map((c) => ({ mediaId: c.mediaId, bodyText: c.bodyText, buttonPath: c.buttonPath }))
     }
 
-    async function sendOneBatch(cardsPayload, { customerIds, testNumbers, debugTemplateName } = {}) {
+    // Video's own upload flow: straight to Storage via a signed URL (same
+    // mechanism as product videos — a real clip is way past Vercel's 4.5MB
+    // serverless request body limit), then separately to WhatsApp's Media
+    // API once at send time (see uploadCampaignVideoMedia).
+    async function handleCampaignVideoUpload(e) {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        const ext = file.name.split('.').pop()?.toLowerCase()
+        if (ext !== 'mp4') {
+            alert("WhatsApp only accepts MP4 for video messages — please upload an MP4 (MOV/WEBM/etc. won't send).")
+            e.target.value = ''
+            return
+        }
+
+        const previewUrl = URL.createObjectURL(file)
+        setCampaignVideo({ url: previewUrl, uploading: true })
+        try {
+            const signRes = await fetch('/api/admin/upload-video/sign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fileName: file.name, fileSize: file.size }),
+            })
+            const signData = await signRes.json()
+            if (!signRes.ok || !signData.success) throw new Error(signData.error || 'Failed to prepare upload')
+
+            const { error: uploadError } = await supabaseClient.storage
+                .from('products')
+                .uploadToSignedUrl(signData.path, signData.token, file)
+            if (uploadError) throw new Error(uploadError.message)
+
+            const finalizeRes = await fetch('/api/admin/upload-video/finalize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: signData.path }),
+            })
+            const finalizeData = await finalizeRes.json()
+            if (!finalizeRes.ok || !finalizeData.success) throw new Error(finalizeData.error || 'Failed to finalize upload')
+
+            setCampaignVideo({ url: finalizeData.url, storagePath: finalizeData.storagePath, uploading: false })
+        } catch (err) {
+            setCampaignVideo(null)
+            alert('Video upload failed: ' + err.message)
+        } finally {
+            URL.revokeObjectURL(previewUrl)
+        }
+        e.target.value = ''
+    }
+
+    function removeCampaignVideo() {
+        setCampaignVideo(null)
+    }
+
+    // Uploads the already-in-Storage campaign video to WhatsApp's Media API
+    // — separate step from the Storage upload above, called once per
+    // test/launch (the resulting media id is reused across every recipient
+    // in that run, same pattern as the carousel's per-card media ids).
+    async function uploadCampaignVideoMedia() {
+        const res = await fetch('/api/admin/whatsapp-campaign/upload-video-media', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ videoUrl: campaignVideo.url }),
+        })
+        const data = await res.json()
+        if (!data.success) throw new Error(data.error || 'Video upload to WhatsApp failed')
+        return data.mediaId
+    }
+
+    async function sendOneBatch(content, { customerIds, testNumbers, debugTemplateName } = {}) {
         const res = await fetch('/api/admin/whatsapp-campaign', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(testNumbers
-                ? { cards: cardsPayload, testNumbers, debugTemplateName: debugTemplateName || undefined }
-                : { cards: cardsPayload, customerIds }),
+                ? { ...content, testNumbers, debugTemplateName: debugTemplateName || undefined }
+                : { ...content, customerIds }),
         })
         const data = await res.json()
         if (!data.success) throw new Error(data.error || 'Send failed')
@@ -334,16 +411,40 @@ export default function AdminWhatsAppBroadcastPage() {
         return chunks
     }
 
+    // Builds the mode-specific `content` payload sendOneBatch needs — the
+    // one place that decides "which campaign is this really" for a send.
+    async function buildCampaignContent() {
+        if (campaignMode === 'video') {
+            const mediaId = await uploadCampaignVideoMedia()
+            return { video: { mediaId, tagline: campaignTagline.trim(), buttonPath: campaignButtonPath.trim() || 'collections' } }
+        }
+        const cardsWithMedia = await uploadCardMedia(buildCards(selected))
+        return { cards: cardsToPayload(cardsWithMedia) }
+    }
+
+    function validateCampaignReady() {
+        if (campaignMode === 'video') {
+            if (!campaignVideo?.url || campaignVideo.uploading) return 'Upload a video first.'
+            if (!campaignTagline.trim()) return 'Enter a tagline first.'
+            return null
+        }
+        if (selected.length === 0) return 'Pick at least one product first.'
+        return null
+    }
+
     async function sendTest() {
         const numbers = parseTestNumbers(testNumbersInput)
         if (numbers.length === 0) { alert('Enter at least one phone number first.'); return }
-        if (!debugTemplateName && selected.length === 0) { alert('Pick at least one product first.'); return }
+        if (!debugTemplateName) {
+            const validationError = validateCampaignReady()
+            if (validationError) { alert(validationError); return }
+        }
 
         setTestSending(true)
         setTestResult(null)
         try {
-            const cardsWithMedia = debugTemplateName ? [] : await uploadCardMedia(buildCards(selected))
-            const data = await sendOneBatch(cardsToPayload(cardsWithMedia), { testNumbers: numbers, debugTemplateName })
+            const content = debugTemplateName ? {} : await buildCampaignContent()
+            const data = await sendOneBatch(content, { testNumbers: numbers, debugTemplateName })
             setTestResult({ processed: data.processed, sent: data.sent, failed: data.failed, details: data.errors })
         } catch (err) {
             setTestResult({ error: err.message })
@@ -354,7 +455,8 @@ export default function AdminWhatsAppBroadcastPage() {
     async function launchCampaign() {
         if (sending) return
         const customers = [...selectedCustomers.values()]
-        if (selected.length === 0) { alert('Pick at least one product first.'); return }
+        const validationError = validateCampaignReady()
+        if (validationError) { alert(validationError); return }
         if (customers.length === 0) { alert('Select at least one customer to send to.'); return }
         if (!window.confirm('Send this broadcast to ' + customers.length + ' selected customer(s), in batches of ' + batchSize + '? This cannot be undone.')) return
 
@@ -365,15 +467,14 @@ export default function AdminWhatsAppBroadcastPage() {
         setProgress({ processed: 0, sent: 0, failed: 0, skippedCooldown: 0 })
 
         try {
-            const cardsWithMedia = await uploadCardMedia(buildCards(selected))
-            const cardsPayload = cardsToPayload(cardsWithMedia)
+            const content = await buildCampaignContent()
             const batches = chunkArray(customers.map((c) => c.id), batchSize)
 
             let totals = { processed: 0, sent: 0, failed: 0, skippedCooldown: 0 }
             let allErrors = []
 
             for (const batchIds of batches) {
-                const data = await sendOneBatch(cardsPayload, { customerIds: batchIds })
+                const data = await sendOneBatch(content, { customerIds: batchIds })
                 totals = {
                     processed: totals.processed + data.processed,
                     sent: totals.sent + data.sent,
@@ -457,6 +558,72 @@ export default function AdminWhatsAppBroadcastPage() {
                     </div>
                 )}
 
+                <div className="bg-white rounded-2xl p-2 shadow-sm flex gap-2">
+                    <button type="button" onClick={() => setCampaignMode('carousel')}
+                            className={'flex-1 px-4 py-3 rounded-xl font-display text-sm transition-all ' + (campaignMode === 'carousel' ? 'bg-coral text-white' : 'text-gray-400 hover:text-charcoal')}>
+                        🎠 Carousel (Multiple Products)
+                    </button>
+                    <button type="button" onClick={() => setCampaignMode('video')}
+                            className={'flex-1 px-4 py-3 rounded-xl font-display text-sm transition-all ' + (campaignMode === 'video' ? 'bg-coral text-white' : 'text-gray-400 hover:text-charcoal')}>
+                        🎥 Video (Single Clip)
+                    </button>
+                </div>
+
+                {campaignMode === 'video' && (
+                    <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
+                        <div>
+                            <p className="font-display text-lg text-charcoal mb-1">Video Campaign</p>
+                            <p className="text-xs text-gray-500">
+                                One video, one catchy tagline, one button to your website — sent via the <code className="bg-cream px-1.5 py-0.5 rounded">single_video_promo_kt</code> message.
+                            </p>
+                        </div>
+
+                        {campaignVideo ? (
+                            <div className="border-2 border-gray-100 rounded-xl overflow-hidden max-w-sm">
+                                {campaignVideo.uploading ? (
+                                    <div className="aspect-video bg-gray-100 flex items-center justify-center text-xs text-gray-400">Uploading...</div>
+                                ) : (
+                                    <video src={campaignVideo.url} controls className="w-full aspect-video bg-black" />
+                                )}
+                                <button type="button" onClick={removeCampaignVideo} disabled={campaignVideo.uploading}
+                                        className="w-full px-2 py-1.5 bg-red-50 text-red-600 text-xs hover:bg-red-100">
+                                    Remove
+                                </button>
+                            </div>
+                        ) : (
+                            <label className="block cursor-pointer px-4 py-3 rounded-xl border-2 border-dashed border-gray-200 hover:border-coral text-sm text-gray-400 hover:text-coral text-center transition-colors max-w-sm">
+                                + Upload Video (MP4 only — WhatsApp doesn't accept other formats)
+                                <input type="file" accept="video/mp4" onChange={handleCampaignVideoUpload} className="hidden" />
+                            </label>
+                        )}
+
+                        <div>
+                            <label className="block text-sm font-semibold text-charcoal mb-1">Catchy Tagline</label>
+                            <input value={campaignTagline} onChange={(e) => setCampaignTagline(e.target.value)}
+                                   placeholder="e.g. New Winter Drop Just Landed!" maxLength={60}
+                                   className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
+                            <p className="text-xs text-gray-400 mt-1">Keep it short — this fills a fixed spot in an approved message, not free text.</p>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-charcoal mb-1">Button destination</label>
+                            <div className="flex items-center gap-2 text-sm">
+                                <span className="text-gray-400 flex-shrink-0">thekiddytrends.com/</span>
+                                <input value={campaignButtonPath} onChange={(e) => setCampaignButtonPath(e.target.value)}
+                                       placeholder="collections" className="flex-1 border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
+                            </div>
+                        </div>
+
+                        <div className="bg-cream rounded-xl p-3 text-xs text-gray-600">
+                            <strong>Preview:</strong> ✨ {campaignTagline || '[your tagline]'} ✨<br />
+                            Our latest video is here — tap below to watch and shop the look on our website! 🛍️👇<br />
+                            <span className="text-coral font-semibold">[Shop Now → thekiddytrends.com/{campaignButtonPath || 'collections'}]</span>
+                        </div>
+                    </div>
+                )}
+
+                {campaignMode === 'carousel' && (
+                <>
                 <div className="bg-white rounded-2xl p-6 shadow-sm">
                     <p className="font-display text-lg text-charcoal mb-1">New Arrivals (drag into selection below)</p>
                     <p className="text-xs text-gray-500 mb-4">
@@ -513,6 +680,8 @@ export default function AdminWhatsAppBroadcastPage() {
                     </div>
                     {loadError && <p className="text-sm text-red-500 mt-2">{loadError}</p>}
                 </div>
+                </>
+                )}
 
                 <div className="bg-white rounded-2xl p-6 shadow-sm">
                     <p className="font-display text-lg text-charcoal mb-1">Send a test first</p>
@@ -520,9 +689,9 @@ export default function AdminWhatsAppBroadcastPage() {
                     <textarea value={testNumbersInput} onChange={(e) => setTestNumbersInput(e.target.value)}
                               placeholder="e.g. 03001234567, 03211234567" rows={2}
                               className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm mb-3" />
-                    <button onClick={sendTest} disabled={testSending || selected.length === 0}
+                    <button onClick={sendTest} disabled={testSending || !!validateCampaignReady()}
                             className="px-5 py-2.5 border-2 border-charcoal text-charcoal font-display text-sm rounded-full hover:bg-charcoal hover:text-white transition-all disabled:opacity-40">
-                        {testSending ? 'Uploading images & sending...' : 'Send Test'}
+                        {testSending ? (campaignMode === 'video' ? 'Uploading video & sending...' : 'Uploading images & sending...') : 'Send Test'}
                     </button>
                     {testResult && (
                         testResult.error
@@ -656,9 +825,9 @@ export default function AdminWhatsAppBroadcastPage() {
                                className="w-28 rounded-xl border-2 border-gray-100 px-3 py-2 text-sm" />
                     </div>
 
-                    <button onClick={launchCampaign} disabled={sending || selectedCustomers.size === 0 || selected.length === 0}
+                    <button onClick={launchCampaign} disabled={sending || selectedCustomers.size === 0 || !!validateCampaignReady()}
                             className="px-6 py-3 bg-coral text-white font-display text-sm rounded-full hover:bg-opacity-90 disabled:opacity-50">
-                        {sending ? 'Uploading images & sending...' : '🚀 Send to Selected (' + selectedCustomers.size + ')'}
+                        {sending ? (campaignMode === 'video' ? 'Uploading video & sending...' : 'Uploading images & sending...') : '🚀 Send to Selected (' + selectedCustomers.size + ')'}
                     </button>
 
                     {(sending || finished) && (
