@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminPortalNav from '@/components/AdminPortalNav'
 import EmployeePortalNav from '@/components/EmployeePortalNav'
+import NonKiddyCustomersPanel from '@/components/NonKiddyCustomersPanel'
 
 function parseCsv(text) {
     const rows = []
@@ -113,6 +114,7 @@ function formatInsertedDate(value) {
 
 export default function CustomersScreen({ mode = 'admin' }) {
     const [verified, setVerified] = useState(false)
+    const [mainTab, setMainTab] = useState('kiddy') // 'kiddy' | 'non-kiddy'
     const [loading, setLoading] = useState(true)
     const [customers, setCustomers] = useState([])
     const [query, setQuery] = useState('')
@@ -399,6 +401,24 @@ export default function CustomersScreen({ mode = 'admin' }) {
             </div>
             {isAdmin ? <AdminPortalNav /> : <EmployeePortalNav />}
 
+            {isAdmin && (
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 flex gap-2">
+                    <button onClick={() => setMainTab('kiddy')}
+                            className={'px-4 py-2 rounded-xl font-display text-sm transition-all ' + (mainTab === 'kiddy' ? 'bg-coral text-white' : 'bg-white text-gray-400 hover:text-charcoal')}>
+                        Kiddy Customers
+                    </button>
+                    <button onClick={() => setMainTab('non-kiddy')}
+                            className={'px-4 py-2 rounded-xl font-display text-sm transition-all ' + (mainTab === 'non-kiddy' ? 'bg-coral text-white' : 'bg-white text-gray-400 hover:text-charcoal')}>
+                        Non-Kiddy Customers
+                    </button>
+                </div>
+            )}
+
+            {mainTab === 'non-kiddy' && isAdmin ? (
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                    <NonKiddyCustomersPanel token={localStorage.getItem('admin_token') || ''} />
+                </div>
+            ) : (
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-4">
                 <form onSubmit={submitSearch} className="bg-white rounded-2xl p-4 flex flex-col sm:flex-row gap-3">
                     <input
@@ -541,6 +561,7 @@ export default function CustomersScreen({ mode = 'admin' }) {
                     </div>
                 </div>
             </div>
+            )}
         </div>
     )
 }
