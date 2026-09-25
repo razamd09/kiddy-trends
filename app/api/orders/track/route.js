@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { trackOrder } from '../../../../lib/postexApi'
+import { trackOrder, normalizePostExStatus } from '../../../../lib/postexApi'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,15 +32,6 @@ function extractTrackingNumber(order) {
     const notes = String(order?.notes || '')
     const match = notes.match(/\[PostEx\][^\n\r]*AWB:\s*([A-Za-z0-9-]+)/i)
     return match?.[1]?.trim() || null
-}
-
-function normalizePostExStatus(statusValue) {
-    const status = String(statusValue || '').toLowerCase()
-    if (!status) return 'processing'
-    if (status.includes('deliver')) return 'delivered'
-    if (status.includes('cancel') || status.includes('return') || status.includes('failed')) return 'cancelled'
-    if (status.includes('dispatch') || status.includes('transit') || status.includes('picked') || status.includes('out for')) return 'dispatched'
-    return 'processing' // covers Unbooked, Booked, "At Warehouse", etc.
 }
 
 // Uses our own verified PostEx integration (lib/postexApi.js) — the real

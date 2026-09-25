@@ -4,8 +4,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminPortalNav from '@/components/AdminPortalNav'
 
-const CAMPAIGNS = [1, 2, 3]
+const CAMPAIGNS = Array.from({ length: 10 }, (_, i) => i + 1)
 const POOL_LIMIT = 150
+const SITE_URL = 'https://thekiddytrends.com'
 
 function isNewArrival(product) {
     return String(product?.product_version || '').trim().toLowerCase().includes('new arrival')
@@ -23,13 +24,15 @@ export default function AdminCampaignsPage() {
     const router = useRouter()
     const [activeCampaign, setActiveCampaign] = useState(1)
 
-    const [itemsByCampaign, setItemsByCampaign] = useState({ 1: [], 2: [], 3: [] })
+    const [itemsByCampaign, setItemsByCampaign] = useState(() => Object.fromEntries(CAMPAIGNS.map((n) => [n, []])))
     const [loadedCampaigns, setLoadedCampaigns] = useState({})
     const [dirtyCampaigns, setDirtyCampaigns] = useState({})
     const [loading, setLoading] = useState(false)
     const [saving, setSaving] = useState(false)
     const [pool, setPool] = useState([])
     const [poolLoading, setPoolLoading] = useState(true)
+    const [campaignMeta, setCampaignMeta] = useState({})
+    const [togglingCampaign, setTogglingCampaign] = useState(null)
     const dragRef = useRef(null)
 
     useEffect(() => {
@@ -42,6 +45,7 @@ export default function AdminCampaignsPage() {
                 if (!data.valid) { localStorage.removeItem('admin_token'); router.push('/admin'); return }
                 setVerified(true)
                 fetchPool()
+                fetchCampaignMeta()
             } catch {
                 router.push('/admin')
             }
@@ -80,6 +84,40 @@ export default function AdminCampaignsPage() {
             setPool([])
         }
         setPoolLoading(false)
+    }
+
+    async function fetchCampaignMeta() {
+        try {
+            const res = await fetch('/api/admin/campaigns', { headers: { 'x-admin-token': token() } })
+            const data = await readJson(res)
+            const byNumber = {}
+            for (const c of Array.isArray(data.campaigns) ? data.campaigns : []) {
+                byNumber[c.campaign_number] = { name: c.name, isActive: c.is_active }
+            }
+            setCampaignMeta(byNumber)
+        } catch {}
+    }
+
+    async function toggleCampaignActive(campaignNumber) {
+        const current = campaignMeta[campaignNumber]
+        const nextActive = !current?.isActive
+        setTogglingCampaign(campaignNumber)
+        try {
+            const res = await fetch('/api/admin/campaigns', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+                body: JSON.stringify({ campaign_number: campaignNumber, is_active: nextActive }),
+            })
+            const data = await readJson(res)
+            if (res.ok && data.success) {
+                setCampaignMeta((prev) => ({ ...prev, [campaignNumber]: { ...prev[campaignNumber], isActive: nextActive } }))
+            } else {
+                alert(data.error || 'Failed to update campaign')
+            }
+        } catch (err) {
+            alert(err.message)
+        }
+        setTogglingCampaign(null)
     }
 
     async function fetchCampaign(campaignNumber) {
@@ -236,18 +274,39 @@ export default function AdminCampaignsPage() {
                     <h1 className="font-display text-xl text-charcoal">Campaigns</h1>
                     {saving && <span className="text-xs text-gray-400">Saving...</span>}
                 </div>
-                <p className="text-xs text-gray-400">/campaign1, /campaign2, /campaign3 — one fixed URL per ad campaign</p>
+                <p className="text-xs text-gray-400">/campaign1 through /campaign10 — one fixed URL per ad campaign, toggle each on/off below</p>
             </div>
             <AdminPortalNav />
 
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="flex gap-2 mb-6">
-                    {CAMPAIGNS.map((num) => (
-                        <button key={num} onClick={() => setActiveCampaign(num)}
-                                className={'px-6 py-2.5 rounded-full font-display text-sm transition-colors ' + (activeCampaign === num ? 'bg-coral text-white' : 'bg-white text-charcoal border-2 border-gray-100 hover:border-coral/40')}>
-                            Campaign {num}
-                        </button>
-                    ))}
+                <div className="flex flex-wrap gap-2 mb-2">
+                    {CAMPAIGNS.map((num) => {
+                        const meta = campaignMeta[num]
+                        const isActive = meta?.isActive === true
+                        return (
+                            <button key={num} onClick={() => setActiveCampaign(num)}
+                                    className={'px-6 py-2.5 rounded-full font-display text-sm transition-colors relative ' + (activeCampaign === num ? 'bg-coral text-white' : 'bg-white text-charcoal border-2 border-gray-100 hover:border-coral/40')}>
+                                {meta?.name || ('Campaign ' + num)}
+                                <span className={'ml-2 inline-block w-2 h-2 rounded-full ' + (isActive ? 'bg-green-400' : 'bg-gray-300')} title={isActive ? 'Live' : 'Not live'} />
+                            </button>
+                        )
+                    })}
+                </div>
+
+                <div className="bg-white rounded-2xl p-4 shadow-sm mb-6 flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                        <p className="text-sm text-charcoal">
+                            <span className="font-semibold">{campaignMeta[activeCampaign]?.name || ('Campaign ' + activeCampaign)}</span>
+                            {' — '}
+                            {campaignMeta[activeCampaign]?.isActive
+                                ? <a href={SITE_URL + '/campaign' + activeCampaign} target="_blank" rel="noreferrer" className="text-coral underline">{SITE_URL + '/campaign' + activeCampaign}</a>
+                                : <span className="text-gray-400">not live — /campaign{activeCampaign} shows a 404 to visitors</span>}
+                        </p>
+                    </div>
+                    <button onClick={() => toggleCampaignActive(activeCampaign)} disabled={togglingCampaign === activeCampaign}
+                            className={'px-5 py-2 font-display text-sm rounded-full disabled:opacity-40 ' + (campaignMeta[activeCampaign]?.isActive ? 'bg-gray-100 text-charcoal hover:bg-gray-200' : 'bg-green-500 text-white hover:bg-green-600')}>
+                        {togglingCampaign === activeCampaign ? 'Updating...' : campaignMeta[activeCampaign]?.isActive ? 'Deactivate' : 'Activate'}
+                    </button>
                 </div>
 
                 <div className="bg-white rounded-2xl p-6 shadow-sm mb-6">

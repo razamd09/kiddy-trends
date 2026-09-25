@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import CampaignPageClient from '../../components/CampaignPageClient'
 
 const SITE_URL = 'https://thekiddytrends.com'
-const CAMPAIGN_NUMBER = 3
+const CAMPAIGN_NUMBER = 6
 
 export const metadata = {
   title: 'Featured Collection – Kiddy Trends',
@@ -33,7 +33,7 @@ async function getInitialCampaignState() {
   }
 }
 
-export default async function Campaign3Page() {
+export default async function Campaign6Page() {
   const [initialProducts, campaignState] = await Promise.all([getInitialProducts(), getInitialCampaignState()])
   if (!campaignState.active) notFound()
 

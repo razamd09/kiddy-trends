@@ -9,14 +9,14 @@ const supabase = createClient(
 
 function normalizeCampaignNumber(value) {
     const parsed = Number(value)
-    return [1, 2, 3].includes(parsed) ? parsed : null
+    return Number.isInteger(parsed) && parsed >= 1 && parsed <= 10 ? parsed : null
 }
 
 export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const campaignNumber = normalizeCampaignNumber(searchParams.get('campaign'))
     if (!campaignNumber) {
-        return Response.json({ success: false, error: 'campaign must be 1, 2, or 3' }, { status: 400 })
+        return Response.json({ success: false, error: 'campaign must be between 1 and 10' }, { status: 400 })
     }
 
     const { data: slots, error: slotsError } = await supabase
@@ -61,7 +61,7 @@ export async function POST(request) {
         const body = await request.json()
         const campaignNumber = normalizeCampaignNumber(body.campaign_number)
         const productId = Number(body.product_id)
-        if (!campaignNumber) return Response.json({ success: false, error: 'campaign_number must be 1, 2, or 3' }, { status: 400 })
+        if (!campaignNumber) return Response.json({ success: false, error: 'campaign_number must be between 1 and 10' }, { status: 400 })
         if (!Number.isFinite(productId)) return Response.json({ success: false, error: 'product_id is required' }, { status: 400 })
 
         const { data: existing } = await supabase
@@ -99,7 +99,7 @@ export async function PUT(request) {
         const body = await request.json()
         const campaignNumber = normalizeCampaignNumber(body.campaign_number)
         const productIds = Array.isArray(body.product_ids) ? body.product_ids.map(Number) : null
-        if (!campaignNumber) return Response.json({ success: false, error: 'campaign_number must be 1, 2, or 3' }, { status: 400 })
+        if (!campaignNumber) return Response.json({ success: false, error: 'campaign_number must be between 1 and 10' }, { status: 400 })
         if (!productIds) return Response.json({ success: false, error: 'product_ids array is required' }, { status: 400 })
 
         await Promise.all(
@@ -122,7 +122,7 @@ export async function DELETE(request) {
     const { searchParams } = new URL(request.url)
     const campaignNumber = normalizeCampaignNumber(searchParams.get('campaign'))
     const productId = Number(searchParams.get('product_id'))
-    if (!campaignNumber) return Response.json({ success: false, error: 'campaign must be 1, 2, or 3' }, { status: 400 })
+    if (!campaignNumber) return Response.json({ success: false, error: 'campaign must be between 1 and 10' }, { status: 400 })
     if (!Number.isFinite(productId)) return Response.json({ success: false, error: 'product_id is required' }, { status: 400 })
 
     const { error } = await supabase

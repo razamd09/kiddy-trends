@@ -98,7 +98,11 @@ export default function AdminProducts() {
 
     function normalizeVariantLabel(value) {
         return String(value || '')
-            .replace(/([0-9])\s*-\s*([0-9])\s*[Yy]/g, '$1-$2 Year')
+            // (?!ear) stops this from matching the "Y" that's already inside
+            // a spelled-out "Year"/"year" — without it, "4-5 Year" becomes
+            // "4-5 Yearear" (matches "4-5 Y", replaces with "Year", leaves
+            // the original value's trailing "ear" dangling after it).
+            .replace(/([0-9])\s*-\s*([0-9])\s*[Yy](?!ear)/gi, '$1-$2 Year')
             .replace(/\s+/g, ' ')
             .trim()
     }

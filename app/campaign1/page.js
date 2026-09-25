@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { notFound } from 'next/navigation'
 import CampaignPageClient from '../../components/CampaignPageClient'
 
 const SITE_URL = 'https://thekiddytrends.com'
@@ -20,22 +21,25 @@ async function getInitialProducts() {
   }
 }
 
-async function getInitialPinnedIds() {
+// active === false means this campaign slot is toggled off in
+// /admin/campaigns — the page must not be live even though the route exists.
+async function getInitialCampaignState() {
   try {
-    const res = await fetch(SITE_URL + '/api/campaign-slots?campaign=' + CAMPAIGN_NUMBER, { next: { revalidate: 60 } })
+    const res = await fetch(SITE_URL + '/api/campaign-slots?campaign=' + CAMPAIGN_NUMBER, { cache: 'no-store' })
     const data = await res.json()
-    return data.success ? (data.productIds || []) : []
+    return { active: data.success ? data.active !== false : false, productIds: data.success ? (data.productIds || []) : [] }
   } catch {
-    return []
+    return { active: false, productIds: [] }
   }
 }
 
 export default async function Campaign1Page() {
-  const [initialProducts, initialPinnedIds] = await Promise.all([getInitialProducts(), getInitialPinnedIds()])
+  const [initialProducts, campaignState] = await Promise.all([getInitialProducts(), getInitialCampaignState()])
+  if (!campaignState.active) notFound()
 
   return (
     <Suspense fallback={null}>
-      <CampaignPageClient campaignNumber={CAMPAIGN_NUMBER} initialProducts={initialProducts} initialPinnedIds={initialPinnedIds} />
+      <CampaignPageClient campaignNumber={CAMPAIGN_NUMBER} initialProducts={initialProducts} initialPinnedIds={campaignState.productIds} />
     </Suspense>
   )
 }
