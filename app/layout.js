@@ -6,6 +6,7 @@ import Script from 'next/script'
 import SiteChrome from '../components/SiteChrome'
 import AnalyticsTracker from '../components/AnalyticsTracker'
 import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 
 // The Google Fonts catalog merged the old standalone "Fredoka One" family
 // into the variable "Fredoka" family; weight 500 is the closest match to
@@ -118,6 +119,7 @@ export default function RootLayout({ children }) {
         <SiteChrome>{children}</SiteChrome>
       </CartProvider>
       <Analytics />
+      <SpeedInsights />
       </body>
       </html>
   )
