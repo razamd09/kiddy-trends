@@ -93,11 +93,39 @@ function getSupabaseStoragePath(url) {
     return null
 }
 
-function toImageProxyUrl(src) {
-    const trimmed = String(src || '').trim()
-    if (!trimmed) return ''
-    const storagePath = getSupabaseStoragePath(trimmed)
-    return '/api/image?src=' + encodeURIComponent(storagePath || trimmed)
+// Signs every distinct storage path in ONE batched Supabase call and hands
+// browsers a direct Supabase URL — replaces the old per-image /api/image
+// proxy, which re-fetched and re-streamed every product image through a
+// Vercel serverless function on every request. That was driving Function
+// Invocations, Fluid CPU, and Fast Origin Transfer all over their free-tier
+// quotas simultaneously, since every image on every page view was a
+// Vercel-origin request instead of a direct Supabase CDN fetch.
+async function resolveDirectImageUrls(urls) {
+    const storagePathByUrl = new Map()
+    for (const url of urls) {
+        const path = getSupabaseStoragePath(url)
+        if (path) storagePathByUrl.set(url, path)
+    }
+
+    const distinctPaths = Array.from(new Set(storagePathByUrl.values()))
+    const signedUrlByPath = new Map()
+    if (distinctPaths.length > 0) {
+        const { data, error } = await supabase.storage
+            .from('products')
+            .createSignedUrls(distinctPaths, 60 * 60 * 24) // 24h — comfortably outlives this response's own cache TTL
+        if (!error && Array.isArray(data)) {
+            data.forEach((entry) => {
+                if (entry?.signedUrl && !entry.error) signedUrlByPath.set(entry.path, entry.signedUrl)
+            })
+        }
+    }
+
+    const resolved = new Map()
+    for (const url of urls) {
+        const path = storagePathByUrl.get(url)
+        resolved.set(url, (path && signedUrlByPath.get(path)) || url)
+    }
+    return resolved
 }
 
 function normalizeTags(tags) {
@@ -452,16 +480,19 @@ export async function GET(request) {
             }
         }
 
+        const allImageUrls = filtered.flatMap((product) => normalizeImages(product.images))
+        const directUrlByOriginal = await resolveDirectImageUrls(allImageUrls)
+
         const productsWithStableImageUrls = filtered.map((product) => {
             const imageUrls = normalizeImages(product.images)
-            const proxiedUrls = imageUrls.map(toImageProxyUrl).filter(Boolean)
+            const directUrls = imageUrls.map((url) => directUrlByOriginal.get(url) || url).filter(Boolean)
             const productFabricName = String(product.fabric || '').trim()
             const resolvedFabricImage = productFabricName
                 ? (fabricSampleImages[productFabricName] || getFallbackFabricPreview(productFabricName))
                 : ''
             return {
                 ...product,
-                images: proxiedUrls,
+                images: directUrls,
                 fabric_image: resolvedFabricImage,
             }
         })

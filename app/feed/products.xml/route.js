@@ -45,10 +45,50 @@ function normalizeImages(images) {
     return Array.from(new Set(collectImageUrls(images, []).filter(Boolean)))
 }
 
-function toImageProxyUrl(src) {
-    const trimmed = String(src || '').trim()
-    if (!trimmed) return ''
-    return SITE_URL + '/api/image?src=' + encodeURIComponent(trimmed)
+// Was SITE_URL + '/api/image?src=' — routed every crawler image fetch
+// (Google Shopping/Meta catalog re-crawl this feed on a schedule and then
+// fetch every image link it lists) through a Vercel serverless function
+// that re-streamed the bytes. Signing directly here and handing back a real
+// Supabase URL means crawlers fetch images straight from Supabase's CDN,
+// touching Vercel only once (for this XML) instead of once per image per
+// crawl (see app/api/products/route.js for the same fix, same reasoning).
+function getSupabaseStoragePath(url) {
+    const trimmed = String(url || '').trim()
+    if (!trimmed) return null
+    if (trimmed.startsWith('images/')) return trimmed.split('?')[0]
+    const publicMarker = '/storage/v1/object/public/products/'
+    const signedMarker = '/storage/v1/object/sign/products/'
+    if (trimmed.includes(publicMarker)) return trimmed.split(publicMarker)[1].split('?')[0]
+    if (trimmed.includes(signedMarker)) return trimmed.split(signedMarker)[1].split('?')[0]
+    return null
+}
+
+async function resolveDirectImageUrls(supabase, urls) {
+    const storagePathByUrl = new Map()
+    for (const url of urls) {
+        const path = getSupabaseStoragePath(url)
+        if (path) storagePathByUrl.set(url, path)
+    }
+
+    const distinctPaths = Array.from(new Set(storagePathByUrl.values()))
+    const signedUrlByPath = new Map()
+    if (distinctPaths.length > 0) {
+        const { data, error } = await supabase.storage
+            .from('products')
+            .createSignedUrls(distinctPaths, 60 * 60 * 24 * 7) // 7 days — this feed itself is only re-fetched hourly, but crawlers may hold onto image links longer between their own re-crawls
+        if (!error && Array.isArray(data)) {
+            data.forEach((entry) => {
+                if (entry?.signedUrl && !entry.error) signedUrlByPath.set(entry.path, entry.signedUrl)
+            })
+        }
+    }
+
+    const resolved = new Map()
+    for (const url of urls) {
+        const path = storagePathByUrl.get(url)
+        resolved.set(url, (path && signedUrlByPath.get(path)) || url)
+    }
+    return resolved
 }
 
 function stripHtml(html) {
@@ -72,13 +112,13 @@ function escapeXml(value) {
         .replace(/'/g, '&apos;')
 }
 
-function buildItemXml(product) {
+function buildItemXml(product, directUrlByOriginal) {
     const displayTitle = normalizeDisplayTitle(product.title)
-    const images = normalizeImages(product.images)
+    const images = normalizeImages(product.images).map((url) => directUrlByOriginal.get(url) || url)
     if (!displayTitle || images.length === 0) return ''
 
     const link = SITE_URL + '/products/prd_id=' + product.id
-    const imageLink = toImageProxyUrl(images[0])
+    const imageLink = images[0]
     const additionalImages = images.slice(1, 1 + MAX_ADDITIONAL_IMAGES)
     const price = Math.round(Number(product.price) || 0)
     if (price <= 0) return ''
@@ -96,7 +136,7 @@ function buildItemXml(product) {
         '    <description>' + escapeXml(description) + '</description>',
         '    <link>' + escapeXml(link) + '</link>',
         '    <g:image_link>' + escapeXml(imageLink) + '</g:image_link>',
-        ...additionalImages.map((src) => '    <g:additional_image_link>' + escapeXml(toImageProxyUrl(src)) + '</g:additional_image_link>'),
+        ...additionalImages.map((src) => '    <g:additional_image_link>' + escapeXml(src) + '</g:additional_image_link>'),
         '    <g:availability>' + (inStock ? 'in stock' : 'out of stock') + '</g:availability>',
         '    <g:price>' + price + '.00 PKR</g:price>',
         '    <g:condition>new</g:condition>',
@@ -124,8 +164,11 @@ export async function GET() {
             return new Response('Feed generation failed: ' + error.message, { status: 500 })
         }
 
+        const allImageUrls = (data || []).flatMap((product) => normalizeImages(product.images))
+        const directUrlByOriginal = await resolveDirectImageUrls(supabase, allImageUrls)
+
         const items = (data || [])
-            .map(buildItemXml)
+            .map((product) => buildItemXml(product, directUrlByOriginal))
             .filter(Boolean)
             .join('\n')
 

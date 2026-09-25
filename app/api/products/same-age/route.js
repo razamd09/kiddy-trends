@@ -15,9 +15,11 @@ function firstImageUrl(images) {
     return first?.src || first?.url || first?.image || null
 }
 
-// Matches /api/products' own image handling: stored URLs are signed and
-// expire, so route every image through the /api/image proxy (which re-signs
-// on request) rather than returning the raw stored URL.
+// Stored URLs are signed and expire, so re-sign in one batched Supabase call
+// and hand back a direct Supabase URL — NOT the old /api/image proxy, which
+// re-fetched and re-streamed every image through a Vercel serverless
+// function on every request (a major driver of Function Invocations, CPU,
+// and Origin Transfer usage — see app/api/products/route.js for the same fix).
 function getSupabaseStoragePath(url) {
     const trimmed = String(url || '').trim()
     if (!trimmed) return null
@@ -29,11 +31,32 @@ function getSupabaseStoragePath(url) {
     return null
 }
 
-function toImageProxyUrl(src) {
-    const trimmed = String(src || '').trim()
-    if (!trimmed) return ''
-    const storagePath = getSupabaseStoragePath(trimmed)
-    return '/api/image?src=' + encodeURIComponent(storagePath || trimmed)
+async function resolveDirectImageUrls(urls) {
+    const storagePathByUrl = new Map()
+    for (const url of urls) {
+        const path = getSupabaseStoragePath(url)
+        if (path) storagePathByUrl.set(url, path)
+    }
+
+    const distinctPaths = Array.from(new Set(storagePathByUrl.values()))
+    const signedUrlByPath = new Map()
+    if (distinctPaths.length > 0) {
+        const { data, error } = await supabase.storage
+            .from('products')
+            .createSignedUrls(distinctPaths, 60 * 60 * 24)
+        if (!error && Array.isArray(data)) {
+            data.forEach((entry) => {
+                if (entry?.signedUrl && !entry.error) signedUrlByPath.set(entry.path, entry.signedUrl)
+            })
+        }
+    }
+
+    const resolved = new Map()
+    for (const url of urls) {
+        const path = storagePathByUrl.get(url)
+        resolved.set(url, (path && signedUrlByPath.get(path)) || url)
+    }
+    return resolved
 }
 
 // Lightweight cohort list for the product page's swipe/arrow navigation —
@@ -84,13 +107,19 @@ export async function GET(request) {
         }
     }
 
-    const items = windowed.map((p) => ({
-        id: p.id,
-        handle: 'prd_id=' + p.id,
-        title: p.title,
-        image: toImageProxyUrl(firstImageUrl(p.images)) || null,
-        price: p.price,
-    }))
+    const firstImages = windowed.map((p) => firstImageUrl(p.images)).filter(Boolean)
+    const directUrlByOriginal = await resolveDirectImageUrls(firstImages)
+
+    const items = windowed.map((p) => {
+        const original = firstImageUrl(p.images)
+        return {
+            id: p.id,
+            handle: 'prd_id=' + p.id,
+            title: p.title,
+            image: (original && (directUrlByOriginal.get(original) || original)) || null,
+            price: p.price,
+        }
+    })
 
     return Response.json({ success: true, ageId, total: matched.length, items })
 }
