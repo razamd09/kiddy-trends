@@ -17,10 +17,15 @@ export default function HomeHeroSlider() {
   return (
     <div className="relative w-full min-h-[560px] sm:min-h-[620px] md:min-h-[680px] lg:min-h-[760px] overflow-hidden"
          style={{ background: 'linear-gradient(180deg, #eef5fb 0%, #dbe9f5 100%)' }}>
-      {/* object-contain (not cover) — the source video's own aspect ratio
-          doesn't match this wide/short banner shape, and cover was cropping
-          the top of the frame off. contain shows the whole video, letterboxed
-          into the surrounding gradient instead of cut off. */}
+      {/* The source video is portrait — object-contain (below) shows the
+          whole frame with no cropping, but on a wide desktop viewport that
+          leaves big empty gaps on either side. This blurred, scaled-up copy
+          of the SAME video fills those gaps as a backdrop instead of plain
+          background color, which is what a portrait video needs to look
+          intentional in a wide banner rather than just small in the middle.
+          md+ only — on mobile the video already fills the narrower viewport
+          width, so a second decoded video would only cost battery/CPU for
+          no visible benefit. */}
       <video
         src={HERO_VIDEO_URL}
         autoPlay
@@ -28,7 +33,22 @@ export default function HomeHeroSlider() {
         loop
         playsInline
         preload="auto"
-        className="absolute inset-0 w-full h-full object-contain"
+        aria-hidden="true"
+        className="hidden md:block absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-60"
+      />
+      <div className="hidden md:block absolute inset-0 bg-black/10" />
+
+      {/* object-contain (not cover) — cover was cropping the top of the
+          frame off. contain shows the whole video, letterboxed into the
+          backdrop above (desktop) or the plain gradient (mobile) instead. */}
+      <video
+        src={HERO_VIDEO_URL}
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
+        className="absolute inset-0 z-[1] w-full h-full object-contain"
       />
 
       <div className="absolute inset-x-0 bottom-8 md:bottom-12 flex justify-center z-10">
