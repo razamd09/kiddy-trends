@@ -327,6 +327,11 @@ export async function GET(request) {
         const category = (searchParams.get('category') || '').trim()
         const seasonQuery = (searchParams.get('season') || '').trim()
         const seasonName = getSeasonNameFromQuery(seasonQuery)
+        // Lets campaign-style pages ask for just the New Arrivals pool
+        // server-side instead of fetching the entire catalog client-side to
+        // filter it themselves — that pattern was the main driver behind the
+        // poor Speed Insights scores on /campaign1-10 and /campaign.
+        const newArrivalsOnly = (searchParams.get('version') || '').trim().toLowerCase() === 'new_arrivals'
         const parsedProductId = parseProductIdFromHandle(handle)
         const offset = (page - 1) * limit
 
@@ -410,6 +415,7 @@ export async function GET(request) {
 
             if (category) query = query.eq('category', category)
             if (seasonName) query = query.eq('product_seasons.name', seasonName)
+            if (newArrivalsOnly) query = query.ilike('product_version', '%new arrival%')
             if (search) {
                 const escaped = search.replace(/,/g, ' ')
                 query = query.or(`title.ilike.%${escaped}%,product_type.ilike.%${escaped}%`)
@@ -430,6 +436,7 @@ export async function GET(request) {
 
                 if (category) fallback = fallback.eq('category', category)
                 if (seasonName) fallback = fallback.eq('product_seasons.name', seasonName)
+                if (newArrivalsOnly) fallback = fallback.ilike('product_version', '%new arrival%')
                 if (search) {
                     const escaped = search.replace(/,/g, ' ')
                     fallback = fallback.or(`title.ilike.%${escaped}%,product_type.ilike.%${escaped}%`)

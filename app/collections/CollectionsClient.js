@@ -154,15 +154,10 @@ function getCreatedAtValue(product) {
   return Number.isFinite(value) ? value : 0
 }
 
-// Cache products in module scope so they persist between renders
-let cachedProducts = []
-let cacheTime = 0
-const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
-
 export default function CollectionsClient({ initialProducts = [] }) {
   const searchParams = useSearchParams()
-  const [products, setProducts]   = useState(cachedProducts.length > 0 ? cachedProducts : initialProducts)
-  const [loading, setLoading]     = useState(cachedProducts.length === 0 && initialProducts.length === 0)
+  const [products, setProducts]   = useState(initialProducts)
+  const [loading, setLoading]     = useState(initialProducts.length === 0)
   const [activeCat, setActiveCat] = useState('all')
   const [activeGender, setActiveGender] = useState(null)
   const [activeSub, setActiveSub] = useState(null)
@@ -223,20 +218,17 @@ export default function CollectionsClient({ initialProducts = [] }) {
     setQueryBrand(queryBrand)
   }, [searchParams])
 
+  // The server component already fetched every page of the catalog for
+  // first paint — only fall back to a client-side fetch if that failed or
+  // returned nothing. This used to unconditionally re-fetch the entire
+  // catalog again on every mount regardless of what the server already
+  // sent, a major contributor to poor Speed Insights scores (extra
+  // network/CPU load, plus the visible content swap once it resolved
+  // hurting CLS).
   useEffect(() => {
-    // Use cache if fresh
-    if (cachedProducts.length > 0 && Date.now() - cacheTime < CACHE_DURATION) {
-      setProducts(cachedProducts)
-      setLoading(false)
-      return
-    }
+    if (initialProducts.length > 0) return
     async function fetchAll() {
       try {
-        // no-store, not force-cache: force-cache reuses whatever the browser
-        // already has for this URL without ever checking freshness — a
-        // customer who visited before a product was added/edited would keep
-        // seeing that stale snapshot indefinitely. The 5-minute module cache
-        // above is the intentional staleness window, not this.
         const first = await fetch('/api/products?limit=400&page=1', {
           cache: 'no-store'
         }).then(r => r.json())
@@ -256,8 +248,6 @@ export default function CollectionsClient({ initialProducts = [] }) {
           ...(first.products || []),
           ...restPages.flatMap((pageResult) => pageResult.products || [])
         ]
-        cachedProducts = all
-        cacheTime = Date.now()
         setProducts(all)
         setLoading(false)
       } catch { setLoading(false) }

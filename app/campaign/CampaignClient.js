@@ -24,23 +24,18 @@ function isOldPack(product) {
   return String(product?.product_version || '').trim().toLowerCase().includes('old pack')
 }
 
-// Cache products in module scope so they persist between renders/visits,
-// same convention as CollectionsClient.
-let cachedProducts = []
-let cacheTime = 0
-const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
-
 export default function CampaignClient({ initialProducts = [] }) {
-  const [products, setProducts] = useState(cachedProducts.length > 0 ? cachedProducts : initialProducts)
-  const [loading, setLoading] = useState(cachedProducts.length === 0 && initialProducts.length === 0)
+  const [products, setProducts] = useState(initialProducts)
+  const [loading, setLoading] = useState(initialProducts.length === 0)
   const [showOldPacks, setShowOldPacks] = useState(false)
 
+  // The server component already fetched the full catalog (all pages) for
+  // first paint — only fall back to a client-side fetch if that failed or
+  // returned nothing. This used to unconditionally re-fetch every page of
+  // the catalog again on every mount regardless of what the server already
+  // sent, a major contributor to poor Speed Insights scores.
   useEffect(() => {
-    if (cachedProducts.length > 0 && Date.now() - cacheTime < CACHE_DURATION) {
-      setProducts(cachedProducts)
-      setLoading(false)
-      return
-    }
+    if (initialProducts.length > 0) return
     async function fetchAll() {
       try {
         const first = await fetch('/api/products?limit=400&page=1', { cache: 'no-store' }).then((r) => r.json())
@@ -51,8 +46,6 @@ export default function CampaignClient({ initialProducts = [] }) {
         }
         const restPages = restPagePromises.length > 0 ? await Promise.all(restPagePromises) : []
         const all = [...(first.products || []), ...restPages.flatMap((pageResult) => pageResult.products || [])]
-        cachedProducts = all
-        cacheTime = Date.now()
         setProducts(all)
         setLoading(false)
       } catch {

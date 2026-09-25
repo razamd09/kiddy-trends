@@ -13,44 +13,39 @@ function isNewArrival(product) {
     return String(product?.product_version || '').trim().toLowerCase().includes('new arrival')
 }
 
-// Cache products in module scope so they persist between renders/visits —
-// shared across all three campaign pages since it's the same underlying
-// catalog, just a different pinned-slot list per campaign.
-let cachedProducts = []
-let cacheTime = 0
-const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
-
 export default function CampaignPageClient({ campaignNumber, initialProducts = [], initialPinnedIds = [] }) {
-    const [products, setProducts] = useState(cachedProducts.length > 0 ? cachedProducts : initialProducts)
-    const [loading, setLoading] = useState(cachedProducts.length === 0 && initialProducts.length === 0)
+    const [products, setProducts] = useState(initialProducts)
+    const [loading, setLoading] = useState(initialProducts.length === 0)
     const [pinnedIds, setPinnedIds] = useState(initialPinnedIds)
     const [page, setPage] = useState(1)
 
+    // The server component already fetched the New Arrivals pool
+    // (?version=new_arrivals) for first paint — only fall back to a
+    // client-side fetch if that failed or returned nothing. This used to
+    // unconditionally re-fetch the ENTIRE product catalog (all ~971
+    // products, paginated) on every mount regardless of what the server
+    // already sent — a major contributor to the poor Speed Insights scores
+    // on these pages, both from the extra network/CPU load on mobile and
+    // from the visible content swap once it resolved (hurting CLS).
     useEffect(() => {
-        if (cachedProducts.length > 0 && Date.now() - cacheTime < CACHE_DURATION) {
-            setProducts(cachedProducts)
-            setLoading(false)
-            return
-        }
-        async function fetchAll() {
+        if (initialProducts.length > 0) return
+        async function fetchNewArrivals() {
             try {
-                const first = await fetch('/api/products?limit=400&page=1', { cache: 'no-store' }).then((r) => r.json())
+                const first = await fetch('/api/products?limit=400&page=1&version=new_arrivals', { cache: 'no-store' }).then((r) => r.json())
                 const totalPages = Math.max(first.pages || 1, 1)
                 const restPagePromises = []
                 for (let p = 2; p <= totalPages; p++) {
-                    restPagePromises.push(fetch('/api/products?limit=400&page=' + p, { cache: 'no-store' }).then((r) => r.json()))
+                    restPagePromises.push(fetch('/api/products?limit=400&page=' + p + '&version=new_arrivals', { cache: 'no-store' }).then((r) => r.json()))
                 }
                 const restPages = restPagePromises.length > 0 ? await Promise.all(restPagePromises) : []
                 const all = [...(first.products || []), ...restPages.flatMap((pageResult) => pageResult.products || [])]
-                cachedProducts = all
-                cacheTime = Date.now()
                 setProducts(all)
                 setLoading(false)
             } catch {
                 setLoading(false)
             }
         }
-        fetchAll()
+        fetchNewArrivals()
     }, [])
 
     useEffect(() => {
