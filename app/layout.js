@@ -5,6 +5,7 @@ import CartDrawer from '../components/CartDrawer'
 import Script from 'next/script'
 import SiteChrome from '../components/SiteChrome'
 import AnalyticsTracker from '../components/AnalyticsTracker'
+import { Analytics } from '@vercel/analytics/next'
 
 // The Google Fonts catalog merged the old standalone "Fredoka One" family
 // into the variable "Fredoka" family; weight 500 is the closest match to
@@ -116,6 +117,7 @@ export default function RootLayout({ children }) {
         <CartDrawer />
         <SiteChrome>{children}</SiteChrome>
       </CartProvider>
+      <Analytics />
       </body>
       </html>
   )
