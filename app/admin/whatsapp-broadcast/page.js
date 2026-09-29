@@ -914,12 +914,18 @@ export default function AdminWhatsAppBroadcastPage() {
                     </form>
 
                     {recipientsTab === 'eligible' && (
-                        <div className="flex items-center justify-between mb-2">
-                            <div className="flex gap-3">
-                                <button type="button" onClick={selectAllEligibleOnPage} className="text-xs text-coral hover:underline">Select all on this page</button>
-                                <button type="button" onClick={clearSelection} className="text-xs text-gray-400 hover:text-coral">Clear selection</button>
+                        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                            <div className="flex gap-2">
+                                <button type="button" onClick={selectAllEligibleOnPage}
+                                        className="px-3 py-1.5 rounded-full border-2 border-coral text-coral text-xs font-semibold hover:bg-coral hover:text-white transition-colors">
+                                    ✓ Select All (this page)
+                                </button>
+                                <button type="button" onClick={clearSelection}
+                                        className="px-3 py-1.5 rounded-full border-2 border-gray-200 text-gray-500 text-xs font-semibold hover:border-coral hover:text-coral transition-colors">
+                                    ✕ Unselect All
+                                </button>
                             </div>
-                            <p className="text-xs font-semibold text-charcoal">{selectedCustomers.size} selected</p>
+                            <p className="text-xs font-semibold text-charcoal bg-cream px-3 py-1.5 rounded-full">{selectedCustomers.size} selected</p>
                         </div>
                     )}
 
