@@ -44,10 +44,15 @@ export async function POST(request) {
         const {
             customerName, customerPhone, cityName, deliveryAddress,
             orderDetail, items, invoicePayment, transactionNotes, instagramUsername,
+            orderType, returnCityName, returnAddress,
         } = body
 
         if (!customerName || !customerPhone || !cityName || !deliveryAddress || !invoicePayment) {
             return Response.json({ success: false, error: 'Customer name, phone, city, address and COD amount are all required' }, { status: 400 })
+        }
+        const normalizedOrderType = ['Normal', 'Reversed', 'Replacement'].includes(orderType) ? orderType : 'Normal'
+        if (normalizedOrderType === 'Reversed' && (!returnCityName || !returnAddress)) {
+            return Response.json({ success: false, error: 'Return city and return address are required for a Reversed order' }, { status: 400 })
         }
 
         const orderRefNumber = '786-KT-' + Date.now().toString(36).toUpperCase()
@@ -67,6 +72,9 @@ export async function POST(request) {
             invoicePayment,
             transactionNotes,
             pickupAddressCode,
+            orderType: normalizedOrderType,
+            returnCityName,
+            returnAddress,
         })
 
         if (!result.success) {
@@ -86,6 +94,7 @@ export async function POST(request) {
                 invoice_payment: Number(invoicePayment) || 0,
                 transaction_notes: transactionNotes || '',
                 instagram_username: String(instagramUsername || '').replace(/^@/, ''),
+                order_type: normalizedOrderType,
                 tracking_number: result.trackingNumber || null,
                 order_status: result.orderStatus || null,
                 postex_response: result,

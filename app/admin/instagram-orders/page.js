@@ -75,6 +75,9 @@ export default function AdminInstagramOrdersPage() {
     const [detectedCity, setDetectedCity] = useState('')
     const [cityOverride, setCityOverride] = useState('')
     const [orderDetail, setOrderDetail] = useState('')
+    const [orderType, setOrderType] = useState('Normal')
+    const [returnCity, setReturnCity] = useState('')
+    const [returnAddress, setReturnAddress] = useState('')
 
     const [booking, setBooking] = useState(false)
     const [bookError, setBookError] = useState('')
@@ -146,6 +149,10 @@ export default function AdminInstagramOrdersPage() {
             setBookError("Couldn't detect a city from that address — pick one below.")
             return
         }
+        if (orderType === 'Reversed' && (!returnCity.trim() || !returnAddress.trim())) {
+            setBookError('Return city and return address are required for a Reversed order.')
+            return
+        }
         if (!window.confirm('Book this order with PostEx now? A real shipment will be created.')) return
 
         setBooking(true)
@@ -163,6 +170,9 @@ export default function AdminInstagramOrdersPage() {
                     invoicePayment: quick.amount,
                     transactionNotes: 'IG: @' + quick.username.replace(/^@/, ''),
                     instagramUsername: quick.username.replace(/^@/, ''),
+                    orderType,
+                    returnCityName: orderType === 'Reversed' ? returnCity : undefined,
+                    returnAddress: orderType === 'Reversed' ? returnAddress : undefined,
                 }),
             })
             const data = await res.json()
@@ -173,6 +183,9 @@ export default function AdminInstagramOrdersPage() {
             setDetectedCity('')
             setCityOverride('')
             setOrderDetail('')
+            setOrderType('Normal')
+            setReturnCity('')
+            setReturnAddress('')
             loadOrders()
         } catch (err) {
             setBookError(err.message)
@@ -228,6 +241,33 @@ export default function AdminInstagramOrdersPage() {
                     <p className="text-xs text-gray-500 mb-4">Copy these straight from the Instagram chat — city fills in automatically from the address.</p>
 
                     <div className="space-y-4">
+                        <div>
+                            <label className="text-xs text-gray-500 mb-1 block">Order Type *</label>
+                            <select value={orderType} onChange={(e) => setOrderType(e.target.value)}
+                                    className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm">
+                                <option value="Normal">Normal</option>
+                                <option value="Reversed">Reversed</option>
+                                <option value="Replacement">Replacement</option>
+                            </select>
+                        </div>
+                        {orderType === 'Reversed' && (
+                            <>
+                                <div>
+                                    <label className="text-xs text-gray-500 mb-1 block">Return City *</label>
+                                    <select value={returnCity} onChange={(e) => setReturnCity(e.target.value)}
+                                            className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm">
+                                        <option value="">Select city...</option>
+                                        {cities.map((c) => <option key={c.operationalCityName} value={c.operationalCityName}>{c.operationalCityName}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-500 mb-1 block">Return Address *</label>
+                                    <textarea value={returnAddress} onChange={(e) => setReturnAddress(e.target.value)}
+                                              placeholder="Where PostEx should deliver the returned item back to" rows={2}
+                                              className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
+                                </div>
+                            </>
+                        )}
                         <div>
                             <label className="text-xs text-gray-500 mb-1 block">Customer Name *</label>
                             <input value={quick.customerName} onChange={(e) => updateQuick('customerName', e.target.value)}
@@ -300,7 +340,12 @@ export default function AdminInstagramOrdersPage() {
                             {orders.map((order) => (
                                 <div key={order.id} className="flex items-center gap-3 border-2 border-gray-100 rounded-xl p-3">
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm text-charcoal truncate">{order.customer_name} · {order.customer_phone} · {order.city_name}</p>
+                                        <p className="text-sm text-charcoal truncate">
+                                            {order.customer_name} · {order.customer_phone} · {order.city_name}
+                                            {order.order_type && order.order_type !== 'Normal' && (
+                                                <span className="ml-2 text-[10px] font-semibold text-coral border border-coral/40 rounded-full px-2 py-0.5 align-middle">{order.order_type}</span>
+                                            )}
+                                        </p>
                                         <p className="text-xs text-gray-400 truncate">{order.order_detail || order.delivery_address}</p>
                                     </div>
                                     <div className="text-right flex-shrink-0">
