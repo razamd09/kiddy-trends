@@ -298,6 +298,11 @@ export default function AdminWhatsAppBroadcastPage() {
         return new Date(customer.last_campaign_sent_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
     }
 
+    function addedAtLabel(customer) {
+        if (!customer.created_at) return '-'
+        return new Date(customer.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    }
+
     async function loadNonKiddyGroups() {
         try {
             const res = await fetch('/api/admin/non-kiddy/groups', { headers: { 'x-admin-token': token() } })
@@ -951,6 +956,9 @@ export default function AdminWhatsAppBroadcastPage() {
                                             <th className="text-left px-3 py-2 font-semibold">
                                                 <button onClick={() => toggleRecipientSort('last_sent')} className="hover:text-coral">Last Messaged{sortArrow('last_sent')}</button>
                                             </th>
+                                            <th className="text-left px-3 py-2 font-semibold">
+                                                <button onClick={() => toggleRecipientSort('created_at')} className="hover:text-coral">Added{sortArrow('created_at')}</button>
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -974,6 +982,7 @@ export default function AdminWhatsAppBroadcastPage() {
                                                                 ? 'Cooldown until ' + cooldownUntilLabel(c)
                                                                 : 'Eligible again (last sent ' + sentAtLabel(c) + ')'}
                                                     </td>
+                                                    <td className="px-3 py-2 text-gray-500 text-xs whitespace-nowrap">{addedAtLabel(c)}</td>
                                                 </tr>
                                             )
                                         })}

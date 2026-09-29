@@ -19,7 +19,7 @@ export async function getNonKiddyRecipients(page, groupId, queryText = '', sortB
 
     let query = supabase
         .from('non_kiddy_contacts')
-        .select('id, name, phone, group_id, last_campaign_sent_at, non_kiddy_groups(name)', { count: 'exact' })
+        .select('id, name, phone, group_id, last_campaign_sent_at, created_at, non_kiddy_groups(name)', { count: 'exact' })
         .order(column, { ascending, nullsFirst: sortBy === 'last_sent' ? ascending : undefined })
         .range(offset, offset + limit - 1)
 

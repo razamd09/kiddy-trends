@@ -165,7 +165,7 @@ export async function getCampaignRecipients(page, queryText = '', sortBy = 'crea
 
     let query = supabase
         .from('customers')
-        .select('id, first_name, last_name, phone, order_source, last_campaign_sent_at', { count: 'exact' })
+        .select('id, first_name, last_name, phone, order_source, last_campaign_sent_at, created_at', { count: 'exact' })
         .not('phone', 'is', null)
         .neq('phone', '')
         .order(column, { ascending, nullsFirst: effectiveSortBy === 'last_sent' ? ascending : undefined })
