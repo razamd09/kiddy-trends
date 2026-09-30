@@ -133,11 +133,13 @@ export async function POST(request) {
         async function worker() {
             while (idx < recipients.length) {
                 const recipient = recipients[idx++]
-                // Non-Kiddy contacts only ever have a placeholder name (CP1,
-                // CP2, ...) since real names can't be reliably matched to a
-                // WhatsApp group's member list — never show that in an
-                // outgoing greeting, use a generic "there" instead.
-                const name = pool === 'non_kiddy' ? 'there' : (String(recipient.first_name || '').trim() || 'there')
+                // Always a fixed greeting rather than the customer's real
+                // name — we don't reliably know it for every recipient
+                // (blank first_name on many customer rows, and non-Kiddy
+                // contacts are WhatsApp group members, not verified names),
+                // and a message that's sometimes personalized and sometimes
+                // not reads worse than one that's consistent either way.
+                const name = 'Kiddy Loyal customer'
                 let result
                 if (debugTemplateName) {
                     result = await sendWhatsAppTemplate({ to: recipient.phone, templateName, bodyParams: [] })
