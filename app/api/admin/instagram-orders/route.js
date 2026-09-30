@@ -44,7 +44,7 @@ export async function POST(request) {
         const {
             customerName, customerPhone, cityName, deliveryAddress,
             orderDetail, items, invoicePayment, transactionNotes, instagramUsername,
-            orderType, returnCityName, returnAddress,
+            orderType, returnCityName, returnAddress, sourceOrderId,
         } = body
 
         if (!customerName || !customerPhone || !cityName || !deliveryAddress || !invoicePayment) {
@@ -123,9 +123,30 @@ export async function POST(request) {
                 phone: normalizedPhone,
                 address: deliveryAddress,
                 instagram_username: String(instagramUsername || '').replace(/^@/, ''),
-                order_source: 'Insta',
+                order_source: sourceOrderId ? 'Website' : 'Insta',
                 updated_at: new Date().toISOString(),
             }])
+        }
+
+        // Booked from the Website Orders tab — write the AWB back onto the
+        // original order so the main Orders screen (which reads the
+        // tracking number out of `notes`, same convention as its own manual
+        // "save tracking" action) reflects that it's now been handed to
+        // PostEx, and moves it out of "processing" so it won't be picked
+        // again from the same list.
+        if (sourceOrderId) {
+            const { data: sourceOrder } = await supabase
+                .from('orders')
+                .select('notes')
+                .eq('id', sourceOrderId)
+                .maybeSingle()
+            const existingNotes = String(sourceOrder?.notes || '').trim()
+            const trackingLine = '[PostEx] AWB: ' + (result.trackingNumber || '')
+            const nextNotes = existingNotes ? existingNotes + '\n' + trackingLine : trackingLine
+            await supabase
+                .from('orders')
+                .update({ status: 'dispatched', notes: nextNotes, updated_at: new Date().toISOString() })
+                .eq('id', sourceOrderId)
         }
 
         return Response.json({ success: true, order: data })

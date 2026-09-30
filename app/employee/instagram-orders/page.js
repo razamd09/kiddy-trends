@@ -71,6 +71,16 @@ export default function EmployeeInstagramOrdersPage() {
     const [orders, setOrders] = useState([])
     const [loadingOrders, setLoadingOrders] = useState(true)
 
+    // 'social' = the original quick-entry flow (Instagram/Facebook/WhatsApp
+    // DM orders, typed in by hand). 'website' = picks from real website
+    // checkout orders sitting in "processing" and pre-fills the same form
+    // from them instead.
+    const [activeTab, setActiveTab] = useState('social')
+    const [websiteOrders, setWebsiteOrders] = useState([])
+    const [loadingWebsiteOrders, setLoadingWebsiteOrders] = useState(false)
+    const [websiteOrdersLoaded, setWebsiteOrdersLoaded] = useState(false)
+    const [sourceOrderId, setSourceOrderId] = useState(null)
+
     const [quick, setQuick] = useState(EMPTY_QUICK_FORM)
     const [detectedCity, setDetectedCity] = useState('')
     const [cityOverride, setCityOverride] = useState('')
@@ -116,6 +126,10 @@ export default function EmployeeInstagramOrdersPage() {
         verify()
     }, [])
 
+    useEffect(() => {
+        if (verified && activeTab === 'website' && !websiteOrdersLoaded) loadWebsiteOrders()
+    }, [verified, activeTab])
+
     async function loadCities() {
         try {
             const res = await fetch('/api/admin/instagram-orders/cities')
@@ -134,6 +148,66 @@ export default function EmployeeInstagramOrdersPage() {
             setOrders([])
         }
         setLoadingOrders(false)
+    }
+
+    // Real website checkout orders sitting in "processing" — confirmed but
+    // not yet handed to a courier. Lazy-loaded the first time the Website
+    // Orders tab is opened, same as everything else on this page.
+    async function loadWebsiteOrders() {
+        setLoadingWebsiteOrders(true)
+        try {
+            const token = localStorage.getItem('admin_token') || ''
+            const res = await fetch('/api/admin/orders?status=processing&page=1', { headers: { 'x-admin-token': token } })
+            const data = await res.json()
+            setWebsiteOrders(Array.isArray(data.orders) ? data.orders : [])
+        } catch {
+            setWebsiteOrders([])
+        }
+        setWebsiteOrdersLoaded(true)
+        setLoadingWebsiteOrders(false)
+    }
+
+    function summarizeItems(items) {
+        const list = Array.isArray(items) ? items : []
+        if (list.length === 0) return ''
+        const first = String(list[0]?.title || '').trim()
+        return list.length > 1 ? first + ' + ' + (list.length - 1) + ' more' : first
+    }
+
+    // Pulls a website order's details straight into the same quick-entry
+    // form the social-DM flow uses — the booking call to PostEx afterward
+    // doesn't need to know or care which tab it came from.
+    function selectWebsiteOrder(order) {
+        const address = String(order.customer_address || '').trim()
+        setQuick({
+            customerName: order.customer_name || '',
+            address,
+            phone: order.customer_phone || '',
+            username: '',
+            amount: String(order.total || ''),
+        })
+        setOrderDetail(summarizeItems(order.items))
+        setSourceOrderId(order.id)
+        setBookError('')
+        setLastBooked(null)
+
+        // The stored customer_city is free-typed at checkout and may not
+        // match PostEx's exact operational-city spelling — run the same
+        // detection used for pasted addresses, seeded with the address
+        // text plus whatever city the customer gave, and only fall back to
+        // asking staff to pick manually if neither resolves.
+        const combined = address + ' ' + String(order.customer_city || '')
+        const detected = detectCity(combined, cities)
+        setDetectedCity(detected)
+        setCityOverride(detected ? '' : (cities.find((c) => String(c.operationalCityName || '').toLowerCase() === String(order.customer_city || '').toLowerCase())?.operationalCityName || ''))
+    }
+
+    function clearSourceOrder() {
+        setSourceOrderId(null)
+        setQuick(EMPTY_QUICK_FORM)
+        setDetectedCity('')
+        setCityOverride('')
+        setOrderDetail('')
     }
 
     function updateQuick(field, value) {
@@ -156,8 +230,9 @@ export default function EmployeeInstagramOrdersPage() {
         setLastBooked(null)
 
         const cityName = cityOverride || detectedCity
-        if (!quick.customerName.trim() || !quick.address.trim() || !quick.phone.trim() || !quick.username.trim() || !quick.amount.trim()) {
-            setBookError('Name, address, phone, Instagram username and amount are all required.')
+        const usernameRequired = !sourceOrderId
+        if (!quick.customerName.trim() || !quick.address.trim() || !quick.phone.trim() || !quick.amount.trim() || (usernameRequired && !quick.username.trim())) {
+            setBookError('Name, address, phone' + (usernameRequired ? ', Instagram username' : '') + ' and amount are all required.')
             return
         }
         if (!cityName) {
@@ -183,11 +258,12 @@ export default function EmployeeInstagramOrdersPage() {
                     orderDetail,
                     items: '1',
                     invoicePayment: quick.amount,
-                    transactionNotes: 'IG: @' + quick.username.replace(/^@/, ''),
+                    transactionNotes: sourceOrderId ? 'Website order' : 'IG: @' + quick.username.replace(/^@/, ''),
                     instagramUsername: quick.username.replace(/^@/, ''),
                     orderType,
                     returnCityName: orderType === 'Reversed' ? returnCity : undefined,
                     returnAddress: orderType === 'Reversed' ? returnAddress : undefined,
+                    sourceOrderId: sourceOrderId || undefined,
                 }),
             })
             const data = await res.json()
@@ -201,6 +277,10 @@ export default function EmployeeInstagramOrdersPage() {
             setOrderType('Normal')
             setReturnCity('')
             setReturnAddress('')
+            if (sourceOrderId) {
+                setSourceOrderId(null)
+                setWebsiteOrders((prev) => prev.filter((o) => o.id !== sourceOrderId))
+            }
             loadOrders()
         } catch (err) {
             setBookError(err.message)
@@ -245,15 +325,44 @@ export default function EmployeeInstagramOrdersPage() {
                     <Link href="/employee/dashboard" className="text-gray-400 hover:text-coral text-sm">← Back</Link>
                     <h1 className="font-display text-xl text-charcoal">Post Ex Orders</h1>
                 </div>
-                <p className="text-xs text-gray-400">Paste address, phone, username &amp; amount from the chat — books straight to PostEx</p>
+                <p className="text-xs text-gray-400">
+                    {activeTab === 'website'
+                        ? 'Pick a processing website order to book it with PostEx'
+                        : 'Paste address, phone, username & amount from the chat — books straight to PostEx'}
+                </p>
             </div>
             <EmployeePortalNav />
 
-            <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+
+                <div className="flex gap-2">
+                    <button type="button" onClick={() => setActiveTab('social')}
+                            className={'px-5 py-2.5 rounded-full font-display text-sm transition-colors ' + (activeTab === 'social' ? 'bg-charcoal text-white' : 'bg-white text-charcoal border-2 border-gray-100 hover:border-coral/40')}>
+                        Instagram/Facebook/WhatsApp Orders
+                    </button>
+                    <button type="button" onClick={() => setActiveTab('website')}
+                            className={'px-5 py-2.5 rounded-full font-display text-sm transition-colors ' + (activeTab === 'website' ? 'bg-charcoal text-white' : 'bg-white text-charcoal border-2 border-gray-100 hover:border-coral/40')}>
+                        Website Orders
+                    </button>
+                </div>
+
+                <div className={activeTab === 'website' ? 'grid grid-cols-1 lg:grid-cols-2 gap-6 items-start' : ''}>
+                <div className={activeTab === 'website' ? '' : 'max-w-3xl mx-auto w-full space-y-6'}>
 
                 <form onSubmit={handleBook} className="bg-white rounded-2xl p-6 shadow-sm">
                     <p className="font-display text-lg text-charcoal mb-1">Quick order entry</p>
-                    <p className="text-xs text-gray-500 mb-4">Copy these straight from the Instagram chat — city fills in automatically from the address.</p>
+                    <p className="text-xs text-gray-500 mb-4">
+                        {sourceOrderId
+                            ? 'Pre-filled from the selected website order — amount is editable if the parcel total needs adjusting.'
+                            : 'Copy these straight from the Instagram chat — city fills in automatically from the address.'}
+                    </p>
+
+                    {sourceOrderId && (
+                        <div className="bg-cream rounded-xl px-3 py-2 mb-4 flex items-center justify-between">
+                            <p className="text-xs text-charcoal">Booking from website order <strong>#{sourceOrderId}</strong></p>
+                            <button type="button" onClick={clearSourceOrder} className="text-xs text-gray-400 hover:text-coral">✕ Clear</button>
+                        </div>
+                    )}
 
                     <div className="space-y-4">
                         <div>
@@ -311,13 +420,15 @@ export default function EmployeeInstagramOrdersPage() {
                             <input value={quick.phone} onChange={(e) => updateQuick('phone', e.target.value)}
                                    placeholder="03191598004" className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
                         </div>
+                        {!sourceOrderId && (
+                            <div>
+                                <label className="text-xs text-gray-500 mb-1 block">Instagram Username *</label>
+                                <input value={quick.username} onChange={(e) => updateQuick('username', e.target.value)}
+                                       placeholder="seharmajid20" className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
+                            </div>
+                        )}
                         <div>
-                            <label className="text-xs text-gray-500 mb-1 block">Instagram Username *</label>
-                            <input value={quick.username} onChange={(e) => updateQuick('username', e.target.value)}
-                                   placeholder="seharmajid20" className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
-                        </div>
-                        <div>
-                            <label className="text-xs text-gray-500 mb-1 block">COD Amount (PKR) *</label>
+                            <label className="text-xs text-gray-500 mb-1 block">COD Amount (PKR) * {sourceOrderId && <span className="text-gray-400 font-normal">(editable — adjust if the parcel total changed)</span>}</label>
                             <input type="number" min="0" value={quick.amount} onChange={(e) => updateQuick('amount', e.target.value)}
                                    placeholder="2000" className="w-full border-2 border-gray-100 rounded-xl px-3 py-2 text-sm" />
                         </div>
@@ -379,6 +490,38 @@ export default function EmployeeInstagramOrdersPage() {
                             ))}
                         </div>
                     )}
+                </div>
+
+                </div>
+
+                {activeTab === 'website' && (
+                    <div className="bg-white rounded-2xl p-6 shadow-sm">
+                        <p className="font-display text-lg text-charcoal mb-1">Processing website orders</p>
+                        <p className="text-xs text-gray-500 mb-4">Click one to fill in the form on the left.</p>
+
+                        {loadingWebsiteOrders && <p className="text-sm text-gray-400">Loading...</p>}
+                        {!loadingWebsiteOrders && websiteOrders.length === 0 && (
+                            <p className="text-sm text-gray-400">No orders in "processing" right now.</p>
+                        )}
+                        {!loadingWebsiteOrders && websiteOrders.length > 0 && (
+                            <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                                {websiteOrders.map((order) => (
+                                    <button key={order.id} type="button" onClick={() => selectWebsiteOrder(order)}
+                                            className={'w-full text-left border-2 rounded-xl p-3 transition-colors ' + (sourceOrderId === order.id ? 'border-coral bg-coral/5' : 'border-gray-100 hover:border-coral/40')}>
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <p className="text-sm text-charcoal truncate">{order.customer_name} · {order.customer_phone}</p>
+                                                <p className="text-xs text-gray-400 truncate">{order.order_number} · {order.customer_city} · {summarizeItems(order.items)}</p>
+                                            </div>
+                                            <p className="text-sm font-semibold text-charcoal flex-shrink-0">PKR {Number(order.total || 0).toLocaleString()}</p>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 </div>
             </div>
         </div>
