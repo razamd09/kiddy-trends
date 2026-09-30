@@ -18,16 +18,8 @@ const menus = [
     ],
   },
   { label: 'Orders', href: '/admin/orders' },
-  { label: 'Instagram Orders', href: '/admin/instagram-orders' },
-  { label: 'Instagram Chats', href: '/admin/instagram-conversations' },
-  {
-    label: 'Customers',
-    items: [
-      { href: '/admin/customers', label: 'Customers' },
-      { href: '/admin/rewards', label: 'Rewards' },
-      { href: '/admin/feedback', label: 'Feedback' },
-    ],
-  },
+  { label: 'Post Ex Orders', href: '/admin/instagram-orders' },
+  { label: 'Customers', href: '/admin/customers' },
   {
     label: 'Team',
     items: [
@@ -43,6 +35,8 @@ const menus = [
       { href: '/admin/analytics', label: 'Analytics' },
       { href: '/admin/campaigns', label: 'Campaigns' },
       { href: '/admin/whatsapp-broadcast', label: 'WhatsApp Broadcast' },
+      { href: '/admin/rewards', label: 'Rewards' },
+      { href: '/admin/feedback', label: 'Feedback' },
     ],
   },
   { label: 'Shipping Rates', href: '/admin/shipping-rates' },

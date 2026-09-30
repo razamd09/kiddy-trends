@@ -228,7 +228,7 @@ export default function AdminInstagramOrdersPage() {
             <div className="bg-white shadow-sm px-6 py-4 flex items-center justify-between sticky top-0 z-10">
                 <div className="flex items-center gap-3">
                     <Link href="/admin/dashboard" className="text-gray-400 hover:text-coral text-sm">← Back</Link>
-                    <h1 className="font-display text-xl text-charcoal">Instagram Orders</h1>
+                    <h1 className="font-display text-xl text-charcoal">Post Ex Orders</h1>
                 </div>
                 <p className="text-xs text-gray-400">Paste address, phone, username &amp; amount from the chat — books straight to PostEx</p>
             </div>
