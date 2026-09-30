@@ -75,6 +75,11 @@ export default function AdminWhatsAppBroadcastPage() {
 
     const [pool, setPool] = useState([])
     const [poolLoading, setPoolLoading] = useState(true)
+    const [poolLoadingMore, setPoolLoadingMore] = useState(false)
+    const [poolPage, setPoolPage] = useState(1)
+    const [poolHasMore, setPoolHasMore] = useState(false)
+    const [poolTypeFilter, setPoolTypeFilter] = useState('')
+    const [productTypeOptions, setProductTypeOptions] = useState([])
     const [selected, setSelected] = useState([])
 
     // 'carousel' = multiple product cards (built above). 'video' = one clip,
@@ -143,6 +148,7 @@ export default function AdminWhatsAppBroadcastPage() {
                 loadAll()
                 loadSavedCampaigns()
                 loadNonKiddyGroups()
+                loadProductTypes()
             } catch {
                 router.push('/admin')
             }
@@ -155,35 +161,96 @@ export default function AdminWhatsAppBroadcastPage() {
         loadRecipients(recipientsPage)
     }, [verified, recipientsPage, recipientsSort, recipientsDir, recipientsSource, recipientsTab, recipientPool, nonKiddyGroupId])
 
+    useEffect(() => {
+        if (!verified) return
+        loadAll()
+    }, [poolTypeFilter])
+
     function token() {
         return localStorage.getItem('admin_token') || ''
     }
 
-    // Fetches default picks, and the New Arrivals pool for the drag-and-drop
-    // picker, together — same pool source as the Campaigns drag-and-drop screen.
+    // Fetches one page of the pool: always New Arrivals (server-filtered,
+    // not client-filtered from "recent products" — that used to let enough
+    // non-new-arrival recent products crowd real new arrivals out of the
+    // fetched window), plus, if a product type is picked, that type's
+    // products too (any version) — merged and deduped so both show
+    // together, per the "mock necks/thermals plus new arrivals already
+    // displaying" ask.
+    async function fetchPoolPage(page, typeFilter) {
+        const requests = [
+            fetch('/api/admin/products?limit=' + POOL_LIMIT + '&page=' + page + '&sortBy=created_at&sortDir=desc&version=new_arrivals', { headers: { 'x-admin-token': token() } }),
+        ]
+        if (typeFilter) {
+            requests.push(
+                fetch('/api/admin/products?limit=' + POOL_LIMIT + '&page=' + page + '&sortBy=created_at&sortDir=desc&productType=' + encodeURIComponent(typeFilter), { headers: { 'x-admin-token': token() } })
+            )
+        }
+        const responses = await Promise.all(requests)
+        const jsons = await Promise.all(responses.map((r) => r.json()))
+        const merged = new Map()
+        let anyFullPage = false
+        for (const data of jsons) {
+            const products = Array.isArray(data.products) ? data.products : []
+            if (products.length === POOL_LIMIT) anyFullPage = true
+            for (const p of products) merged.set(p.id, p)
+        }
+        const list = Array.from(merged.values()).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        return { list, hasMore: anyFullPage }
+    }
+
+    // Fetches default picks, and page 1 of the pool together — same pool
+    // source as the Campaigns drag-and-drop screen.
     async function loadAll() {
         setPoolLoading(true)
         setLoadError('')
         try {
-            const [previewRes, poolRes] = await Promise.all([
+            const [previewRes, { list, hasMore }] = await Promise.all([
                 fetch('/api/admin/whatsapp-campaign'),
-                fetch('/api/admin/products?limit=200&sortBy=created_at&sortDir=desc', { headers: { 'x-admin-token': token() } }),
+                fetchPoolPage(1, poolTypeFilter),
             ])
             const previewData = await previewRes.json()
-            const poolData = await poolRes.json()
             if (!previewData.success) throw new Error(previewData.error || 'Failed to load preview')
 
-            const all = Array.isArray(poolData.products) ? poolData.products : []
-            const newArrivals = all.filter(isNewArrival).slice(0, POOL_LIMIT)
-            setPool(newArrivals)
+            setPool(list)
+            setPoolPage(1)
+            setPoolHasMore(hasMore)
 
             const defaultIds = previewData.defaultProductIds || []
-            setSelected(defaultIds.map((id) => newArrivals.find((p) => p.id === id)).filter(Boolean))
+            setSelected(defaultIds.map((id) => list.find((p) => p.id === id)).filter(Boolean))
         } catch (err) {
             setLoadError(err.message)
             setPool([])
         }
         setPoolLoading(false)
+    }
+
+    async function loadMorePool() {
+        setPoolLoadingMore(true)
+        try {
+            const nextPage = poolPage + 1
+            const { list, hasMore } = await fetchPoolPage(nextPage, poolTypeFilter)
+            setPool((prev) => {
+                const merged = new Map(prev.map((p) => [p.id, p]))
+                for (const p of list) merged.set(p.id, p)
+                return Array.from(merged.values()).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+            })
+            setPoolPage(nextPage)
+            setPoolHasMore(hasMore)
+        } catch (err) {
+            setLoadError(err.message)
+        }
+        setPoolLoadingMore(false)
+    }
+
+    async function loadProductTypes() {
+        try {
+            const res = await fetch('/api/admin/product-types', { headers: { 'x-admin-token': token() } })
+            const data = await res.json()
+            setProductTypeOptions(Array.isArray(data.types) ? data.types.map((t) => t?.name || t).filter(Boolean) : [])
+        } catch {
+            setProductTypeOptions([])
+        }
     }
 
     async function loadSavedCampaigns() {
@@ -778,7 +845,19 @@ export default function AdminWhatsAppBroadcastPage() {
                     <p className="text-xs text-gray-500 mb-4">
                         Newest first · drag up to {MAX_PRODUCTS} cards down into "Selected for this broadcast" —
                         these become the carousel cards in the <code className="bg-cream px-1.5 py-0.5 rounded">new_arrivals_carousel_kt_10</code> message.
+                        Optionally add a product type below to also pull in older stock of that type, even if it isn't a New Arrival.
                     </p>
+
+                    <div className="flex items-center gap-2 mb-3">
+                        <select value={poolTypeFilter} onChange={(e) => setPoolTypeFilter(e.target.value)}
+                                className="text-xs border-2 border-gray-100 rounded-xl px-3 py-1.5">
+                            <option value="">+ Also include a product type...</option>
+                            {productTypeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                        {poolTypeFilter && (
+                            <button onClick={() => setPoolTypeFilter('')} className="text-xs text-gray-400 hover:text-coral">✕ Clear</button>
+                        )}
+                    </div>
 
                     {poolLoading && <p className="text-sm text-gray-400">Loading...</p>}
                     {!poolLoading && pool.length === 0 && <p className="text-sm text-gray-400">No New Arrivals products found.</p>}
@@ -804,6 +883,12 @@ export default function AdminWhatsAppBroadcastPage() {
                                 )
                             })}
                         </div>
+                        {poolHasMore && (
+                            <button onClick={loadMorePool} disabled={poolLoadingMore}
+                                    className="mt-3 px-4 py-2 bg-cream text-charcoal text-xs font-semibold rounded-full hover:bg-coral/10 disabled:opacity-40">
+                                {poolLoadingMore ? 'Loading...' : '↓ Load more products'}
+                            </button>
+                        )}
                         </>
                     )}
                 </div>

@@ -7,6 +7,22 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_KEY
 )
 
+// Net Sale is a profitability figure, not a routine task screen — checked
+// server-side (not just left off the employee nav) since employees log in
+// with a different token namespace than admin_token and should never be
+// able to reach this by guessing the URL.
+async function validateAdmin(request) {
+    const adminToken = request.headers.get('x-admin-token')
+    if (!adminToken) return false
+    const { data: session } = await supabase
+        .from('admin_sessions')
+        .select('token')
+        .eq('token', adminToken)
+        .gt('expires_at', new Date().toISOString())
+        .single()
+    return !!session
+}
+
 // Flat per-order shipping charge, matching the site's active "Standard
 // Shipping" rate (Rs. 250) — PostEx orders don't carry their own shipping
 // figure, only the single COD total (invoice_payment), so there's nothing
@@ -44,6 +60,9 @@ function toRow(dateKey, orders, totalSale) {
 
 export async function GET(request) {
     try {
+        const valid = await validateAdmin(request)
+        if (!valid) return Response.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+
         const { searchParams } = new URL(request.url)
         const range = ['weekly', 'monthly'].includes(searchParams.get('range')) ? searchParams.get('range') : 'daily'
 

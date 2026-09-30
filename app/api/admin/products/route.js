@@ -290,6 +290,8 @@ export async function GET(request) {
     const category = (searchParams.get('category') || '').trim()
     const search = (searchParams.get('search') || '').trim()
     const variant = (searchParams.get('variant') || '').trim()
+    const productType = (searchParams.get('productType') || '').trim()
+    const newArrivalsOnly = (searchParams.get('version') || '').trim().toLowerCase() === 'new_arrivals'
     const sortByRaw = (searchParams.get('sortBy') || 'created_at').trim()
     const sortDirRaw = (searchParams.get('sortDir') || 'desc').trim().toLowerCase()
     const sortByAllowed = ['created_at', 'updated_at', 'price', 'title', 'stock', 'category', 'is_active', 'last_action_at', 'variant_count']
@@ -311,6 +313,12 @@ export async function GET(request) {
         }
         if (search) {
             variantQuery = variantQuery.ilike('title', '%' + search + '%')
+        }
+        if (productType) {
+            variantQuery = variantQuery.eq('product_type', productType)
+        }
+        if (newArrivalsOnly) {
+            variantQuery = variantQuery.ilike('product_version', '%new arrival%')
         }
 
         variantQuery = variantQuery.order(needsComputedSort ? 'id' : sortBy, { ascending })
@@ -349,6 +357,12 @@ export async function GET(request) {
         }
         if (search) {
             query = query.ilike('title', '%' + search + '%')
+        }
+        if (productType) {
+            query = query.eq('product_type', productType)
+        }
+        if (newArrivalsOnly) {
+            query = query.ilike('product_version', '%new arrival%')
         }
         query = query.order(needsComputedSort ? 'id' : sortBy, { ascending })
         if (!needsComputedSort) {

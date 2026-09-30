@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminPortalNav from '@/components/AdminPortalNav'
+import SalesBarChart from '@/components/SalesBarChart'
 
 const RANGES = [
     { id: 'daily', label: 'Daily Sale' },
@@ -23,6 +24,15 @@ function formatRowDate(dateStr, range) {
         return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ' – ' + end.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
     }
     return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', weekday: 'short' })
+}
+
+function chartLabel(range) {
+    return (dateStr, full) => {
+        const d = new Date(dateStr + 'T00:00:00')
+        if (range === 'monthly') return d.toLocaleDateString('en-GB', { month: full ? 'long' : 'short', year: 'numeric' })
+        if (range === 'weekly') return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + (full ? ' wk' : '')
+        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+    }
 }
 
 export default function AdminSalesPage() {
@@ -158,6 +168,14 @@ export default function AdminSalesPage() {
                         </div>
                     )}
                 </div>
+
+                {!loading && !error && rows.length > 0 && (
+                    <div className="bg-white rounded-2xl p-6 shadow-sm">
+                        <p className="font-display text-lg text-charcoal mb-1">Net Sale trend</p>
+                        <p className="text-xs text-gray-500 mb-4">Most recent {Math.min(rows.length, 12)} {range === 'daily' ? 'days' : range === 'weekly' ? 'weeks' : 'months'} — hover a bar for the exact figure.</p>
+                        <SalesBarChart rows={rows} formatLabel={chartLabel(range)} />
+                    </div>
+                )}
             </div>
         </div>
     )
