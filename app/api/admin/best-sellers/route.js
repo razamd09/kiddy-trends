@@ -23,6 +23,68 @@ function normalizeTitle(title) {
     return String(title || '').trim().replace(/\s+/g, ' ')
 }
 
+// Order line items store whatever image URL the product had AT CHECKOUT
+// TIME, frozen into the order's JSON forever. For products uploaded to
+// Supabase Storage, that was a signed URL with an expiry — perfectly valid
+// the day of the order, dead weeks later, which is why older best-sellers
+// were rendering blank instead of broken-image icons (the src is a real,
+// well-formed URL, just one whose signature token has expired). Re-signing
+// a fresh URL from the underlying storage path fixes it; a raw external
+// URL (Shopify CDN, from pre-migration orders) is untouched — those don't
+// expire and aren't ours to re-sign.
+function getSupabaseStoragePath(url) {
+    const trimmed = String(url || '').trim()
+    if (!trimmed) return null
+
+    // Legacy same-origin proxy references (/api/image?src=...) — unwrap to
+    // whatever path or URL they point at and resolve that instead.
+    if (trimmed.startsWith('/api/image?src=')) {
+        try {
+            const inner = decodeURIComponent(trimmed.slice('/api/image?src='.length))
+            return getSupabaseStoragePath(inner)
+        } catch {
+            return null
+        }
+    }
+
+    if (trimmed.startsWith('images/') || trimmed.startsWith('payment-proofs/')) {
+        return trimmed.split('?')[0]
+    }
+
+    const publicMarker = '/storage/v1/object/public/products/'
+    const signedMarker = '/storage/v1/object/sign/products/'
+    if (trimmed.includes(publicMarker)) return trimmed.split(publicMarker)[1].split('?')[0]
+    if (trimmed.includes(signedMarker)) return trimmed.split(signedMarker)[1].split('?')[0]
+
+    return null // external URL (Shopify CDN, etc.) — leave untouched
+}
+
+async function resolveDirectImageUrls(urls) {
+    const storagePathByUrl = new Map()
+    for (const url of urls) {
+        const path = getSupabaseStoragePath(url)
+        if (path) storagePathByUrl.set(url, path)
+    }
+
+    const distinctPaths = Array.from(new Set(storagePathByUrl.values()))
+    const signedUrlByPath = new Map()
+    if (distinctPaths.length > 0) {
+        const { data, error } = await supabase.storage.from('products').createSignedUrls(distinctPaths, 60 * 60 * 24)
+        if (!error && Array.isArray(data)) {
+            data.forEach((entry) => {
+                if (entry?.signedUrl && !entry.error) signedUrlByPath.set(entry.path, entry.signedUrl)
+            })
+        }
+    }
+
+    const resolved = new Map()
+    for (const url of urls) {
+        const path = storagePathByUrl.get(url)
+        resolved.set(url, (path && signedUrlByPath.get(path)) || url)
+    }
+    return resolved
+}
+
 // Date-range presets, computed in Pakistan time (UTC+5, no DST) — same
 // convention as the Sale report, so "Today"/"This Week" line up with the
 // business's actual calendar day/week, not a UTC one that can be several
@@ -117,7 +179,12 @@ export async function GET(request) {
             }
         }
 
-        const products = Array.from(byTitle.values()).sort((a, b) => b.orderCount - a.orderCount)
+        const allImages = Array.from(byTitle.values()).map((e) => e.image).filter(Boolean)
+        const directUrlByOriginal = await resolveDirectImageUrls(allImages)
+
+        const products = Array.from(byTitle.values())
+            .map((entry) => ({ ...entry, image: entry.image ? (directUrlByOriginal.get(entry.image) || entry.image) : null }))
+            .sort((a, b) => b.orderCount - a.orderCount)
 
         return Response.json({ success: true, products, preset })
     } catch (err) {
