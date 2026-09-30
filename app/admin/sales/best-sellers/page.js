@@ -4,10 +4,20 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminPortalNav from '@/components/AdminPortalNav'
 
+const PRESETS = [
+    { id: 'all', label: 'All Time' },
+    { id: 'today', label: 'Today' },
+    { id: 'yesterday', label: 'Yesterday' },
+    { id: 'this_week', label: 'This Week' },
+    { id: 'last_week', label: 'Last Week' },
+    { id: 'this_month', label: 'Monthly Sale' },
+]
+
 export default function AdminBestSellersPage() {
     const [verified, setVerified] = useState(false)
     const router = useRouter()
 
+    const [preset, setPreset] = useState('all')
     const [products, setProducts] = useState([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState('')
@@ -21,7 +31,6 @@ export default function AdminBestSellersPage() {
                 const data = await res.json()
                 if (!data.valid) { localStorage.removeItem('admin_token'); router.push('/admin'); return }
                 setVerified(true)
-                load(token)
             } catch {
                 router.push('/admin')
             }
@@ -29,11 +38,17 @@ export default function AdminBestSellersPage() {
         verify()
     }, [])
 
-    async function load(token) {
+    useEffect(() => {
+        if (!verified) return
+        load()
+    }, [verified, preset])
+
+    async function load() {
         setLoading(true)
         setError('')
         try {
-            const res = await fetch('/api/admin/best-sellers', { headers: { 'x-admin-token': token || localStorage.getItem('admin_token') || '' } })
+            const token = localStorage.getItem('admin_token') || ''
+            const res = await fetch('/api/admin/best-sellers?preset=' + preset, { headers: { 'x-admin-token': token } })
             const data = await res.json()
             if (!data.success) throw new Error(data.error || 'Failed to load')
             setProducts(data.products || [])
@@ -63,10 +78,19 @@ export default function AdminBestSellersPage() {
             <AdminPortalNav />
 
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="flex flex-wrap gap-2 mb-6">
+                    {PRESETS.map((p) => (
+                        <button key={p.id} onClick={() => setPreset(p.id)}
+                                className={'px-5 py-2 rounded-full font-display text-sm transition-colors ' + (preset === p.id ? 'bg-coral text-white' : 'bg-white text-charcoal border-2 border-gray-100 hover:border-coral/40')}>
+                            {p.label}
+                        </button>
+                    ))}
+                </div>
+
                 {loading && <p className="text-sm text-gray-400">Loading...</p>}
                 {error && <p className="text-sm text-red-500">{error}</p>}
                 {!loading && !error && products.length === 0 && (
-                    <p className="text-sm text-gray-400 text-center py-8">No website orders yet.</p>
+                    <p className="text-sm text-gray-400 text-center py-8">No website orders in this range.</p>
                 )}
                 {!loading && !error && products.length > 0 && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
