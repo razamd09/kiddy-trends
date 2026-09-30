@@ -19,7 +19,13 @@ const menus = [
   },
   { label: 'Orders', href: '/admin/orders' },
   { label: 'Post Ex Orders', href: '/admin/instagram-orders' },
-  { label: 'Sale', href: '/admin/sales' },
+  {
+    label: 'Sale',
+    items: [
+      { href: '/admin/sales', label: 'Sale Report' },
+      { href: '/admin/sales/best-sellers', label: 'Best Sellers' },
+    ],
+  },
   { label: 'Customers', href: '/admin/customers' },
   {
     label: 'Team',
