@@ -6,6 +6,7 @@ import ProductCard from '../components/ProductCard'
 import DiscountBanner from '../components/DiscountBanner'
 import LandingPreferencePopup from '../components/LandingPreferencePopup'
 import HomeHeroSlider from '../components/HomeHeroSlider'
+import FeaturedCollectionSlider from '../components/FeaturedCollectionSlider'
 import LazyMount from '../components/LazyMount'
 import { compareNewestNewArrivalsFirst, isNewArrivalsVersion } from '../lib/newArrivals'
 
@@ -138,6 +139,10 @@ export default function Home({ initialProducts = [], initialInstagramPosts = [] 
             </div>
           </div>
         </section>
+
+        {/* FEATURED COLLECTION — every product pinned to a currently active
+            campaign (/admin/campaigns), 1 through however many are toggled on */}
+        <FeaturedCollectionSlider />
 
         {/* ARRIVAL TABS */}
         <section className="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
