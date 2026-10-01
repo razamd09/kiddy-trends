@@ -874,7 +874,7 @@ export default function AdminWhatsAppBroadcastPage() {
 
                     <div className="flex items-center gap-2 mb-3 flex-wrap">
                         <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                               placeholder="🔍 Search product title to find and add the exact product..."
+                               placeholder="🔍 Search by product title or ID (e.g. 918) to add the exact product..."
                                className="text-xs border-2 border-gray-100 rounded-xl px-3 py-1.5 w-72" />
                         {searchQuery && (
                             <button onClick={() => setSearchQuery('')} className="text-xs text-gray-400 hover:text-coral">✕ Clear search</button>

@@ -57,6 +57,26 @@ function productMatchesVariant(rawVariants, variantFilter) {
     })
 }
 
+// Lets admins search by exact product id too — typed as a bare number, or
+// in the "prd_id=123" shape used in carousel button paths / product URLs,
+// or "#123" / "id:123". Falls back to null (plain title search) otherwise.
+function extractProductId(raw) {
+    const trimmed = String(raw || '').trim()
+    const prefixed = trimmed.match(/^(?:prd[_-]?id|id|#)\s*[:=]?\s*(\d+)$/i)
+    if (prefixed) return parseInt(prefixed[1], 10)
+    const bare = trimmed.match(/^(\d+)$/)
+    return bare ? parseInt(bare[1], 10) : null
+}
+
+function applySearchFilter(query, search) {
+    if (!search) return query
+    const productId = extractProductId(search)
+    if (productId !== null) {
+        return query.or('id.eq.' + productId + ',title.ilike.%' + search.replace(/,/g, '') + '%')
+    }
+    return query.ilike('title', '%' + search + '%')
+}
+
 function normalizeImages(images) {
     if (Array.isArray(images)) {
         return images
@@ -312,7 +332,7 @@ export async function GET(request) {
             variantQuery = variantQuery.eq('category', category)
         }
         if (search) {
-            variantQuery = variantQuery.ilike('title', '%' + search + '%')
+            variantQuery = applySearchFilter(variantQuery, search)
         }
         if (productType) {
             variantQuery = variantQuery.eq('product_type', productType)
@@ -332,7 +352,7 @@ export async function GET(request) {
                 fallbackVariantQuery = fallbackVariantQuery.eq('category', category)
             }
             if (search) {
-                fallbackVariantQuery = fallbackVariantQuery.ilike('title', '%' + search + '%')
+                fallbackVariantQuery = applySearchFilter(fallbackVariantQuery, search)
             }
             variantResult = await fallbackVariantQuery.order('id', { ascending: false })
         }
@@ -356,7 +376,7 @@ export async function GET(request) {
             query = query.eq('category', category)
         }
         if (search) {
-            query = query.ilike('title', '%' + search + '%')
+            query = applySearchFilter(query, search)
         }
         if (productType) {
             query = query.eq('product_type', productType)
@@ -390,7 +410,7 @@ export async function GET(request) {
                 fallbackVariant = fallbackVariant.eq('category', category)
             }
             if (search) {
-                fallbackVariant = fallbackVariant.ilike('title', '%' + search + '%')
+                fallbackVariant = applySearchFilter(fallbackVariant, search)
             }
             const fallbackResult = await fallbackVariant.order('id', { ascending: false })
             if (!fallbackResult.error) {
@@ -413,7 +433,7 @@ export async function GET(request) {
                 fallback = fallback.eq('category', category)
             }
             if (search) {
-                fallback = fallback.ilike('title', '%' + search + '%')
+                fallback = applySearchFilter(fallback, search)
             }
             fallback = fallback.order('id', { ascending: false })
             const fallbackResult = await fallback
