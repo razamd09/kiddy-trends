@@ -11,7 +11,7 @@ const links = [
   { href: '/size-chart',      label: 'Size Chart' },
   { href: '/order-tracking',  label: 'Track Order' },
   { href: '/my-orders',       label: 'My Orders' },
-  { href: '/feedback',        label: 'Feedback' },
+  { href: '/featured-collection', label: 'Featured Collection' },
 ]
 
 const menuLinks = [
