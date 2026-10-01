@@ -34,6 +34,9 @@ export default function AdminCampaignsPage() {
     const [searching, setSearching] = useState(false)
     const [campaignMeta, setCampaignMeta] = useState({})
     const [togglingCampaign, setTogglingCampaign] = useState(null)
+    const [renamingCampaign, setRenamingCampaign] = useState(false)
+    const [renameDraft, setRenameDraft] = useState('')
+    const [savingName, setSavingName] = useState(false)
     const dragRef = useRef(null)
 
     useEffect(() => {
@@ -87,6 +90,10 @@ export default function AdminCampaignsPage() {
     useEffect(() => {
         if (verified && !loadedCampaigns[activeCampaign]) fetchCampaign(activeCampaign)
     }, [verified, activeCampaign])
+
+    useEffect(() => {
+        setRenamingCampaign(false)
+    }, [activeCampaign])
 
     async function readJson(res) {
         const text = await res.text()
@@ -168,6 +175,34 @@ export default function AdminCampaignsPage() {
             alert(err.message)
         }
         setTogglingCampaign(null)
+    }
+
+    function startRenaming(campaignNumber) {
+        setRenameDraft(campaignMeta[campaignNumber]?.name || ('Campaign ' + campaignNumber))
+        setRenamingCampaign(true)
+    }
+
+    async function saveCampaignName(campaignNumber) {
+        const name = renameDraft.trim()
+        if (!name) return
+        setSavingName(true)
+        try {
+            const res = await fetch('/api/admin/campaigns', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'x-admin-token': token() },
+                body: JSON.stringify({ campaign_number: campaignNumber, name }),
+            })
+            const data = await readJson(res)
+            if (res.ok && data.success) {
+                setCampaignMeta((prev) => ({ ...prev, [campaignNumber]: { ...prev[campaignNumber], name } }))
+                setRenamingCampaign(false)
+            } else {
+                alert(data.error || 'Failed to rename campaign')
+            }
+        } catch (err) {
+            alert(err.message)
+        }
+        setSavingName(false)
     }
 
     async function fetchCampaign(campaignNumber) {
@@ -344,17 +379,33 @@ export default function AdminCampaignsPage() {
                 </div>
 
                 <div className="bg-white rounded-2xl p-4 shadow-sm mb-6 flex items-center justify-between gap-4 flex-wrap">
-                    <div>
-                        <p className="text-sm text-charcoal">
-                            <span className="font-semibold">{campaignMeta[activeCampaign]?.name || ('Campaign ' + activeCampaign)}</span>
-                            {' — '}
-                            {campaignMeta[activeCampaign]?.isActive
-                                ? <a href={SITE_URL + '/campaign' + activeCampaign} target="_blank" rel="noreferrer" className="text-coral underline">{SITE_URL + '/campaign' + activeCampaign}</a>
-                                : <span className="text-gray-400">not live — /campaign{activeCampaign} shows a 404 to visitors</span>}
-                        </p>
+                    <div className="flex-1 min-w-0">
+                        {renamingCampaign ? (
+                            <div className="flex items-center gap-2">
+                                <input value={renameDraft} onChange={(e) => setRenameDraft(e.target.value)}
+                                       onKeyDown={(e) => { if (e.key === 'Enter') saveCampaignName(activeCampaign); if (e.key === 'Escape') setRenamingCampaign(false) }}
+                                       autoFocus maxLength={60}
+                                       placeholder="e.g. Special Collection"
+                                       className="text-sm font-semibold border-2 border-coral/40 rounded-xl px-3 py-1.5 w-64" />
+                                <button onClick={() => saveCampaignName(activeCampaign)} disabled={savingName}
+                                        className="text-xs px-3 py-1.5 bg-coral text-white rounded-full disabled:opacity-40">
+                                    {savingName ? 'Saving...' : 'Save'}
+                                </button>
+                                <button onClick={() => setRenamingCampaign(false)} className="text-xs text-gray-400 hover:text-coral">Cancel</button>
+                            </div>
+                        ) : (
+                            <p className="text-sm text-charcoal">
+                                <span className="font-semibold">{campaignMeta[activeCampaign]?.name || ('Campaign ' + activeCampaign)}</span>
+                                <button onClick={() => startRenaming(activeCampaign)} className="ml-2 text-xs text-gray-400 hover:text-coral">✎ Rename</button>
+                                {' — '}
+                                {campaignMeta[activeCampaign]?.isActive
+                                    ? <a href={SITE_URL + '/campaign' + activeCampaign} target="_blank" rel="noreferrer" className="text-coral underline">{SITE_URL + '/campaign' + activeCampaign}</a>
+                                    : <span className="text-gray-400">not live — /campaign{activeCampaign} shows a 404 to visitors</span>}
+                            </p>
+                        )}
                     </div>
                     <button onClick={() => toggleCampaignActive(activeCampaign)} disabled={togglingCampaign === activeCampaign}
-                            className={'px-5 py-2 font-display text-sm rounded-full disabled:opacity-40 ' + (campaignMeta[activeCampaign]?.isActive ? 'bg-gray-100 text-charcoal hover:bg-gray-200' : 'bg-green-500 text-white hover:bg-green-600')}>
+                            className={'px-5 py-2 font-display text-sm rounded-full disabled:opacity-40 flex-shrink-0 ' + (campaignMeta[activeCampaign]?.isActive ? 'bg-gray-100 text-charcoal hover:bg-gray-200' : 'bg-green-500 text-white hover:bg-green-600')}>
                         {togglingCampaign === activeCampaign ? 'Updating...' : campaignMeta[activeCampaign]?.isActive ? 'Deactivate' : 'Activate'}
                     </button>
                 </div>
