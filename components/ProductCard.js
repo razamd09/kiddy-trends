@@ -68,7 +68,10 @@ export default function ProductCard({ product }) {
       return img?.src || img?.url || img?.image || ''
     })
     .filter(Boolean)
-  const image = imageCandidates[imageIndex] || null
+  // A variant with its own assigned image (e.g. "Blue Cap" vs "Black Cap")
+  // overrides the gallery image whenever one is picked from the dropdown
+  // below — same behavior as the full product page.
+  const image = selectedVariant?.image || imageCandidates[imageIndex] || null
   const isSoldOut    = selectedVariant ? selectedVariant.available === false : false
   const availableStock = Number.isFinite(Number(selectedVariant?.inventory_quantity))
     ? Number(selectedVariant.inventory_quantity)

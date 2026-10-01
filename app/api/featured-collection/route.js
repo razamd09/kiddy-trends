@@ -75,6 +75,7 @@ function transformProduct(product, directUrlByOriginal) {
             inventory_quantity: v.inventory_qty ?? 0,
             option1: v.option1_value || null,
             option2: v.option2_value || null,
+            image: v.image ? (directUrlByOriginal.get(v.image) || v.image) : null,
         }))
         : [{
             id: String(product.id) + '_0',
@@ -138,7 +139,10 @@ export async function GET() {
 
         if (productsError) return Response.json({ success: false, error: productsError.message }, { status: 500 })
 
-        const allImageUrls = (products || []).flatMap((p) => normalizeImages(p.images))
+        const variantImageUrls = (products || []).flatMap((p) =>
+            (Array.isArray(p.variants) ? p.variants : []).map((v) => v?.image).filter(Boolean)
+        )
+        const allImageUrls = (products || []).flatMap((p) => normalizeImages(p.images)).concat(variantImageUrls)
         const directUrlByOriginal = await resolveDirectImageUrls(allImageUrls)
 
         const productById = new Map((products || []).map((p) => [p.id, p]))

@@ -255,6 +255,7 @@ function transformProduct(product) {
             option1: v.option1_value || null,
             option2: v.option2_value || null,
             sku: v.sku || '',
+            image: v.image || null,
         }))
     } else {
         variants = [{
@@ -487,7 +488,10 @@ export async function GET(request) {
             }
         }
 
-        const allImageUrls = filtered.flatMap((product) => normalizeImages(product.images))
+        const variantImageUrls = filtered.flatMap((product) =>
+            (Array.isArray(product.variants) ? product.variants : []).map((v) => v?.image).filter(Boolean)
+        )
+        const allImageUrls = filtered.flatMap((product) => normalizeImages(product.images)).concat(variantImageUrls)
         const directUrlByOriginal = await resolveDirectImageUrls(allImageUrls)
 
         const productsWithStableImageUrls = filtered.map((product) => {
@@ -497,9 +501,16 @@ export async function GET(request) {
             const resolvedFabricImage = productFabricName
                 ? (fabricSampleImages[productFabricName] || getFallbackFabricPreview(productFabricName))
                 : ''
+            // Per-variant image (e.g. "Blue Cap" vs "Black Cap") resolved the
+            // same way as the main gallery — stored URLs are signed and expire.
+            const directVariants = (Array.isArray(product.variants) ? product.variants : []).map((v) => ({
+                ...v,
+                image: v?.image ? (directUrlByOriginal.get(v.image) || v.image) : v?.image,
+            }))
             return {
                 ...product,
                 images: directUrls,
+                variants: directVariants,
                 fabric_image: resolvedFabricImage,
             }
         })

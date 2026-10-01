@@ -81,6 +81,7 @@ export default function EmployeeProducts() {
     const [formVideos, setFormVideos] = useState([])   // [{url, uploading, tempId}]
     const [formVariants, setFormVariants] = useState([]) // [{option1_name,option1_value,option2_name,option2_value,price,stock,sku}]
     const [rotatingIdx, setRotatingIdx] = useState(null)
+    const [variantImagePickerIdx, setVariantImagePickerIdx] = useState(null)
     const [imageEditor, setImageEditor] = useState({
         open: false,
         index: null,
@@ -552,6 +553,7 @@ export default function EmployeeProducts() {
                 price:         v.price         !== undefined ? String(v.price) : String(product.price || ''),
                 stock:         v.inventory_qty !== undefined ? String(v.inventory_qty) : String(v.stock || ''),
                 sku:           v.sku           || '',
+                image:         v.image         || '',
             }))
         }
         setFormVariants(variants)
@@ -613,6 +615,7 @@ export default function EmployeeProducts() {
             price:         parseFloat(v.price) || parseFloat(form.price) || 0,
             inventory_qty: parseInt(v.stock) || 0,
             sku:           v.sku || '',
+            image:         v.image || '',
         }))
 
         const payload = {
@@ -1008,7 +1011,7 @@ export default function EmployeeProducts() {
             option1_name: opt1Name, option1_value: '',
             option2_name: '', option2_value: '',
             option3_name: '', option3_value: '',
-            price: form.price || '', stock: '', sku: ''
+            price: form.price || '', stock: '', sku: '', image: ''
         }])
     }
 
@@ -1030,7 +1033,7 @@ export default function EmployeeProducts() {
                 option1_name: opt1Name, option1_value: s,
                 option2_name: '', option2_value: '',
                 option3_name: '', option3_value: '',
-                price: form.price || '', stock: '', sku: ''
+                price: form.price || '', stock: '', sku: '', image: ''
             }))
         setFormVariants(prev => [...prev, ...newVariants])
     }
@@ -1299,6 +1302,7 @@ export default function EmployeeProducts() {
                                                     <th className="px-3 py-2 text-left font-semibold text-charcoal">Value</th>
                                                     <th className="px-3 py-2 text-left font-semibold text-charcoal">Option2</th>
                                                     <th className="px-3 py-2 text-left font-semibold text-charcoal">Value2</th>
+                                                    <th className="px-3 py-2 text-left font-semibold text-charcoal">Image</th>
                                                     <th className="px-3 py-2 text-left font-semibold text-charcoal">Price</th>
                                                     <th className="px-3 py-2 text-left font-semibold text-charcoal">Stock</th>
                                                     <th className="px-3 py-2 text-left font-semibold text-charcoal">SKU</th>
@@ -1327,6 +1331,38 @@ export default function EmployeeProducts() {
                                                             <input value={v.option2_value} onChange={e => updateVariant(i, 'option2_value', e.target.value)}
                                                                    placeholder="e.g. Red"
                                                                    className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs focus:border-coral focus:outline-none" />
+                                                        </td>
+                                                        <td className="px-2 py-1.5 relative">
+                                                            <button type="button"
+                                                                    onClick={() => setVariantImagePickerIdx(variantImagePickerIdx === i ? null : i)}
+                                                                    className="w-10 h-10 rounded-lg border-2 border-gray-200 hover:border-coral overflow-hidden flex items-center justify-center bg-gray-50 flex-shrink-0">
+                                                                {v.image
+                                                                    ? <img src={v.image} alt="" className="w-full h-full object-cover" />
+                                                                    : <span className="text-gray-300 text-lg">+</span>}
+                                                            </button>
+                                                            {variantImagePickerIdx === i && (
+                                                                <div className="absolute z-20 top-full left-0 mt-1 w-56 bg-white border border-gray-200 rounded-xl shadow-lg p-2">
+                                                                    {formImages.length === 0 ? (
+                                                                        <p className="text-[11px] text-gray-400 p-2">Upload product images below first, then assign one here.</p>
+                                                                    ) : (
+                                                                        <div className="grid grid-cols-4 gap-1.5 mb-2">
+                                                                            {formImages.map((imgObj, imgIdx) => (
+                                                                                <button key={imgIdx} type="button"
+                                                                                        onClick={() => { updateVariant(i, 'image', imgObj.url); setVariantImagePickerIdx(null) }}
+                                                                                        className={`aspect-square rounded-lg overflow-hidden border-2 ${v.image === imgObj.url ? 'border-coral' : 'border-gray-100 hover:border-coral/50'}`}>
+                                                                                    <img src={imgObj.url} alt="" className="w-full h-full object-cover" />
+                                                                                </button>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                    {v.image && (
+                                                                        <button type="button" onClick={() => { updateVariant(i, 'image', ''); setVariantImagePickerIdx(null) }}
+                                                                                className="w-full text-[11px] text-red-400 hover:text-red-600 text-center py-1">
+                                                                            ✕ Remove image
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                         </td>
                                                         <td className="px-2 py-1.5">
                                                             <input type="number" value={v.price} onChange={e => updateVariant(i, 'price', e.target.value)}

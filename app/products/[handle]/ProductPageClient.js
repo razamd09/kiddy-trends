@@ -154,7 +154,11 @@ export default function ProductPageClient({ initialProduct = null }) {
   const [reviewSubmitStatus, setReviewSubmitStatus] = useState('idle') // idle | loading | success | error
   const [reviewSubmitMessage, setReviewSubmitMessage] = useState('')
 
-  const mainImage = product?.images?.[activeImg]?.src || product?.images?.[0]?.src
+  // A variant with its own assigned image (e.g. "Blue Cap" vs "Black Cap")
+  // overrides whatever the gallery is currently showing — picking a variant
+  // should always show that variant's photo, not whatever thumbnail was
+  // last clicked.
+  const mainImage = selectedVariant?.image || product?.images?.[activeImg]?.src || product?.images?.[0]?.src
 
   useEffect(() => {
     function recordRecentlyViewed(p) {
@@ -647,7 +651,16 @@ export default function ProductPageClient({ initialProduct = null }) {
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {product.variants.map(v => (
-                          <button key={v.id} onClick={() => setSelectedVariant(v)} disabled={v.available === false}
+                          <button key={v.id} onClick={() => {
+                                    setSelectedVariant(v)
+                                    // If this variant's image is also one of the gallery
+                                    // thumbnails, highlight that thumbnail too — purely
+                                    // cosmetic, mainImage already shows v.image regardless.
+                                    if (v.image) {
+                                      const matchIdx = (product.images || []).findIndex((img) => img?.src === v.image)
+                                      if (matchIdx >= 0) setActiveImg(matchIdx)
+                                    }
+                                  }} disabled={v.available === false}
                                   className={'px-4 py-2 rounded-xl border-2 text-sm font-semibold transition-all ' +
                                       (selectedVariant?.id === v.id ? 'border-coral bg-coral text-white' : 'border-gray-200 text-charcoal hover:border-coral') +
                                       (v.available === false ? ' opacity-50 cursor-not-allowed' : '')}>

@@ -439,11 +439,17 @@ export async function GET(request) {
         const videoUrls = normalizeImages(product.videos)
         const resolvedVideos = await Promise.all(videoUrls.map(resolveSignedImageUrl))
 
+        const parsedVariants = parseVariants(product.variants)
+        const resolvedVariants = await Promise.all(parsedVariants.map(async (v) => ({
+            ...v,
+            image: v?.image ? await resolveSignedImageUrl(v.image) : v?.image,
+        })))
+
         return {
             ...product,
             images: resolvedImages,
             videos: resolvedVideos,
-            variants: parseVariants(product.variants),
+            variants: resolvedVariants,
         }
     }))
 
