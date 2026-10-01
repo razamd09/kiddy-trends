@@ -80,6 +80,9 @@ export default function AdminWhatsAppBroadcastPage() {
     const [poolHasMore, setPoolHasMore] = useState(false)
     const [poolTypeFilter, setPoolTypeFilter] = useState('')
     const [productTypeOptions, setProductTypeOptions] = useState([])
+    const [searchQuery, setSearchQuery] = useState('')
+    const [searchResults, setSearchResults] = useState([])
+    const [searching, setSearching] = useState(false)
     const [selected, setSelected] = useState([])
 
     // 'carousel' = multiple product cards (built above). 'video' = one clip,
@@ -165,6 +168,27 @@ export default function AdminWhatsAppBroadcastPage() {
         if (!verified) return
         loadAll()
     }, [poolTypeFilter])
+
+    // Search by exact product title — independent of the New Arrivals /
+    // product-type pool above, so a specific product that's neither a New
+    // Arrival nor the picked type can still be found and selected.
+    useEffect(() => {
+        if (!verified) return
+        const q = searchQuery.trim()
+        if (!q) { setSearchResults([]); return }
+        setSearching(true)
+        const handle = setTimeout(async () => {
+            try {
+                const res = await fetch('/api/admin/products?search=' + encodeURIComponent(q) + '&limit=24&sortBy=created_at&sortDir=desc', { headers: { 'x-admin-token': token() } })
+                const data = await res.json()
+                setSearchResults(Array.isArray(data.products) ? data.products : [])
+            } catch {
+                setSearchResults([])
+            }
+            setSearching(false)
+        }, 350)
+        return () => clearTimeout(handle)
+    }, [verified, searchQuery])
 
     function token() {
         return localStorage.getItem('admin_token') || ''
@@ -848,7 +872,13 @@ export default function AdminWhatsAppBroadcastPage() {
                         Optionally add a product type below to also pull in older stock of that type, even if it isn't a New Arrival.
                     </p>
 
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
+                        <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                               placeholder="🔍 Search product title to find and add the exact product..."
+                               className="text-xs border-2 border-gray-100 rounded-xl px-3 py-1.5 w-72" />
+                        {searchQuery && (
+                            <button onClick={() => setSearchQuery('')} className="text-xs text-gray-400 hover:text-coral">✕ Clear search</button>
+                        )}
                         <select value={poolTypeFilter} onChange={(e) => setPoolTypeFilter(e.target.value)}
                                 className="text-xs border-2 border-gray-100 rounded-xl px-3 py-1.5">
                             <option value="">+ Also include a product type...</option>
@@ -859,35 +889,65 @@ export default function AdminWhatsAppBroadcastPage() {
                         )}
                     </div>
 
-                    {poolLoading && <p className="text-sm text-gray-400">Loading...</p>}
-                    {!poolLoading && pool.length === 0 && <p className="text-sm text-gray-400">No New Arrivals products found.</p>}
-                    {!poolLoading && pool.length > 0 && (
+                    {searchQuery.trim() ? (
                         <>
-                        <button onClick={loadAll} disabled={sending} className="text-xs text-coral hover:underline mb-2 disabled:opacity-40">↻ Refresh pool</button>
-                        <div className="flex gap-3 overflow-x-auto pb-2">
-                            {pool.map((product) => {
-                                const alreadyIn = selected.some((p) => p.id === product.id)
-                                const image = firstImage(product)
-                                return (
-                                    <div key={product.id}
-                                         draggable={!alreadyIn}
-                                         onDragStart={() => handlePoolDragStart(product)}
-                                         onClick={() => addSelected(product)}
-                                         className={'flex-shrink-0 w-36 border-2 rounded-xl p-2 select-none ' + (alreadyIn ? 'border-gray-100 opacity-40 cursor-not-allowed' : 'border-gray-100 hover:border-coral/40 cursor-grab active:cursor-grabbing')}>
-                                        {image && (
-                                            <img src={'/api/image?src=' + encodeURIComponent(image)} alt="" className="w-full aspect-square object-cover rounded-lg mb-1 pointer-events-none" />
-                                        )}
-                                        <p className="text-xs text-charcoal line-clamp-2">{product.title}</p>
-                                        <p className="text-[10px] text-gray-400">{alreadyIn ? 'Already selected' : 'Drag or tap to add'}</p>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                        {poolHasMore && (
-                            <button onClick={loadMorePool} disabled={poolLoadingMore}
-                                    className="mt-3 px-4 py-2 bg-cream text-charcoal text-xs font-semibold rounded-full hover:bg-coral/10 disabled:opacity-40">
-                                {poolLoadingMore ? 'Loading...' : '↓ Load more products'}
-                            </button>
+                            {searching && <p className="text-sm text-gray-400">Searching...</p>}
+                            {!searching && searchResults.length === 0 && <p className="text-sm text-gray-400">No products match "{searchQuery.trim()}".</p>}
+                            {!searching && searchResults.length > 0 && (
+                                <div className="flex gap-3 overflow-x-auto pb-2">
+                                    {searchResults.map((product) => {
+                                        const alreadyIn = selected.some((p) => p.id === product.id)
+                                        const image = firstImage(product)
+                                        return (
+                                            <div key={product.id}
+                                                 draggable={!alreadyIn}
+                                                 onDragStart={() => handlePoolDragStart(product)}
+                                                 onClick={() => addSelected(product)}
+                                                 className={'flex-shrink-0 w-36 border-2 rounded-xl p-2 select-none ' + (alreadyIn ? 'border-gray-100 opacity-40 cursor-not-allowed' : 'border-gray-100 hover:border-coral/40 cursor-grab active:cursor-grabbing')}>
+                                                {image && (
+                                                    <img src={'/api/image?src=' + encodeURIComponent(image)} alt="" className="w-full aspect-square object-cover rounded-lg mb-1 pointer-events-none" />
+                                                )}
+                                                <p className="text-xs text-charcoal line-clamp-2">{product.title}</p>
+                                                <p className="text-[10px] text-gray-400">{alreadyIn ? 'Already selected' : 'Drag or tap to add'}</p>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                        {poolLoading && <p className="text-sm text-gray-400">Loading...</p>}
+                        {!poolLoading && pool.length === 0 && <p className="text-sm text-gray-400">No New Arrivals products found.</p>}
+                        {!poolLoading && pool.length > 0 && (
+                            <>
+                            <button onClick={loadAll} disabled={sending} className="text-xs text-coral hover:underline mb-2 disabled:opacity-40">↻ Refresh pool</button>
+                            <div className="flex gap-3 overflow-x-auto pb-2">
+                                {pool.map((product) => {
+                                    const alreadyIn = selected.some((p) => p.id === product.id)
+                                    const image = firstImage(product)
+                                    return (
+                                        <div key={product.id}
+                                             draggable={!alreadyIn}
+                                             onDragStart={() => handlePoolDragStart(product)}
+                                             onClick={() => addSelected(product)}
+                                             className={'flex-shrink-0 w-36 border-2 rounded-xl p-2 select-none ' + (alreadyIn ? 'border-gray-100 opacity-40 cursor-not-allowed' : 'border-gray-100 hover:border-coral/40 cursor-grab active:cursor-grabbing')}>
+                                            {image && (
+                                                <img src={'/api/image?src=' + encodeURIComponent(image)} alt="" className="w-full aspect-square object-cover rounded-lg mb-1 pointer-events-none" />
+                                            )}
+                                            <p className="text-xs text-charcoal line-clamp-2">{product.title}</p>
+                                            <p className="text-[10px] text-gray-400">{alreadyIn ? 'Already selected' : 'Drag or tap to add'}</p>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                            {poolHasMore && (
+                                <button onClick={loadMorePool} disabled={poolLoadingMore}
+                                        className="mt-3 px-4 py-2 bg-cream text-charcoal text-xs font-semibold rounded-full hover:bg-coral/10 disabled:opacity-40">
+                                    {poolLoadingMore ? 'Loading...' : '↓ Load more products'}
+                                </button>
+                            )}
+                            </>
                         )}
                         </>
                     )}

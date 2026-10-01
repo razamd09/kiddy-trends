@@ -8,10 +8,6 @@ const CAMPAIGNS = Array.from({ length: 10 }, (_, i) => i + 1)
 const POOL_LIMIT = 150
 const SITE_URL = 'https://thekiddytrends.com'
 
-function isNewArrival(product) {
-    return String(product?.product_version || '').trim().toLowerCase().includes('new arrival')
-}
-
 function firstImage(product) {
     const images = product?.images
     if (!Array.isArray(images) || images.length === 0) return null
@@ -31,6 +27,11 @@ export default function AdminCampaignsPage() {
     const [saving, setSaving] = useState(false)
     const [pool, setPool] = useState([])
     const [poolLoading, setPoolLoading] = useState(true)
+    const [poolTypeFilter, setPoolTypeFilter] = useState('')
+    const [productTypeOptions, setProductTypeOptions] = useState([])
+    const [searchQuery, setSearchQuery] = useState('')
+    const [searchResults, setSearchResults] = useState([])
+    const [searching, setSearching] = useState(false)
     const [campaignMeta, setCampaignMeta] = useState({})
     const [togglingCampaign, setTogglingCampaign] = useState(null)
     const dragRef = useRef(null)
@@ -44,14 +45,41 @@ export default function AdminCampaignsPage() {
                 const data = await res.json()
                 if (!data.valid) { localStorage.removeItem('admin_token'); router.push('/admin'); return }
                 setVerified(true)
-                fetchPool()
+                fetchPool(poolTypeFilter)
                 fetchCampaignMeta()
+                loadProductTypes()
             } catch {
                 router.push('/admin')
             }
         }
         verify()
     }, [])
+
+    useEffect(() => {
+        if (!verified) return
+        fetchPool(poolTypeFilter)
+    }, [poolTypeFilter])
+
+    // Search by exact product title — independent of the New Arrivals /
+    // product-type pool above, so a specific product that's neither a New
+    // Arrival nor the picked type can still be found and pinned.
+    useEffect(() => {
+        if (!verified) return
+        const q = searchQuery.trim()
+        if (!q) { setSearchResults([]); return }
+        setSearching(true)
+        const handle = setTimeout(async () => {
+            try {
+                const res = await fetch('/api/admin/products?search=' + encodeURIComponent(q) + '&limit=24&sortBy=created_at&sortDir=desc', { headers: { 'x-admin-token': token() } })
+                const data = await readJson(res)
+                setSearchResults(Array.isArray(data.products) ? data.products : [])
+            } catch {
+                setSearchResults([])
+            }
+            setSearching(false)
+        }, 350)
+        return () => clearTimeout(handle)
+    }, [verified, searchQuery])
 
     // Only fetch a campaign the first time its tab is opened — refetching on
     // every tab switch would silently overwrite a drag-reorder that hasn't
@@ -70,20 +98,42 @@ export default function AdminCampaignsPage() {
         return localStorage.getItem('admin_token') || ''
     }
 
-    // A larger batch fetched newest-first, then filtered down to New
-    // Arrivals client-side — the shared products API doesn't have a
-    // product_version filter param, and this keeps the admin route untouched.
-    async function fetchPool() {
+    // Always New Arrivals (server-filtered), plus, if a product type is
+    // picked, that type's products too (any version) — merged and deduped,
+    // same pool-building rule as the WhatsApp broadcast screen.
+    async function fetchPool(typeFilter) {
         setPoolLoading(true)
         try {
-            const res = await fetch('/api/admin/products?limit=300&sortBy=created_at&sortDir=desc', { headers: { 'x-admin-token': token() } })
-            const data = await readJson(res)
-            const all = Array.isArray(data.products) ? data.products : []
-            setPool(all.filter(isNewArrival).slice(0, POOL_LIMIT))
+            const requests = [
+                fetch('/api/admin/products?limit=' + POOL_LIMIT + '&sortBy=created_at&sortDir=desc&version=new_arrivals', { headers: { 'x-admin-token': token() } }),
+            ]
+            if (typeFilter) {
+                requests.push(
+                    fetch('/api/admin/products?limit=' + POOL_LIMIT + '&sortBy=created_at&sortDir=desc&productType=' + encodeURIComponent(typeFilter), { headers: { 'x-admin-token': token() } })
+                )
+            }
+            const responses = await Promise.all(requests)
+            const jsons = await Promise.all(responses.map(readJson))
+            const merged = new Map()
+            for (const data of jsons) {
+                const products = Array.isArray(data.products) ? data.products : []
+                for (const p of products) merged.set(p.id, p)
+            }
+            setPool(Array.from(merged.values()).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)))
         } catch {
             setPool([])
         }
         setPoolLoading(false)
+    }
+
+    async function loadProductTypes() {
+        try {
+            const res = await fetch('/api/admin/product-types', { headers: { 'x-admin-token': token() } })
+            const data = await readJson(res)
+            setProductTypeOptions(Array.isArray(data.types) ? data.types.map((t) => t?.name || t).filter(Boolean) : [])
+        } catch {
+            setProductTypeOptions([])
+        }
     }
 
     async function fetchCampaignMeta() {
@@ -311,29 +361,80 @@ export default function AdminCampaignsPage() {
 
                 <div className="bg-white rounded-2xl p-6 shadow-sm mb-6">
                     <p className="font-display text-lg text-charcoal mb-1">New Arrivals (drag into position below)</p>
-                    <p className="text-xs text-gray-500 mb-4">Newest first · drag any card down into the "Campaign {activeCampaign} — display order" list to pin it exactly where you drop it.</p>
+                    <p className="text-xs text-gray-500 mb-4">
+                        Newest first · drag any card down into the "Campaign {activeCampaign} — display order" list to pin it exactly where you drop it, or tap to pin it at the end.
+                        Optionally add a product type below to also pull in older stock of that type, even if it isn't a New Arrival.
+                    </p>
 
-                    {poolLoading && <p className="text-sm text-gray-400">Loading...</p>}
-                    {!poolLoading && pool.length === 0 && <p className="text-sm text-gray-400">No New Arrivals products found.</p>}
-                    {!poolLoading && pool.length > 0 && (
-                        <div className="flex gap-3 overflow-x-auto pb-2">
-                            {pool.map((product) => {
-                                const alreadyIn = pinnedIds.has(product.id)
-                                const image = firstImage(product)
-                                return (
-                                    <div key={product.id}
-                                         draggable={!alreadyIn}
-                                         onDragStart={() => handlePoolDragStart(product)}
-                                         className={'flex-shrink-0 w-36 border-2 rounded-xl p-2 select-none ' + (alreadyIn ? 'border-gray-100 opacity-40 cursor-not-allowed' : 'border-gray-100 hover:border-coral/40 cursor-grab active:cursor-grabbing')}>
-                                        {image && (
-                                            <img src={'/api/image?src=' + encodeURIComponent(image)} alt="" className="w-full aspect-square object-cover rounded-lg mb-1 pointer-events-none" />
-                                        )}
-                                        <p className="text-xs text-charcoal line-clamp-2">{product.title}</p>
-                                        <p className="text-[10px] text-gray-400">{alreadyIn ? 'Already pinned' : 'Drag to pin'}</p>
-                                    </div>
-                                )
-                            })}
-                        </div>
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
+                        <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+                               placeholder="🔍 Search product title to find and pin the exact product..."
+                               className="text-xs border-2 border-gray-100 rounded-xl px-3 py-1.5 w-72" />
+                        {searchQuery && (
+                            <button onClick={() => setSearchQuery('')} className="text-xs text-gray-400 hover:text-coral">✕ Clear search</button>
+                        )}
+                        <select value={poolTypeFilter} onChange={(e) => setPoolTypeFilter(e.target.value)}
+                                className="text-xs border-2 border-gray-100 rounded-xl px-3 py-1.5">
+                            <option value="">+ Also include a product type...</option>
+                            {productTypeOptions.map((t) => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                        {poolTypeFilter && (
+                            <button onClick={() => setPoolTypeFilter('')} className="text-xs text-gray-400 hover:text-coral">✕ Clear</button>
+                        )}
+                    </div>
+
+                    {searchQuery.trim() ? (
+                        <>
+                            {searching && <p className="text-sm text-gray-400">Searching...</p>}
+                            {!searching && searchResults.length === 0 && <p className="text-sm text-gray-400">No products match "{searchQuery.trim()}".</p>}
+                            {!searching && searchResults.length > 0 && (
+                                <div className="flex gap-3 overflow-x-auto pb-2">
+                                    {searchResults.map((product) => {
+                                        const alreadyIn = pinnedIds.has(product.id)
+                                        const image = firstImage(product)
+                                        return (
+                                            <div key={product.id}
+                                                 draggable={!alreadyIn}
+                                                 onDragStart={() => handlePoolDragStart(product)}
+                                                 onClick={() => !alreadyIn && addProductAtPosition(product, currentItems.length)}
+                                                 className={'flex-shrink-0 w-36 border-2 rounded-xl p-2 select-none ' + (alreadyIn ? 'border-gray-100 opacity-40 cursor-not-allowed' : 'border-gray-100 hover:border-coral/40 cursor-grab active:cursor-grabbing')}>
+                                                {image && (
+                                                    <img src={'/api/image?src=' + encodeURIComponent(image)} alt="" className="w-full aspect-square object-cover rounded-lg mb-1 pointer-events-none" />
+                                                )}
+                                                <p className="text-xs text-charcoal line-clamp-2">{product.title}</p>
+                                                <p className="text-[10px] text-gray-400">{alreadyIn ? 'Already pinned' : 'Drag or tap to pin'}</p>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                        {poolLoading && <p className="text-sm text-gray-400">Loading...</p>}
+                        {!poolLoading && pool.length === 0 && <p className="text-sm text-gray-400">No New Arrivals products found.</p>}
+                        {!poolLoading && pool.length > 0 && (
+                            <div className="flex gap-3 overflow-x-auto pb-2">
+                                {pool.map((product) => {
+                                    const alreadyIn = pinnedIds.has(product.id)
+                                    const image = firstImage(product)
+                                    return (
+                                        <div key={product.id}
+                                             draggable={!alreadyIn}
+                                             onDragStart={() => handlePoolDragStart(product)}
+                                             onClick={() => !alreadyIn && addProductAtPosition(product, currentItems.length)}
+                                             className={'flex-shrink-0 w-36 border-2 rounded-xl p-2 select-none ' + (alreadyIn ? 'border-gray-100 opacity-40 cursor-not-allowed' : 'border-gray-100 hover:border-coral/40 cursor-grab active:cursor-grabbing')}>
+                                            {image && (
+                                                <img src={'/api/image?src=' + encodeURIComponent(image)} alt="" className="w-full aspect-square object-cover rounded-lg mb-1 pointer-events-none" />
+                                            )}
+                                            <p className="text-xs text-charcoal line-clamp-2">{product.title}</p>
+                                            <p className="text-[10px] text-gray-400">{alreadyIn ? 'Already pinned' : 'Drag or tap to pin'}</p>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        )}
+                        </>
                     )}
                 </div>
 
