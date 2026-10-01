@@ -2,6 +2,14 @@ import Link from 'next/link'
 
 const SITE_URL = 'https://thekiddytrends.com'
 
+// This page and the API it fetches from were both created in the same
+// deploy — without force-dynamic, Next pre-renders this page once at BUILD
+// time, and that build-time self-fetch to its own sibling API route can
+// fail (the new route isn't actually live yet during the build that's
+// creating it), getting permanently cached as an empty result. Rendering
+// fresh per request avoids that trap entirely.
+export const dynamic = 'force-dynamic'
+
 export const metadata = {
   title: 'Featured Collection – Kiddy Trends',
   description: 'Browse all our current featured campaigns at Kiddy Trends.',
@@ -9,7 +17,7 @@ export const metadata = {
 
 async function getActiveCampaigns() {
   try {
-    const res = await fetch(SITE_URL + '/api/featured-campaigns', { next: { revalidate: 60 } })
+    const res = await fetch(SITE_URL + '/api/featured-campaigns', { cache: 'no-store' })
     const data = await res.json()
     return data.success ? (data.campaigns || []) : []
   } catch {
