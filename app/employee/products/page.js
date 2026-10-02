@@ -1543,7 +1543,7 @@ export default function EmployeeProducts() {
                             </div>
                         )}
                         <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-3">
-                            <input type="text" placeholder="🔍 Search products..."
+                            <input type="text" placeholder="🔍 Search by title or product ID (e.g. 918)..."
                                    value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
                                    className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm" />
                             <select
