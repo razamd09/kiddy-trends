@@ -18,8 +18,8 @@ export default function AdminEmployees() {
 
     function formatPhone(val) {
         let digits = String(val || '').replace(/\D/g, '')
-        if (digits.startsWith('92') && digits.length > 10) digits = digits.slice(2)
-        if (digits.startsWith('0') && digits.length > 10) digits = digits.slice(1)
+        if (digits.startsWith('92')) digits = digits.slice(2)
+        if (digits.startsWith('0')) digits = digits.slice(1)
         return digits.slice(0, 10)
     }
 
@@ -57,8 +57,8 @@ export default function AdminEmployees() {
             setError('Name, Employee ID and Password are required')
             return
         }
-        if (form.phone && form.phone.length !== 10) {
-            setError('Phone must be 10 digits without leading 0')
+        if (form.phone && !/^3\d{9}$/.test(form.phone)) {
+            setError('Enter a valid Pakistani mobile number (10 digits starting with 3, without leading 0)')
             return
         }
         setSaving(true)
@@ -183,7 +183,7 @@ export default function AdminEmployees() {
                                     <div className="bg-cream border-2 border-gray-100 rounded-2xl px-3 flex items-center text-sm font-bold text-charcoal flex-shrink-0">🇵🇰 +92</div>
                                     <input type="tel" placeholder="3360677340" value={form.phone}
                                            onChange={e => setForm({...form, phone: formatPhone(e.target.value)})}
-                                           maxLength={10}
+                                           maxLength={12}
                                            className="flex-1 px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm" />
                                 </div>
                             </div>

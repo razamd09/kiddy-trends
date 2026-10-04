@@ -98,7 +98,14 @@ export default function MyOrdersPage() {
       <form onSubmit={handleLookup} className="flex gap-2 max-w-md mx-auto mb-10">
         <div className="bg-cream border-2 border-gray-100 rounded-2xl px-3 flex items-center text-sm font-bold text-charcoal flex-shrink-0">🇵🇰 +92</div>
         <input type="tel" placeholder="3360677340" value={phone}
-          onChange={(e) => { setPhone(e.target.value.replace(/\D/g, '').slice(0, 10)); setError('') }}
+          onChange={(e) => {
+            let digits = e.target.value.replace(/\D/g, '')
+            if (digits.startsWith('92')) digits = digits.slice(2)
+            if (digits.startsWith('0')) digits = digits.slice(1)
+            setPhone(digits.slice(0, 10))
+            setError('')
+          }}
+          maxLength={12}
           className="flex-1 px-4 py-3 rounded-2xl border-2 border-gray-100 focus:border-coral focus:outline-none bg-cream text-sm" />
         <button type="submit" disabled={loading} className="btn-primary whitespace-nowrap disabled:opacity-60">
           {loading ? 'Searching…' : 'Find Orders'}

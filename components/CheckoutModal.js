@@ -210,23 +210,33 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
     } catch {}
   }, [])
 
+  // Accepts whatever shape gets pasted/typed — "+923331434322", "923331434322",
+  // "03331434322" (full 11-digit local format), or the bare 10-digit
+  // "3331434322" this field actually stores — and always normalizes down to
+  // the 10 digits after the country code. Stripping used to be gated on
+  // `.length > 10`, which the input's old maxLength={10} made impossible to
+  // reach (the browser truncated the 11th digit before this ever ran), so a
+  // full local number silently lost its last digit instead of its leading 0.
   function formatPhone(val) {
     let digits = String(val || '').replace(/\D/g, '')
-    if (digits.startsWith('92') && digits.length > 10) digits = digits.slice(2)
-    if (digits.startsWith('0') && digits.length > 10) digits = digits.slice(1)
+    if (digits.startsWith('92')) digits = digits.slice(2)
+    if (digits.startsWith('0')) digits = digits.slice(1)
     return digits.slice(0, 10)
   }
-  function validatePhone(val) { return val.replace(/\D/g, '').length === 10 }
+  // A real Pakistani mobile number is exactly 10 digits after +92, and
+  // always starts with 3 (03XX-XXXXXXX locally) — plain length checks let
+  // through malformed numbers like a stray leading 0 that survived formatting.
+  function validatePhone(val) { return /^3\d{9}$/.test(String(val || '').replace(/\D/g, '')) }
 
   function validate() {
     const e = {}
     if (!form.name.trim())    e.name    = 'Name is required'
     if (form.email.trim() && !/\S+@\S+\.\S+/.test(form.email)) e.email = 'Enter a valid email'
     if (!form.phone.trim())   e.phone   = 'Phone is required'
-    if (!validatePhone(form.phone)) e.phone = 'Enter 10 digits (e.g. 3360677340)'
+    if (!validatePhone(form.phone)) e.phone = 'Enter a valid Pakistani mobile number (10 digits starting with 3, e.g. 3360677340)'
     if (!form.sameAsPhone) {
       if (!form.whatsapp.trim())         e.whatsapp = 'WhatsApp number is required'
-      if (!validatePhone(form.whatsapp)) e.whatsapp = 'Enter 10 digits'
+      if (!validatePhone(form.whatsapp)) e.whatsapp = 'Enter a valid Pakistani mobile number (10 digits starting with 3)'
     }
     if (!form.address.trim()) e.address = 'Address is required'
     if (!form.city)           e.city    = 'Please select your city'
@@ -704,7 +714,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                   <input type="tel" placeholder="3360677340" value={form.phone}
                     onChange={e => handlePhoneInputChange(e.target.value)}
                     onBlur={e => lookupCustomerByPhone(formatPhone(e.target.value))}
-                    maxLength={10}
+                    maxLength={12}
                     className={'flex-1 px-4 py-3 rounded-2xl border-2 focus:outline-none text-sm ' + (errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-100 focus:border-coral bg-cream')} />
                 </div>
                 <p className="text-xs text-gray-400 mt-1">Enter 10 digits without 0 (e.g. 3360677340)</p>
@@ -760,7 +770,7 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                     <div className="flex gap-2">
                       <div className="bg-cream border-2 border-gray-100 rounded-2xl px-3 flex items-center text-sm font-bold text-charcoal flex-shrink-0">🇵🇰 +92</div>
                       <input type="tel" placeholder="3360677340" value={form.whatsapp}
-                        onChange={e => setForm({...form, whatsapp: formatPhone(e.target.value)})} maxLength={10}
+                        onChange={e => setForm({...form, whatsapp: formatPhone(e.target.value)})} maxLength={12}
                         className={'flex-1 px-4 py-3 rounded-2xl border-2 focus:outline-none text-sm ' + (errors.whatsapp ? 'border-red-300 bg-red-50' : 'border-gray-100 focus:border-coral bg-cream')} />
                     </div>
                     <p className="text-xs text-gray-400 mt-1">Enter 10 digits without 0</p>
