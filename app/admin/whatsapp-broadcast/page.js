@@ -678,21 +678,38 @@ export default function AdminWhatsAppBroadcastPage() {
 
             let totals = { processed: 0, sent: 0, failed: 0, skippedCooldown: 0 }
             let allErrors = []
+            const unresolvedIds = new Set()
 
-            for (const batchIds of batches) {
-                const data = await sendOneBatch(content, { customerIds: batchIds })
-                totals = {
-                    processed: totals.processed + data.processed,
-                    sent: totals.sent + data.sent,
-                    failed: totals.failed + data.failed,
-                    skippedCooldown: totals.skippedCooldown + (data.skippedCooldown || 0),
+            for (let i = 0; i < batches.length; i++) {
+                const batchIds = batches[i]
+                try {
+                    const data = await sendOneBatch(content, { customerIds: batchIds })
+                    totals = {
+                        processed: totals.processed + data.processed,
+                        sent: totals.sent + data.sent,
+                        failed: totals.failed + data.failed,
+                        skippedCooldown: totals.skippedCooldown + (data.skippedCooldown || 0),
+                    }
+                    if (data.errors?.length) allErrors = [...allErrors, ...data.errors].slice(0, 10)
+                } catch (err) {
+                    // This batch never got a response — previously that threw
+                    // out of the whole loop, so one bad batch silently stopped
+                    // every customer queued after it from ever being messaged.
+                    // Keep these customers selected instead of dropping them,
+                    // so a retry only needs to resend to the ones still here,
+                    // and keep going through the rest of the batches.
+                    batchIds.forEach((id) => unresolvedIds.add(id))
+                    allErrors = [...allErrors, 'Batch ' + (i + 1) + ' of ' + batches.length + ' (' + batchIds.length + ' customers) failed: ' + err.message].slice(0, 10)
                 }
-                if (data.errors?.length) allErrors = [...allErrors, ...data.errors].slice(0, 10)
                 setProgress(totals)
                 setErrors(allErrors)
             }
 
-            clearSelection()
+            setSelectedCustomers((prev) => {
+                const next = new Map()
+                prev.forEach((c, id) => { if (unresolvedIds.has(id)) next.set(id, c) })
+                return next
+            })
             loadRecipients(recipientsPage)
         } catch (err) {
             setErrors((prev) => [...prev, err.message].slice(0, 10))
