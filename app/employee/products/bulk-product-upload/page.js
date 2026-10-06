@@ -25,6 +25,7 @@ const SIZE_BRACKETS = [
     '0-3M', '3-6M', '6-9M', '9-12M', '12-18M', '18-24M',
     '2-3 Year', '3-4 Year', '4-5 Year', '5-6 Year',
     '6-7 Year', '7-8 Year', '8-9 Year', '9-10 Year',
+    '11-12 Year', '13-14 Year', '14-15 Year',
 ]
 
 // OCR/folder detection only ever finds whole-year ranges (captions say

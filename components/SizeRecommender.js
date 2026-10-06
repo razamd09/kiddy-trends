@@ -15,12 +15,16 @@ const sizeChart = [
   { age: '6–7 Years',     shirt: '20"', bottom: '26"', weight: '21–23 kg' },
   { age: '7–8 Years',     shirt: '21–22"', bottom: '28–30"', weight: '23–27 kg' },
   { age: '9–10 Years',    shirt: '23–24"', bottom: '32"', weight: '27–32 kg' },
+  { age: '11–12 Years',   shirt: '25–26"', bottom: '34"', weight: '32–38 kg' },
+  { age: '13–14 Years',   shirt: '27–28"', bottom: '36"', weight: '38–45 kg' },
+  { age: '14–15 Years',   shirt: '29–30"', bottom: '38"', weight: '45–50 kg' },
 ]
 
 const ageOptions = [
   '0–3 Months', '3–6 Months', '6–9 Months', '9–12 Months',
   '1 Year', '18–24 Months', '2–3 Years', '3–4 Years',
   '4–5 Years', '5–6 Years', '6–7 Years', '7–8 Years', '9–10 Years',
+  '11–12 Years', '13–14 Years', '14–15 Years',
 ]
 
 export default function SizeRecommender() {

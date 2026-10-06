@@ -882,7 +882,8 @@ export default function ProductPageClient({ initialProduct = null }) {
                       ['9–12 Months','13','14'],['12–18 Months','14','16'],['18–24 Months','15','17'],
                       ['2–3 Year','16','18'],['3–4 Year','17','20'],['4–5 Year','18','22'],
                       ['5–6 Year','19','24'],['6–7 Year','20','26'],['7–8 Year','21/22','28/30'],
-                      ['9–10 Year','23/24','32'],
+                      ['9–10 Year','23/24','32'],['11–12 Year','25/26','34'],
+                      ['13–14 Year','27/28','36'],['14–15 Year','29/30','38'],
                     ].map((row, i) => (
                         <tr key={i} className={i % 2 === 0 ? 'bg-cream' : ''}>
                           <td className="p-3 font-display text-coral">{row[0]}</td>
