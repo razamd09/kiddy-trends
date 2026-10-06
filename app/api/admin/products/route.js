@@ -77,6 +77,19 @@ function applySearchFilter(query, search) {
     return query.ilike('title', '%' + search + '%')
 }
 
+// The 4 query-building branches below (variant / non-variant, each with its
+// own created_at/updated_at-missing fallback) all need the same metadata
+// filters applied the same way — kept in one place so adding a new filter
+// never means updating 4 near-identical blocks separately.
+function applyMetadataFilters(query, { productVersion, status, fabric, productSeasonId }) {
+    if (productVersion) query = query.eq('product_version', productVersion)
+    if (status === 'active') query = query.eq('is_active', true)
+    if (status === 'draft') query = query.eq('is_active', false)
+    if (fabric) query = query.eq('fabric', fabric)
+    if (productSeasonId) query = query.eq('product_season_id', productSeasonId)
+    return query
+}
+
 function normalizeImages(images) {
     if (Array.isArray(images)) {
         return images
@@ -312,6 +325,11 @@ export async function GET(request) {
     const variant = (searchParams.get('variant') || '').trim()
     const productType = (searchParams.get('productType') || '').trim()
     const newArrivalsOnly = (searchParams.get('version') || '').trim().toLowerCase() === 'new_arrivals'
+    const productVersion = (searchParams.get('productVersion') || '').trim()
+    const status = (searchParams.get('status') || '').trim().toLowerCase()
+    const fabric = (searchParams.get('fabric') || '').trim()
+    const productSeasonId = (searchParams.get('productSeasonId') || '').trim()
+    const metadataFilters = { productVersion, status, fabric, productSeasonId }
     const sortByRaw = (searchParams.get('sortBy') || 'created_at').trim()
     const sortDirRaw = (searchParams.get('sortDir') || 'desc').trim().toLowerCase()
     const sortByAllowed = ['created_at', 'updated_at', 'price', 'title', 'stock', 'category', 'is_active', 'last_action_at', 'variant_count']
@@ -340,6 +358,7 @@ export async function GET(request) {
         if (newArrivalsOnly) {
             variantQuery = variantQuery.ilike('product_version', '%new arrival%')
         }
+        variantQuery = applyMetadataFilters(variantQuery, metadataFilters)
 
         variantQuery = variantQuery.order(needsComputedSort ? 'id' : sortBy, { ascending })
         let variantResult = await variantQuery
@@ -384,6 +403,7 @@ export async function GET(request) {
         if (newArrivalsOnly) {
             query = query.ilike('product_version', '%new arrival%')
         }
+        query = applyMetadataFilters(query, metadataFilters)
         query = query.order(needsComputedSort ? 'id' : sortBy, { ascending })
         if (!needsComputedSort) {
             query = query.range(offset, offset + limit - 1)

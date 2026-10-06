@@ -45,6 +45,10 @@ export default function EmployeeProducts() {
     const [searchTerm, setSearchTerm] = useState('')
     const [categoryFilter, setCategoryFilter] = useState('all')
     const [variantFilter, setVariantFilter] = useState('all')
+    const [versionFilter, setVersionFilter] = useState('all')
+    const [statusFilter, setStatusFilter] = useState('all')
+    const [fabricFilter, setFabricFilter] = useState('all')
+    const [seasonFilter, setSeasonFilter] = useState('all')
     const [sortBy, setSortBy] = useState('created_at')
     const [sortDir, setSortDir] = useState('desc')
     const [submitting, setSubmitting] = useState(false)
@@ -202,7 +206,7 @@ export default function EmployeeProducts() {
 
     useEffect(() => {
         if (verified) fetchProducts()
-    }, [verified, page, searchTerm, categoryFilter, variantFilter, sortBy, sortDir])
+    }, [verified, page, searchTerm, categoryFilter, variantFilter, versionFilter, statusFilter, fabricFilter, seasonFilter, sortBy, sortDir])
 
     useEffect(() => {
         if (verified) fetchProductMetadata()
@@ -215,7 +219,7 @@ export default function EmployeeProducts() {
     useEffect(() => {
         if (!verified) return
         setPage(1)
-    }, [searchTerm, categoryFilter, variantFilter, sortBy, sortDir, verified])
+    }, [searchTerm, categoryFilter, variantFilter, versionFilter, statusFilter, fabricFilter, seasonFilter, sortBy, sortDir, verified])
 
     async function fetchProducts() {
         setLoading(true)
@@ -230,6 +234,10 @@ export default function EmployeeProducts() {
             if (searchTerm.trim()) params.set('search', searchTerm.trim())
             if (categoryFilter && categoryFilter !== 'all') params.set('category', categoryFilter)
             if (variantFilter && variantFilter !== 'all') params.set('variant', variantFilter)
+            if (versionFilter && versionFilter !== 'all') params.set('productVersion', versionFilter)
+            if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter)
+            if (fabricFilter && fabricFilter !== 'all') params.set('fabric', fabricFilter)
+            if (seasonFilter && seasonFilter !== 'all') params.set('productSeasonId', seasonFilter)
             const res  = await fetch('/api/admin/products?' + params.toString(), { headers: { 'x-admin-token': token } })
             const data = await readApiJson(res)
             if (!res.ok || data.error) {
@@ -1589,6 +1597,39 @@ export default function EmployeeProducts() {
                                     <option value="asc">Old → New</option>
                                 </select>
                             </div>
+                            <select
+                                value={versionFilter}
+                                onChange={e => setVersionFilter(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm bg-white"
+                            >
+                                <option value="all">All Product Versions</option>
+                                {productVersionOptions.map(version => <option key={version} value={version}>{version}</option>)}
+                            </select>
+                            <select
+                                value={statusFilter}
+                                onChange={e => setStatusFilter(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm bg-white"
+                            >
+                                <option value="all">All Status</option>
+                                <option value="active">Active</option>
+                                <option value="draft">Draft</option>
+                            </select>
+                            <select
+                                value={fabricFilter}
+                                onChange={e => setFabricFilter(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm bg-white"
+                            >
+                                <option value="all">All Fabrics</option>
+                                {fabricOptions.map(fabric => <option key={fabric} value={fabric}>{fabric}</option>)}
+                            </select>
+                            <select
+                                value={seasonFilter}
+                                onChange={e => setSeasonFilter(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm bg-white"
+                            >
+                                <option value="all">All Seasons</option>
+                                {productSeasonOptions.map(season => <option key={season.id} value={season.id}>{season.name}</option>)}
+                            </select>
                         </div>
 
                         {selectedIds.length > 0 && (
