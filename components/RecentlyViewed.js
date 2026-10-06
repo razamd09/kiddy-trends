@@ -1,7 +1,9 @@
 'use client'
 import { useState, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { useCart } from '../context/CartContext'
-import CheckoutModal from './CheckoutModal'
+
+const CheckoutModal = dynamic(() => import('./CheckoutModal'), { ssr: false })
 
 function normalizeDisplayTitle(rawTitle) {
   return String(rawTitle || '')

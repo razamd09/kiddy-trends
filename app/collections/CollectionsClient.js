@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import ProductCard from '../../components/ProductCard'
 
@@ -266,43 +266,53 @@ export default function CollectionsClient({ initialProducts = [] }) {
   const effectiveGenders = activeGender ? [activeGender] : queryGenders
   const effectiveAgeIds  = activeSub ? [activeSub] : queryAges
 
-  let filtered = products
+  // Re-running this full filter+sort pass over the (potentially catalog-sized)
+  // product list on every render was wasted work on state changes that don't
+  // touch any filter input at all — e.g. clicking "Load More" only changes
+  // `page`, so without memoizing this used to re-filter and re-sort the whole
+  // list just to then slice a bigger prefix off the same result.
+  const filtered = useMemo(() => {
+    let result = products
 
-  if (effectiveAgeIds.length > 0) {
-    filtered = filtered.filter((p) => matchesAnyAges(p, effectiveAgeIds))
-  } else if (activeCat !== 'all') {
-    filtered = filtered.filter((p) => matchesCategoryBucket(p, activeCat))
-  }
+    if (effectiveAgeIds.length > 0) {
+      result = result.filter((p) => matchesAnyAges(p, effectiveAgeIds))
+    } else if (activeCat !== 'all') {
+      result = result.filter((p) => matchesCategoryBucket(p, activeCat))
+    }
 
-  if (effectiveGenders.length > 0) {
-    filtered = filtered.filter((p) => matchesAnyGenders(p, effectiveGenders))
-  }
+    if (effectiveGenders.length > 0) {
+      result = result.filter((p) => matchesAnyGenders(p, effectiveGenders))
+    }
 
-  if (activeVersion) {
-    filtered = filtered.filter((p) => matchesVersion(p, activeVersion))
-  }
+    if (activeVersion) {
+      result = result.filter((p) => matchesVersion(p, activeVersion))
+    }
 
-  if (queryTitle) {
-    filtered = filtered.filter((p) => String(p?.title || '').toLowerCase().includes(queryTitle))
-  }
+    if (queryTitle) {
+      result = result.filter((p) => String(p?.title || '').toLowerCase().includes(queryTitle))
+    }
 
-  if (queryProductType) {
-    filtered = filtered.filter((p) => productTypeMatches(p?.product_type, queryProductType))
-  }
+    if (queryProductType) {
+      result = result.filter((p) => productTypeMatches(p?.product_type, queryProductType))
+    }
 
-  if (querySeason) {
-    filtered = filtered.filter((p) => getProductSeason(p) === querySeason)
-  }
+    if (querySeason) {
+      result = result.filter((p) => getProductSeason(p) === querySeason)
+    }
 
-  if (queryCharacter) {
-    filtered = filtered.filter((p) => String(p?.character || '').toLowerCase() === queryCharacter)
-  }
+    if (queryCharacter) {
+      result = result.filter((p) => String(p?.character || '').toLowerCase() === queryCharacter)
+    }
 
-  if (queryBrand) {
-    filtered = filtered.filter((p) => String(p?.brand || '').toLowerCase() === queryBrand)
-  }
+    if (queryBrand) {
+      result = result.filter((p) => String(p?.brand || '').toLowerCase() === queryBrand)
+    }
 
-  filtered = [...filtered].sort((a, b) => getCreatedAtValue(b) - getCreatedAtValue(a))
+    return [...result].sort((a, b) => getCreatedAtValue(b) - getCreatedAtValue(a))
+  }, [
+    products, activeCat, activeVersion, queryTitle, queryProductType, querySeason, queryCharacter, queryBrand,
+    effectiveAgeIds.join('|'), effectiveGenders.join('|'),
+  ])
 
   // Pagination
   const totalPages   = Math.ceil(filtered.length / ITEMS_PER_PAGE)

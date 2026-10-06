@@ -1,9 +1,15 @@
 'use client'
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
+import dynamic from 'next/dynamic'
 import { useCart } from '../context/CartContext'
-import CheckoutModal from './CheckoutModal'
 import WishlistButton from './WishlistButton'
+
+// Code-split: this renders in grids of up to ~40 cards (homepage, collections,
+// campaign pages), so every card importing the full checkout form statically
+// would multiply that weight across the page instead of loading it once, on
+// demand, the first time any card's "Buy Now" is actually clicked.
+const CheckoutModal = dynamic(() => import('./CheckoutModal'), { ssr: false })
 
 function CardIcon({ type, className = 'w-5 h-5' }) {
   const common = {

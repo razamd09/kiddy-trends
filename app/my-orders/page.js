@@ -57,26 +57,28 @@ export default function MyOrdersPage() {
     let added = 0
     let unavailable = 0
 
-    for (const item of items) {
+    // Look up every line item's current availability in parallel instead of
+    // one sequential round trip per item — an order with many items used to
+    // make reordering take noticeably longer the more it contained.
+    const lookups = await Promise.all(items.map(async (item) => {
       try {
         const res = await fetch('/api/products?handle=' + encodeURIComponent('prd_id=' + item.productId), { cache: 'no-store' })
         const data = await res.json()
         const product = data.success && data.products?.length > 0 ? data.products[0] : null
         const variant = product?.variants?.find((v) => v.id === item.variantId) || product?.variants?.[0]
-
-        if (!product || !variant || variant.available === false) {
-          unavailable += 1
-          continue
-        }
-
-        const quantity = Math.max(1, Number(item.quantity) || 1)
-        for (let i = 0; i < quantity; i++) {
-          addToCart(product, variant)
-        }
-        added += 1
+        if (!product || !variant || variant.available === false) return null
+        return { product, variant, quantity: Math.max(1, Number(item.quantity) || 1) }
       } catch {
-        unavailable += 1
+        return null
       }
+    }))
+
+    for (const lookup of lookups) {
+      if (!lookup) { unavailable += 1; continue }
+      for (let i = 0; i < lookup.quantity; i++) {
+        addToCart(lookup.product, lookup.variant)
+      }
+      added += 1
     }
 
     setReorderingId(null)

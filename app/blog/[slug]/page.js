@@ -5,6 +5,10 @@ import { formatPakistanDate } from '../../../lib/dateFormat'
 
 const SITE_URL = 'https://thekiddytrends.com'
 
+// Posts rarely change — without this, every single view re-queries Supabase
+// directly since Next 15 no longer caches uncached data fetches by default.
+export const revalidate = 3600
+
 function stripHtml(html) {
   return String(html || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
 }

@@ -3,10 +3,16 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
+import dynamic from 'next/dynamic'
 import ProductCard from '../../../components/ProductCard'
 import { useCart } from '../../../context/CartContext'
-import CheckoutModal from '../../../components/CheckoutModal'
 import RecentlyViewed from '../../../components/RecentlyViewed'
+
+// Code-split off the product page's critical path — it only renders after
+// "Buy Now" is clicked, so this keeps its weight (incl. emailjs) out of the
+// bundle every product-page visit downloads, which is this site's main
+// conversion page and most LCP/TTI-sensitive route.
+const CheckoutModal = dynamic(() => import('../../../components/CheckoutModal'), { ssr: false })
 import SizeRecommender from '../../../components/SizeRecommender'
 import { getAnalyticsSessionId, trackEvent } from '../../../lib/analyticsClient'
 import { metaPixelTrack, generateMetaEventId, sendServerMetaEvent } from '../../../lib/metaPixel'
@@ -215,7 +221,12 @@ export default function ProductPageClient({ initialProduct = null }) {
     if (!product) return
     async function fetchRelated() {
       try {
-        const res  = await fetch('/api/products?limit=40', { cache: 'no-store' })
+        // Ask the server to narrow by category instead of pulling 40 full
+        // products just to keep 4 — and drop the no-store override so repeat
+        // visits can reuse the API's own 60s Cache-Control instead of always
+        // hitting the network.
+        const categoryParam = product.category ? '&category=' + encodeURIComponent(product.category) : ''
+        const res  = await fetch('/api/products?limit=16' + categoryParam)
         const data = await res.json()
         const filtered = (data.products || [])
           .filter((p) => p._id !== product._id && (p.category === product.category || p.product_type === product.product_type))

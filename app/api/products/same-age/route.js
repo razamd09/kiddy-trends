@@ -121,5 +121,13 @@ export async function GET(request) {
         }
     })
 
-    return Response.json({ success: true, ageId, total: matched.length, items })
+    const response = Response.json({ success: true, ageId, total: matched.length, items })
+    // This re-scans the whole active catalog on every call (the age match is
+    // fuzzy text over title/tags/variants, so it can't be pushed into a plain
+    // SQL filter) — this fires on every size click on every product page, so
+    // without caching it's a full-catalog query per click. A short edge cache
+    // means repeat requests for the same (ageId, currentId) within the window
+    // are served without hitting Supabase at all.
+    response.headers.set('Cache-Control', 'public, max-age=30, s-maxage=120, stale-while-revalidate=300')
+    return response
 }

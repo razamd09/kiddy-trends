@@ -1,5 +1,5 @@
 'use client'
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { trackEvent } from '../lib/analyticsClient'
 import { metaPixelTrack, generateMetaEventId, sendServerMetaEvent } from '../lib/metaPixel'
 import { trackGA4Event, ga4Item } from '../lib/ga4'
@@ -27,7 +27,7 @@ export function CartProvider({ children }) {
     localStorage.setItem('kt_cart', JSON.stringify(cart))
   }, [cart])
 
-  function addToCart(product, variant) {
+  const addToCart = useCallback((product, variant) => {
     trackEvent('add_to_cart', {
       path: typeof window !== 'undefined' ? window.location.pathname : '/',
       product_id: String(product?._id || product?.id || ''),
@@ -89,38 +89,44 @@ export function CartProvider({ children }) {
       window.dispatchEvent(new CustomEvent('kt-cart-item-added'))
     }
     setCartOpen(true)
-  }
+  }, [])
 
-  function removeFromCart(variantId) {
+  const removeFromCart = useCallback((variantId) => {
     setCart(prev => prev.filter(item => item.variantId !== variantId))
-  }
+  }, [])
 
-  function updateQuantity(variantId, quantity) {
+  const updateQuantity = useCallback((variantId, quantity) => {
     if (quantity < 1) { removeFromCart(variantId); return }
     setCart(prev => prev.map(item => {
       if (item.variantId !== variantId) return item
       const maxStock = Number.isFinite(Number(item.stock)) ? Number(item.stock) : Infinity
       return { ...item, quantity: Math.min(quantity, maxStock) }
     }))
-  }
+  }, [removeFromCart])
 
-  function clearCart() { setCart([]) }
+  const clearCart = useCallback(() => setCart([]), [])
 
   const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0)
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
-  function getCheckoutUrl() {
+  const getCheckoutUrl = useCallback(() => {
     if (cart.length === 0) return '#'
     const items = cart.map(item => item.variantId + ':' + item.quantity).join(',')
     return 'https://thekiddytrends.com/cart/' + items
-  }
+  }, [cart])
+
+  // Context consumers (ProductCard in a 40-item grid, Navbar, CartDrawer...)
+  // only need to re-render when something they actually read changes — an
+  // unmemoized object literal here gave every consumer a new reference on
+  // every provider render, forcing a full re-render cascade on any cart change.
+  const value = useMemo(() => ({
+    cart, cartOpen, setCartOpen,
+    addToCart, removeFromCart, updateQuantity, clearCart,
+    totalItems, totalPrice, getCheckoutUrl
+  }), [cart, cartOpen, addToCart, removeFromCart, updateQuantity, clearCart, totalItems, totalPrice, getCheckoutUrl])
 
   return (
-    <CartContext.Provider value={{
-      cart, cartOpen, setCartOpen,
-      addToCart, removeFromCart, updateQuantity, clearCart,
-      totalItems, totalPrice, getCheckoutUrl
-    }}>
+    <CartContext.Provider value={value}>
       {children}
     </CartContext.Provider>
   )

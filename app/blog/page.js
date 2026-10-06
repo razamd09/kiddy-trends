@@ -8,6 +8,10 @@ export const metadata = {
   alternates: { canonical: '/blog' },
 }
 
+// Posts rarely change — without this, every single view re-queries Supabase
+// directly since Next 15 no longer caches uncached data fetches by default.
+export const revalidate = 3600
+
 async function getPublishedPosts() {
   try {
     const supabase = createClient(

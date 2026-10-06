@@ -1,23 +1,28 @@
-'use client'
-import { useEffect, useState } from 'react'
 import Link from 'next/link'
 
+const SITE_URL = 'https://thekiddytrends.com'
 const BRAND_TILE_COLORS = ['bg-coral text-white', 'bg-skyblue text-charcoal', 'bg-mint text-charcoal', 'bg-sunny text-charcoal', 'bg-charcoal text-white']
 
-export default function BrandsPage() {
-  const [brands, setBrands] = useState([])
-  const [loading, setLoading] = useState(true)
+export const metadata = {
+  title: 'Shop by Brand – Kiddy Trends',
+  description: 'Browse all our brands at Kiddy Trends.',
+}
 
-  useEffect(() => {
-    async function fetchBrands() {
-      try {
-        const data = await fetch('/api/product-brands').then(r => r.json())
-        setBrands(Array.isArray(data?.brands) ? data.brands : [])
-      } catch { setBrands([]) }
-      setLoading(false)
-    }
-    fetchBrands()
-  }, [])
+// Brands barely change day to day, so this is fetched server-side (cached,
+// same 300s window as the API's own Cache-Control) instead of a client
+// component that always shipped a blank skeleton first and fetched on mount.
+async function getBrands() {
+  try {
+    const res = await fetch(SITE_URL + '/api/product-brands', { next: { revalidate: 300 } })
+    const data = await res.json()
+    return Array.isArray(data?.brands) ? data.brands : []
+  } catch {
+    return []
+  }
+}
+
+export default async function BrandsPage() {
+  const brands = await getBrands()
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -26,16 +31,7 @@ export default function BrandsPage() {
         <p className="text-gray-500 text-lg">Pick a brand to see everything they've got</p>
       </div>
 
-      {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {[...Array(10)].map((_, i) => (
-            <div key={i} className="rounded-2xl border border-gray-100 bg-white p-4 flex flex-col items-center gap-3 animate-pulse">
-              <div className="w-full aspect-square rounded-xl bg-gray-100" />
-              <div className="h-4 w-20 bg-gray-100 rounded" />
-            </div>
-          ))}
-        </div>
-      ) : brands.length === 0 ? (
+      {brands.length === 0 ? (
         <div className="text-center py-20 text-gray-400">
           <div className="text-6xl mb-4">🏷️</div>
           <h3 className="font-display text-2xl">No brands yet</h3>

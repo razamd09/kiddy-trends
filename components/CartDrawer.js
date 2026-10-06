@@ -1,8 +1,13 @@
 'use client'
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { useCart } from '../context/CartContext'
-import CheckoutModal from './CheckoutModal'
 import { getAnalyticsSessionId } from '../lib/analyticsClient'
+
+// CheckoutModal (plus its emailjs/RewardsSection deps) only ever renders
+// after a click — code-splitting it keeps its weight out of the bundle
+// every single page loads, since CartDrawer itself is mounted site-wide.
+const CheckoutModal = dynamic(() => import('./CheckoutModal'), { ssr: false })
 
 
 

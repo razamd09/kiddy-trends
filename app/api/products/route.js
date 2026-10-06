@@ -355,24 +355,30 @@ export async function GET(request) {
                 }
             }
 
-            const candidates = Array.from(new Set([
-                handle.trim(),
-                normalizeHandleValue(handle),
-                safeDecode(handle),
-            ].filter(Boolean)))
+            // Skip the handle-candidate lookups entirely once the id lookup
+            // above already found the product — e.g. every "prd_id=123" link
+            // from campaigns/WhatsApp carousels resolves on that one query,
+            // and this used to always fire a second, redundant query after it.
+            if (data.length === 0) {
+                const candidates = Array.from(new Set([
+                    handle.trim(),
+                    normalizeHandleValue(handle),
+                    safeDecode(handle),
+                ].filter(Boolean)))
 
-            for (const candidate of candidates) {
-                const byHandle = await supabase
-                    .from('products')
-                    .select('*, product_seasons(name), product_characters(name), product_brands(name)', { count: 'exact' })
-                    .eq('is_active', true)
-                    .or('source.is.null,source.neq.' + DRAFT_SOURCE)
-                    .eq('shopify_handle', candidate)
-                    .limit(1)
-                if (!byHandle.error && (byHandle.data || []).length > 0) {
-                    data = byHandle.data
-                    count = byHandle.count || byHandle.data.length
-                    break
+                for (const candidate of candidates) {
+                    const byHandle = await supabase
+                        .from('products')
+                        .select('*, product_seasons(name), product_characters(name), product_brands(name)', { count: 'exact' })
+                        .eq('is_active', true)
+                        .or('source.is.null,source.neq.' + DRAFT_SOURCE)
+                        .eq('shopify_handle', candidate)
+                        .limit(1)
+                    if (!byHandle.error && (byHandle.data || []).length > 0) {
+                        data = byHandle.data
+                        count = byHandle.count || byHandle.data.length
+                        break
+                    }
                 }
             }
 
