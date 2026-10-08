@@ -15,6 +15,10 @@ import Link from 'next/link'
 const HERO_VIDEO_URLS = [
   'https://jblksspdfcefooikznao.supabase.co/storage/v1/object/public/site-assets/hero/winter-hero.mp4',
   'https://jblksspdfcefooikznao.supabase.co/storage/v1/object/public/site-assets/hero/winter-hero-2.mp4',
+  'https://jblksspdfcefooikznao.supabase.co/storage/v1/object/public/site-assets/hero/hero-3.mp4',
+  'https://jblksspdfcefooikznao.supabase.co/storage/v1/object/public/site-assets/hero/hero-4.mp4',
+  'https://jblksspdfcefooikznao.supabase.co/storage/v1/object/public/site-assets/hero/hero-5.mp4',
+  'https://jblksspdfcefooikznao.supabase.co/storage/v1/object/public/site-assets/hero/hero-6.mp4',
 ]
 
 export default function HomeHeroSlider() {
