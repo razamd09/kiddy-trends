@@ -15,6 +15,7 @@ const links = [
 ]
 
 const menuLinks = [
+  { href: '/featured-collection', label: 'Featured Collection' },
   { href: '/collections?season=Winter', label: 'Winter Arrivals 2026' },
   { href: '/collections?genders=Boys', label: 'Boys' },
   { href: '/collections?genders=Girls', label: 'Girls' },
