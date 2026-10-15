@@ -959,6 +959,12 @@ export default function CheckoutModal({ product, variant, onClose, isCart, cartI
                 </div>
               </div>
 
+              <div className="bg-sunny/20 border border-sunny/50 rounded-2xl p-3 text-xs text-charcoal space-y-1">
+                <p>⚠️ <strong>Delivery charges (PKR {baseShipping.toLocaleString()}) must be paid in advance</strong> once your order is confirmed.</p>
+                <p>We'll contact you on WhatsApp to collect this advance for shipping.</p>
+                <p>Orders with unpaid delivery charges will be <strong>automatically cancelled</strong>.</p>
+              </div>
+
               <button type="submit" disabled={loading}
                 className="w-full bg-coral text-white font-display text-lg py-4 rounded-2xl hover:bg-opacity-90 transition-all hover:scale-[1.02] active:scale-95 shadow-md disabled:opacity-70">
                 {loading ? 'Placing Order...' : 'Place Order'}

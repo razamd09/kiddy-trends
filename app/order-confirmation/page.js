@@ -91,6 +91,13 @@ function OrderConfirmationContent() {
                     </ul>
                 </div>
 
+                {/* Advance delivery charges notice */}
+                <div className="bg-sunny/20 border border-sunny/50 rounded-2xl p-4 mb-6 text-left text-xs text-charcoal space-y-1">
+                    <p>⚠️ <strong>Delivery charges (PKR 250) must be paid in advance</strong> once your order is confirmed.</p>
+                    <p>We'll contact you on WhatsApp to collect this advance for shipping.</p>
+                    <p>Orders with unpaid delivery charges will be <strong>automatically cancelled</strong>.</p>
+                </div>
+
                 {/* WhatsApp confirmation */}
                 <a href={'https://wa.me/923360677340?text=' + encodeURIComponent(
                     'Hi Kiddy Trends! I just placed an order.\n\nOrder Number: ' + orderNumber + '\nName: ' + customerName + '\nTotal: PKR ' + total + '\n\nPlease confirm my order. Thank you!'
