@@ -111,18 +111,19 @@ async function restockOrderItems(items) {
     }
 }
 
-export async function PUT(request) {
-    const { id, status, notes, payment_verified, cancellation_reason } = await request.json()
-
+// Applies a status/notes/payment_verified update plus every side effect that
+// must happen alongside it (restock on cancel, review-request email on
+// delivery, the dispatched_at stamp, the customer WhatsApp update) — shared
+// between the PUT handler (an admin/employee click) and the auto-deliver
+// cron job (a 3-days-since-dispatch timeout), so both paths behave
+// identically instead of the cron job reimplementing a second copy of this.
+export async function applyOrderStatusUpdate(id, { status, notes, payment_verified, cancellation_reason } = {}) {
     if (!id || (status === undefined && notes === undefined && payment_verified === undefined)) {
-        return Response.json({ error: 'Order id and at least one field are required' }, { status: 400 })
+        return { error: 'Order id and at least one field are required', statusCode: 400 }
     }
 
-    // A reason is mandatory every time an order is set to cancelled — enforced
-    // here too (not just in the admin/employee UI) so this can never be
-    // bypassed by calling the API directly.
     if (status === 'cancelled' && !String(cancellation_reason || '').trim()) {
-        return Response.json({ error: 'A cancellation reason is required' }, { status: 400 })
+        return { error: 'A cancellation reason is required', statusCode: 400 }
     }
 
     // Load the current order so we can detect a real cancellation transition and
@@ -134,7 +135,7 @@ export async function PUT(request) {
         .single()
 
     if (fetchError || !current) {
-        return Response.json({ error: fetchError?.message || 'Order not found' }, { status: 404 })
+        return { error: fetchError?.message || 'Order not found', statusCode: 404 }
     }
 
     const updates = { updated_at: new Date().toISOString() }
@@ -142,6 +143,13 @@ export async function PUT(request) {
     if (typeof notes === 'string') updates.notes = notes
     if (typeof payment_verified === 'boolean') updates.payment_verified = payment_verified
     if (status === 'cancelled') updates.cancellation_reason = String(cancellation_reason).trim()
+    // Recorded once, on the actual transition — not on every save while an
+    // order stays dispatched (e.g. adding a tracking number later) — so the
+    // auto-deliver-after-3-days job always measures from the real dispatch
+    // moment instead of resetting on an unrelated edit.
+    if (status === 'dispatched' && current.status !== 'dispatched') {
+        updates.dispatched_at = updates.updated_at
+    }
 
     // Restock only when an order actually transitions INTO cancelled, and only once
     // (guarded by both the status transition and a notes marker) so repeated saves
@@ -182,7 +190,7 @@ export async function PUT(request) {
         .select()
         .single()
 
-    if (error) return Response.json({ error: error.message }, { status: 500 })
+    if (error) return { error: error.message, statusCode: 500 }
 
     let whatsapp = null
     const isStatusChange = status && status !== current.status
@@ -196,5 +204,12 @@ export async function PUT(request) {
         }
     }
 
-    return Response.json({ success: true, order: data, whatsapp })
+    return { order: data, whatsapp }
+}
+
+export async function PUT(request) {
+    const body = await request.json()
+    const result = await applyOrderStatusUpdate(body.id, body)
+    if (result.error) return Response.json({ error: result.error }, { status: result.statusCode || 500 })
+    return Response.json({ success: true, order: result.order, whatsapp: result.whatsapp })
 }

@@ -17,7 +17,13 @@ const menus = [
       { href: '/admin/collections', label: 'Collections' },
     ],
   },
-  { label: 'Orders', href: '/admin/orders' },
+  {
+    label: 'Orders',
+    items: [
+      { href: '/admin/orders', label: 'Orders' },
+      { href: '/admin/orders/reporting', label: 'Orders Reporting' },
+    ],
+  },
   { label: 'Post Ex Orders', href: '/admin/instagram-orders' },
   {
     label: 'Sale',

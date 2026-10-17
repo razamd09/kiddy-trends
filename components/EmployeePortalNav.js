@@ -17,7 +17,13 @@ const menus = [
       { href: '/employee/product-brands', label: 'Brands' },
     ],
   },
-  { label: 'Orders', href: '/employee/orders' },
+  {
+    label: 'Orders',
+    items: [
+      { href: '/employee/orders', label: 'Orders' },
+      { href: '/employee/orders/reporting', label: 'Orders Reporting' },
+    ],
+  },
   { label: 'Post Ex Orders', href: '/employee/instagram-orders' },
   { label: 'Customers', href: '/employee/customers' },
   { label: 'Rewards', href: '/employee/rewards' },
