@@ -15,6 +15,14 @@ const statusConfig = {
 
 const allStatuses = ['pending', 'processing', 'dispatched', 'delivered', 'cancelled']
 
+const CANCEL_REASONS = [
+    'Customer not answering calls',
+    'Customer asked to cancel on WhatsApp',
+    'Customer refused to pay shipping charges',
+    'Article(s) not available',
+    'Other',
+]
+
 const ONLINE_ACCOUNT_LABELS = {
     jazzcash: 'JazzCash',
     sadapay: 'SadaPay',
@@ -72,6 +80,9 @@ export default function AdminOrders() {
     const [newCustomerSource, setNewCustomerSource] = useState('Website')
     const [addingCustomer, setAddingCustomer] = useState(false)
     const [addCustomerStatus, setAddCustomerStatus] = useState('')
+    const [cancelModalOpen, setCancelModalOpen] = useState(false)
+    const [cancelReason, setCancelReason] = useState('')
+    const [cancelReasonOther, setCancelReasonOther] = useState('')
     const router = useRouter()
 
     // Verify session
@@ -157,20 +168,44 @@ export default function AdminOrders() {
         setLoading(false)
     }
 
-    async function updateStatus(id, status) {
+    async function updateStatus(id, status, cancellationReason) {
         setUpdating(true)
         const token = localStorage.getItem('admin_token')
+        const body = { id, status }
+        if (status === 'cancelled') body.cancellation_reason = cancellationReason
         const res   = await fetch('/api/admin/orders', {
             method:  'PUT',
             headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
-            body:    JSON.stringify({ id, status })
+            body:    JSON.stringify(body)
         })
         const data = await res.json()
         if (data.success) {
-            setSelected(prev => prev ? { ...prev, status } : null)
-            setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o))
+            const extra = status === 'cancelled' ? { cancellation_reason: cancellationReason } : {}
+            setSelected(prev => prev ? { ...prev, status, ...extra } : null)
+            setOrders(prev => prev.map(o => o.id === id ? { ...o, status, ...extra } : o))
+            setUpdating(false)
+            return true
         }
+        alert(data.error || 'Failed to update status')
         setUpdating(false)
+        return false
+    }
+
+    function startCancelOrder() {
+        setCancelReason('')
+        setCancelReasonOther('')
+        setCancelModalOpen(true)
+    }
+
+    function closeCancelModal() {
+        setCancelModalOpen(false)
+    }
+
+    async function confirmCancelOrder() {
+        const reason = cancelReason === 'Other' ? cancelReasonOther.trim() : cancelReason
+        if (!reason) { alert('Please select or enter a cancellation reason.'); return }
+        const ok = await updateStatus(selected.id, 'cancelled', reason)
+        if (ok) setCancelModalOpen(false)
     }
 
     async function verifyPayment(id, verified) {
@@ -608,7 +643,7 @@ export default function AdminOrders() {
                                                        (selected.status === s ? 'border-coral bg-coral/5' : 'border-transparent bg-white hover:border-coral/30')}>
                                                 <input type="radio" name="status" value={s}
                                                        checked={selected.status === s}
-                                                       onChange={() => updateStatus(selected.id, s)}
+                                                       onChange={() => s === 'cancelled' ? startCancelOrder() : updateStatus(selected.id, s)}
                                                        disabled={updating}
                                                        className="accent-coral w-4 h-4" />
                                                 <div className="flex items-center gap-2 flex-1">
@@ -643,6 +678,15 @@ export default function AdminOrders() {
                                     )}
                                 </div>
 
+                                {/* Cancellation reason */}
+                                {selected.status === 'cancelled' && selected.cancellation_reason && (
+                                    <div className="bg-red-50 border border-red-100 rounded-2xl p-3">
+                                        <p className="text-xs text-red-500">
+                                            <span className="font-semibold">Cancellation reason:</span> {selected.cancellation_reason}
+                                        </p>
+                                    </div>
+                                )}
+
                                 {/* Notes */}
                                 {selected.notes && (
                                     <div className="bg-sunny/20 rounded-2xl p-3">
@@ -656,6 +700,39 @@ export default function AdminOrders() {
                     </div>
                 </div>
             </div>
+
+            {cancelModalOpen && (
+                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={closeCancelModal}>
+                    <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                        <p className="font-display text-lg text-charcoal mb-1">Cancel Order</p>
+                        <p className="text-xs text-gray-500 mb-4">A reason is required to cancel this order.</p>
+
+                        <label className="block text-sm font-semibold text-charcoal mb-1">Reason *</label>
+                        <select value={cancelReason} onChange={(e) => setCancelReason(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm bg-white mb-3">
+                            <option value="">Select a reason...</option>
+                            {CANCEL_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                        </select>
+
+                        {cancelReason === 'Other' && (
+                            <textarea value={cancelReasonOther} onChange={(e) => setCancelReasonOther(e.target.value)}
+                                      placeholder="Enter reason..." rows={3}
+                                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-100 focus:border-coral focus:outline-none text-sm resize-none mb-3" />
+                        )}
+
+                        <div className="flex gap-2 mt-2">
+                            <button onClick={closeCancelModal} disabled={updating}
+                                    className="flex-1 px-4 py-2.5 rounded-xl bg-cream text-charcoal text-sm font-semibold hover:bg-gray-100 disabled:opacity-50">
+                                Back
+                            </button>
+                            <button onClick={confirmCancelOrder} disabled={updating || !cancelReason || (cancelReason === 'Other' && !cancelReasonOther.trim())}
+                                    className="flex-1 px-4 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 disabled:opacity-40">
+                                {updating ? 'Cancelling...' : 'Confirm Cancel'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

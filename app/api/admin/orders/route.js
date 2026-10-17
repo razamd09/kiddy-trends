@@ -112,10 +112,17 @@ async function restockOrderItems(items) {
 }
 
 export async function PUT(request) {
-    const { id, status, notes, payment_verified } = await request.json()
+    const { id, status, notes, payment_verified, cancellation_reason } = await request.json()
 
     if (!id || (status === undefined && notes === undefined && payment_verified === undefined)) {
         return Response.json({ error: 'Order id and at least one field are required' }, { status: 400 })
+    }
+
+    // A reason is mandatory every time an order is set to cancelled — enforced
+    // here too (not just in the admin/employee UI) so this can never be
+    // bypassed by calling the API directly.
+    if (status === 'cancelled' && !String(cancellation_reason || '').trim()) {
+        return Response.json({ error: 'A cancellation reason is required' }, { status: 400 })
     }
 
     // Load the current order so we can detect a real cancellation transition and
@@ -134,6 +141,7 @@ export async function PUT(request) {
     if (status) updates.status = status
     if (typeof notes === 'string') updates.notes = notes
     if (typeof payment_verified === 'boolean') updates.payment_verified = payment_verified
+    if (status === 'cancelled') updates.cancellation_reason = String(cancellation_reason).trim()
 
     // Restock only when an order actually transitions INTO cancelled, and only once
     // (guarded by both the status transition and a notes marker) so repeated saves
