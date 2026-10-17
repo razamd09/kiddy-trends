@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import AdminPortalNav from '@/components/AdminPortalNav'
+import OrdersStatusBarChart from '@/components/OrdersStatusBarChart'
 
 const RANGES = [
     { id: 'weekly', label: 'Weekly Orders' },
@@ -23,6 +24,14 @@ function formatRowDate(dateStr, range) {
     const end = new Date(d)
     end.setDate(d.getDate() + 6)
     return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ' – ' + end.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+}
+
+function chartLabel(range) {
+    return (dateStr, full) => {
+        const d = new Date(dateStr + 'T00:00:00')
+        if (range === 'monthly') return d.toLocaleDateString('en-GB', { month: full ? 'long' : 'short', year: 'numeric' })
+        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + (full ? ' wk' : '')
+    }
 }
 
 export default function AdminOrdersReportingPage() {
@@ -170,6 +179,14 @@ export default function AdminOrdersReportingPage() {
                         </div>
                     )}
                 </div>
+
+                {!loading && !error && rows.length > 0 && (
+                    <div className="bg-white rounded-2xl p-6 shadow-sm">
+                        <p className="font-display text-lg text-charcoal mb-1">Orders by status</p>
+                        <p className="text-xs text-gray-500 mb-4">Most recent {Math.min(rows.length, 12)} {range === 'weekly' ? 'weeks' : 'months'} — hover a segment for the exact count.</p>
+                        <OrdersStatusBarChart rows={rows} formatLabel={chartLabel(range)} />
+                    </div>
+                )}
             </div>
 
             {drillDate && (
