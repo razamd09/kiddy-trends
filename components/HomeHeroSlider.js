@@ -12,11 +12,13 @@ import Link from 'next/link'
 // reasoning. autoPlay+muted+playsInline is required for browsers to allow
 // autoplay at all; preload="auto" so it starts playing immediately rather
 // than buffering after appearing.
-// Only the new brand video is active for now — the previous 6 clips are left
-// in the site-assets/hero bucket (not deleted) in case they're brought back
-// into rotation later, just no longer listed here.
+// The previous 6 clips are left in the site-assets/hero bucket (not deleted)
+// in case they're brought back into rotation later, just no longer listed
+// here — only these 3 currently show, picked at random.
 const HERO_VIDEO_URLS = [
   'https://jblksspdfcefooikznao.supabase.co/storage/v1/object/public/site-assets/hero/hero-main.mp4',
+  'https://jblksspdfcefooikznao.supabase.co/storage/v1/object/public/site-assets/hero/hero-7.mp4',
+  'https://jblksspdfcefooikznao.supabase.co/storage/v1/object/public/site-assets/hero/hero-8.mp4',
 ]
 
 export default function HomeHeroSlider() {
