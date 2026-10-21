@@ -427,8 +427,10 @@ export default function AdminOrders() {
                                         <p className="font-display text-base text-charcoal">{order.customer_name}</p>
                                         {order.order_number && <p className="text-xs text-coral font-bold">{order.order_number}</p>}
                                     </div>
-                                    <span className={'text-xs px-2 py-1 rounded-full font-bold border ' +
-                                        (statusConfig[order.status]?.color || 'bg-gray-100 text-gray-500 border-gray-200')}>
+                                    <span title={order.status === 'cancelled' ? order.cancellation_reason || '' : undefined}
+                                        className={'text-xs px-2 py-1 rounded-full font-bold border ' +
+                                        (statusConfig[order.status]?.color || 'bg-gray-100 text-gray-500 border-gray-200') +
+                                        (order.status === 'cancelled' && order.cancellation_reason ? ' cursor-help' : '')}>
                     {statusConfig[order.status]?.icon} {statusConfig[order.status]?.label}
                   </span>
                                 </div>
